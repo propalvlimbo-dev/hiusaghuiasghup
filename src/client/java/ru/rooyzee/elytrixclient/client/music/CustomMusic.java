@@ -396,7 +396,7 @@ public final class CustomMusic {
             }
         }
 
-        private static boolean fillPcm(AudioInputStream ais, byte[] chunk, int buffer, int alFormat, int rate) {
+        private static boolean fillPcm(AudioInputStream ais, byte[] chunk, int buffer, int alFormat, int rate) throws IOException {
             int total = 0;
             while (total < chunk.length) {
                 int r = ais.read(chunk, total, chunk.length - total);
