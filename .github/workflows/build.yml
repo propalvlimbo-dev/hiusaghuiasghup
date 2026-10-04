@@ -11,10 +11,10 @@ jobs:
     name: compile (JDK 25, Gradle 9.7.1)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
@@ -28,3 +28,15 @@ jobs:
       # что и локально (Loom 1.18-SNAPSHOT, MC 26.2, без маппингов).
       - name: gradle build
         run: gradle build --no-daemon --stacktrace --console=plain
+
+      # Сборка может «пройти», даже если новый код просто не попал в компиляцию,
+      # поэтому отдельно проверяем, что классы нашего GUI на месте.
+      - name: Проверка классов GUI
+        run: |
+          set -e
+          echo "всего .class: $(find build -name '*.class' | wc -l)"
+          for c in UiVector UiDraw ElytrixScreen ElytrixLoader ElytrixclientClient; do
+            f=$(find build -name "$c.class" | head -1)
+            if [ -z "$f" ]; then echo "НЕ СОБРАЛСЯ: $c"; exit 1; fi
+            echo "ok: $f"
+          done
