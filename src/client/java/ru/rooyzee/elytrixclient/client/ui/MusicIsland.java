@@ -51,7 +51,8 @@ public final class MusicIsland {
         boolean over = mx >= cx && mx <= cx + curW && my >= cy && my <= cy + curH;
         hoverT += ((over ? 1f : 0f) - hoverT) * (1f - (float) Math.exp(-14f * dt));
 
-        boolean pressed = mc.mouseHandler.isLeftPressed();
+        boolean pressed = org.lwjgl.glfw.GLFW.glfwGetMouseButton(
+                org.lwjgl.glfw.GLFW.glfwGetCurrentContext(), 0) == 1;
         boolean clicked = pressed && !wasPressed;
         wasPressed = pressed;
         if (clicked) {

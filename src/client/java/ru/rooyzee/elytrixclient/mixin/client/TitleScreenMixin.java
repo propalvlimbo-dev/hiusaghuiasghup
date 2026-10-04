@@ -47,13 +47,7 @@ public abstract class TitleScreenMixin extends Screen {
                 this.removeWidget(child);
             }
         }
-        // Убираем маленькие иконки (язык, доступность, realms и т.д.)
-        for (GuiEventListener child : new ArrayList<>(this.children())) {
-            if (child instanceof SpriteIconButton) {
-                this.removeWidget(child);
-            }
-        }
-        // кнопки — столбцом слева, в стиле клиента
+        // НЕ удаляем SpriteIconButton — layout() сам спрячет их на -9999
         ElytrixMenuButtons.layout(this.children(), this.width, this.height);
         MenuBgPicker.close();
     }
