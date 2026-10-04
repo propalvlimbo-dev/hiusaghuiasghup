@@ -3,6 +3,7 @@ package ru.rooyzee.elytrixclient.mixin.client;
 import net.minecraft.client.gui.ActiveTextCollector;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
+import net.minecraft.client.gui.components.SpriteIconButton;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,13 +13,11 @@ import ru.rooyzee.elytrixclient.client.ui.ElytrixMenuButtons;
 
 /**
  * Кнопки главного меню — в стиле клиента ({@link ElytrixMenuButtons}).
- * Подложка рисуется вместо ванильного спрайта, подпись — вместо ванильного текста
- * (иконки у маленьких кнопок, например «язык», остаются). Щелчок — звук клиента.
+ * SpriteIconButton (язык, доступность и т.д.) — полностью пропускаются.
  */
 @Mixin(AbstractButton.class)
 public abstract class AbstractButtonMixin {
 
-    /** Графика текущей кнопки: подпись рисуется сразу после подложки в том же кадре. */
     @Unique
     private static GuiGraphicsExtractor elytrix$graphics;
 
@@ -29,6 +28,12 @@ public abstract class AbstractButtonMixin {
             return;
         }
         AbstractButton self = (AbstractButton) (Object) this;
+        // Полностью пропусаем маленькие иконки (язык, доступность и т.д.)
+        if (self instanceof SpriteIconButton) {
+            elytrix$graphics = null;
+            ci.cancel();
+            return;
+        }
         if (!self.visible) {
             elytrix$graphics = null;
             ci.cancel();
@@ -45,7 +50,12 @@ public abstract class AbstractButtonMixin {
         if (g == null || !ElytrixMenuButtons.active()) {
             return;
         }
-        ElytrixMenuButtons.label(g, (AbstractButton) (Object) this);
+        AbstractButton self = (AbstractButton) (Object) this;
+        // Пропусаем подпись для иконок if (self instanceof SpriteIconButton) {
+            ci.cancel();
+            return;
+        }
+        ElytrixMenuButtons.label(g, self);
         ci.cancel();
     }
 }

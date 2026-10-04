@@ -68,15 +68,16 @@ public class ElytrixclientClient implements ClientModInitializer {
 
         LOG.add("[Elytrix] Мод загружен. Панель — правый Ctrl.");
 
-        // Глобальный трекинг кликов для островка музыки (работает на ВСЕХ экранах)
+        // Глобальный трекинг кликов для островка музыки
         final boolean[] islandWasPressed = {false};
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            boolean pressed = client.mouseHandler.isLeftPressed();
+            long win = client.getWindow().getWindow();
+            boolean pressed = org.lwjgl.glfw.GLFW.glfwGetMouseButton(win, 0) == 1;
             if (pressed && !islandWasPressed[0]) {
-                int mx = (int) (client.mouseHandler.xpos()
-                        * client.getWindow().getGuiScaledWidth() / client.getWindow().getWidth());
-                int my = (int) (client.mouseHandler.ypos()
-                        * client.getWindow().getGuiScaledHeight() / client.getWindow().getHeight());
+                double[] xpos = new double[1], ypos = new double[1];
+                org.lwjgl.glfw.GLFW.glfwGetCursorPos(win, xpos, ypos);
+                int mx = (int) (xpos[0] * client.getWindow().getGuiScaledWidth() / client.getWindow().getWidth());
+                int my = (int) (ypos[0] * client.getWindow().getGuiScaledHeight() / client.getWindow().getHeight());
                 MusicIsland.onClick(mx, my);
             }
             islandWasPressed[0] = pressed;
