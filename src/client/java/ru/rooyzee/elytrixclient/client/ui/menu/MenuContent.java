@@ -225,17 +225,6 @@ public final class MenuContent {
                 .add(new MenuRow.Button("Следующий трек", MenuRow.Button.Kind.SECONDARY, CustomMusic::next)
                         .when(() -> cfg.customMusic && CustomMusic.trackCount() > 0))
                 .add(new MenuRow.Info("Формат", () -> ".ogg / .mp3", 0)));
-
-        list.add(new MenuCard("Анимации")
-                .add(toggle("Плавные анимации", () -> cfg.animations, v -> {
-                    cfg.animations = v;
-                    UiWidget.ANIMATIONS = v;
-                }))
-                .add(toggle("Размытие фона", () -> cfg.blurBackground, v -> cfg.blurBackground = v)));
-
-        list.add(new MenuCard("Меню и загрузка")
-                .add(toggle("Хакерский фон меню", () -> cfg.hackerBackground, v -> cfg.hackerBackground = v))
-                .add(toggle("Свой экран загрузки", () -> cfg.customLoading, v -> cfg.customLoading = v)));
         return list;
     }
 
