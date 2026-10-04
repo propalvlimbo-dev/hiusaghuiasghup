@@ -209,14 +209,22 @@ def render(sdf, size=SIZE):
     return px
 
 
+# Игра рисует GUI в «единицах интерфейса» и увеличивает их на GUI Scale.
+# Чтобы сглаженные края не превращались в ступеньки из квадратов, держим
+# варианты иконки под каждый масштаб: _x1 = 16px, _x2 = 32px, _x3 = 48px, _x4 = 64px.
+SCALES = [1, 2, 3, 4]
+
+
 def main():
-    print(f"Иконки {SIZE}x{SIZE} -> {os.path.relpath(OUT, ROOT)}")
+    print(f"Иконки {SIZE}x{SIZE} (варианты x1..x4) -> {os.path.relpath(OUT, ROOT)}")
+    total = 0
     for name, sdf in sorted(ICONS.items()):
-        px = render(sdf)
-        path = os.path.join(OUT, name + ".png")
-        write_png(path, SIZE, SIZE, px)
-        print("  ->", name + ".png")
-    print(f"Готово: {len(ICONS)} иконок.")
+        for k in SCALES:
+            size = SIZE * k
+            px = render(sdf, size)
+            write_png(os.path.join(OUT, f"{name}_x{k}.png"), size, size, px)
+            total += 1
+    print(f"Готово: {len(ICONS)} иконок x {len(SCALES)} масштаба = {total} файлов.")
 
 
 if __name__ == "__main__":

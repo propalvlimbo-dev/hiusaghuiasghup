@@ -31,7 +31,7 @@ import java.util.List;
  *
  * <p>Слева — сайдбар с разделами, справа — карточки со строками. Вся композиция описана
  * в «базовых» единицах (560×344) и затем масштабируется: либо как масштаб интерфейса самой
- * игры (при {@code uiScaleIndex = 0}), либо как заданный в настройках процент. Из-за этого
+ * в единицах интерфейса игры (при {@code uiScaleIndex = 0}) или как заданный процент. Поэтому
  * панель перестаёт быть «одного размера» — её размер идёт за настройкой GUI Scale игры.
  *
  * <p>Открывается правым Ctrl (см. {@link ElytrixclientClient}), закрывается Esc,
@@ -48,7 +48,7 @@ public class ElytrixScreen extends Screen {
     private static final int COMPACT_BELOW = 500;
     private static final int SCROLLBAR_W = 4;
     private static final int[] SCALE_OPTIONS = {0, 90, 100, 115, 130};
-    private static final String[] SCALE_NAMES = {"Как в игре", "90%", "100%", "115%", "130%"};
+    private static final String[] SCALE_NAMES = {"Авто (по окну)", "90%", "100%", "115%", "130%"};
 
     private static final int TAB_HOME = 0;
     private static final int TAB_BOTS = 1;
@@ -84,7 +84,6 @@ public class ElytrixScreen extends Screen {
     private boolean dirty;
     private long dirtyAt;
 
-    private float uiScale = 1f;
     /** Текущий «базовый» размер композиции: 560×344 на нормальном экране, меньше — на маленьком. */
     private int baseW = BASE_W;
     private int baseH = BASE_H;
@@ -248,7 +247,7 @@ public class ElytrixScreen extends Screen {
             cfg.accent = String.format("#%06X", accentColor & 0xFFFFFF);
             markDirty();
         }));
-        look.add(new UiDropdown("Масштаб панели", List.of(SCALE_NAMES), cfg.uiScaleIndex, i -> {
+        look.add(new UiDropdown("Размер панели", List.of(SCALE_NAMES), cfg.uiScaleIndex, i -> {
             cfg.uiScaleIndex = i;
             markDirty();
         }));
@@ -343,28 +342,33 @@ public class ElytrixScreen extends Screen {
     /**
      * Адаптация под любое разрешение и масштаб интерфейса.
      *
-     * <p>Логика: сначала выбираем масштаб (пользовательский или как MC GUI Scale),
-     * но не меньше {@code 0.62} — иначе текст «рассыпается». Затем считаем, сколько
-     * «базовых» единиц влезает в окно при этом масштабе: на большом мониторе это
-     * эталонные 560×344 (панель «растёт» вместе с масштабом игры), на маленьком окне
-     * композиция сжимается, а панель занимает почти весь экран. Совсем узкие окна
-     * переключаются в компактную вёрстку — сайдбар становится иконочным.
+     * <p>Панель раскладывается в тех же единицах, в которых рисует сама игра
+     * ({@code this.width}/{@code this.height} уже учитывают «Масштаб интерфейса»
+     * Minecraft). Раньше всё дополнительно масштабировалось матрицей на дробный
+     * множитель — именно из-за этого текст и иконки выглядели «пиксельно» и
+     * размыто. Теперь масштабирования нет вообще: 1 единица раскладки = 1 единица
+     * интерфейса, поэтому картинка резкая, а размер панели сам следует за
+     * настройкой масштаба игры. Пресет «Размер панели» меняет только габариты,
+     * «Авто» подбирает их по размеру окна. На маленьких окнах включается
+     * компактная вёрстка — сайдбар становится иконочным.
      */
     private void layoutPanel() {
-        float user = cfg.uiScaleIndex <= 0 ? 0f
-                : SCALE_OPTIONS[Mth.clamp(cfg.uiScaleIndex, 0, SCALE_OPTIONS.length - 1)] / 100f;
-        float auto = Math.max(1f, this.minecraft.getWindow().getGuiScale()) / 2f;
-        float want = user > 0f ? user : auto;
-        float fit = Math.min((this.width - 14f) / BASE_W, (this.height - 14f) / BASE_H);
-        uiScale = Mth.clamp(Math.min(want, fit), 0.62f, 2.6f);
-
-        baseW = Mth.clamp(Math.round((this.width - 12f) / uiScale), MIN_BASE_W, BASE_W);
-        baseH = Mth.clamp(Math.round((this.height - 12f) / uiScale), MIN_BASE_H, BASE_H);
+        float k;
+        if (cfg.uiScaleIndex <= 0) {
+            float area = Math.max(1f, this.width) * Math.max(1f, this.height);
+            k = Mth.clamp((float) Math.sqrt(area / (1920f * 1080f)) * 1.15f, 0.85f, 1.6f);
+        } else {
+            k = SCALE_OPTIONS[Mth.clamp(cfg.uiScaleIndex, 0, SCALE_OPTIONS.length - 1)] / 100f;
+        }
+        int maxW = Math.max(200, this.width - 16);
+        int maxH = Math.max(150, this.height - 16);
+        baseW = Math.min(Math.max(Math.round(BASE_W * k), Math.min(MIN_BASE_W, maxW)), maxW);
+        baseH = Math.min(Math.max(Math.round(BASE_H * k), Math.min(MIN_BASE_H, maxH)), maxH);
         compact = baseW < COMPACT_BELOW || baseH < 300;
         sidebarW = compact ? 54 : UiTheme.SIDEBAR_W;
 
-        panelW = Math.round(baseW * uiScale);
-        panelH = Math.round(baseH * uiScale);
+        panelW = baseW;
+        panelH = baseH;
         panelX = (this.width - panelW) / 2;
         panelY = (this.height - panelH) / 2;
     }
@@ -374,11 +378,11 @@ public class ElytrixScreen extends Screen {
     }
 
     private double ux(double screenX) {
-        return (screenX - panelX) / uiScale;
+        return screenX - panelX;
     }
 
     private double uy(double screenY) {
-        return (screenY - panelY) / uiScale;
+        return screenY - panelY;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -407,14 +411,12 @@ public class ElytrixScreen extends Screen {
         if (f <= 0.01f) {
             return;
         }
-        float s = uiScale * (0.97f + 0.03f * f);
         float shake = (1f - f) * -10f;
         var font = this.font;
 
         // ── содержимое рисуется в «базовых» единицах относительно угла панели
         graphics.pose().pushMatrix();
         graphics.pose().translate(panelX, panelY + shake);
-        graphics.pose().scale(s, s);
 
         drawPanel(graphics, font, mouseX, mouseY, dt, f);
         drawSidebar(graphics, font, mouseX, mouseY, dt, f);
@@ -424,7 +426,7 @@ public class ElytrixScreen extends Screen {
         graphics.pose().popMatrix();
 
         // ── подсказка над панелью (в экранных координатах, чтобы не масштабировалась)
-        if (mouseY > panelY + UiTheme.HEADER_H * uiScale && mouseY < panelY + panelH) {
+        if (mouseY > panelY + UiTheme.HEADER_H && mouseY < panelY + panelH) {
             String tip = hoveredTooltip(mouseX, mouseY);
             if (tip != null) {
                 int tw = font.width(tip) + 10;
@@ -504,7 +506,7 @@ public class ElytrixScreen extends Screen {
                         UiTheme.withAlpha(iconColor, f));
             } else {
                 TAB_ICONS[i].draw(graphics, navX + 9, iy + 7, 16, UiTheme.withAlpha(iconColor, f));
-                UiDraw.text(graphics, font, trim(font, TAB_NAMES[i], navW - 44), navX + 33, iy + 11,
+                UiDraw.text(graphics, font, UiDraw.trim(font, TAB_NAMES[i], navW - 44), navX + 33, iy + 11,
                         UiTheme.withAlpha(selected ? UiTheme.TEXT : UiTheme.TEXT_SOFT, f));
                 if (selected) {
                     UiDraw.disc(graphics, navX + navW - 9, iy + itemH / 2f, 2.4f, UiTheme.withAlpha(accentColor, f));
@@ -523,7 +525,8 @@ public class ElytrixScreen extends Screen {
     private void drawHeader(GuiGraphicsExtractor graphics, Font font,
                             int mouseX, int mouseY, float f) {
         int hx = sidebarW + 4;
-        float titleScale = compact ? 1.25f : 1.4f;
+        // целочисленный масштаб: текст остаётся резким (дробный — «мылит»)
+        float titleScale = 2f;
         graphics.pose().pushMatrix();
         graphics.pose().translate(hx + 12, compact ? 14 : 12);
         graphics.pose().scale(titleScale, titleScale);

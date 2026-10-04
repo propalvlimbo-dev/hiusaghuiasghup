@@ -22,22 +22,30 @@ public enum UiIcon {
     TRASH("trash"), COPY("copy"), KEY("key"), CLOCK("clock"),
     USER("user"), LIST("list"), FOLDER("folder"), CHART("chart");
 
-    private static final String DIR = "elytrixclient:textures/gui/icons/";
+    private static final int K_MAX = 4;
     /** Нетекстовый (белый) цвет: blit с ним не перекрашивает текстуру. */
     private static final int INK_WHITE = 0xFFFFFFFF;
 
     private final String id;
-    private Identifier cache;
+    /** Варианты под масштаб интерфейса игры: _x1 (16px), _x2 (32px), _x3, _x4. */
+    private final Identifier[] cache = new Identifier[K_MAX + 1];
 
     UiIcon(String id) {
         this.id = id;
     }
 
     public Identifier texture() {
-        if (cache == null) {
-            cache = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/icons/" + id + ".png");
+        return texture(UiDraw.shapeScale());
+    }
+
+    /** Текстура под конкретный масштаб интерфейса — чтобы края не «квадратились». */
+    public Identifier texture(int scale) {
+        int k = Math.max(1, Math.min(K_MAX, scale));
+        if (cache[k] == null) {
+            cache[k] = Identifier.fromNamespaceAndPath("elytrixclient",
+                    "textures/gui/icons/" + id + "_x" + k + ".png");
         }
-        return cache;
+        return cache[k];
     }
 
     /** Натуральный размер PNG (все иконки 16×16). */
@@ -52,7 +60,8 @@ public enum UiIcon {
 
     /** Иконка, растянутая в квадрат {@code size}×{@code size}. */
     public void draw(GuiGraphicsExtractor g, int x, int y, int size, int argb) {
-        UiDraw.icon(g, texture(), x, y, size, argb);
+        int k = UiDraw.shapeScale();
+        UiDraw.icon(g, texture(k), x, y, size, size, size() * k, size() * k, argb);
     }
 
     /** Иконка вписана в квадрат {@code box}×{@code box} с центром в (cx, cy). */

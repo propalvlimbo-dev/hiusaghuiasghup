@@ -1,5 +1,9 @@
 package ru.rooyzee.elytrixclient.client.ui.kit;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -11,12 +15,109 @@ import net.minecraft.resources.Identifier;
  * мягкая тень, круги/линии (для иконок), текст и прогресс-бар.
  *
  * <p>Ничего не знает о состоянии экрана — просто рисует в {@link GuiGraphicsExtractor}.
- * Так как игра рисует GUI «командами» (deferred render state), избыточные вызовы
- * {@code fill(...)} не страшны: скругление угла — это несколько тонких полосок.
+ *
+ * <p>Скругления, круги, тени и свечения берутся из спрайтов, посчитанных по SDF
+ * (мягкий край вместо «лестницы» из прямоугольников). Спрайты есть под каждый
+ * масштаб интерфейса игры ({@code _x1}...{@code _x4}) и рисуются 1:1 — поэтому
+ * сглаживание сохраняется и на GUI Scale 2–4, где всё остальное обычно «квадратится».
  */
 public final class UiDraw {
     /** Рисовать ли «свечения» (glow) — выключается режимом качества на больших разрешениях. */
     public static boolean GLOW = true;
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Спрайты форм (сгенерированы scripts/make-ui-shapes.py)
+    //
+    //  Почему так: скругления и круги из прямоугольников дают «лестницу» на
+    //  краях. Здесь формы посчитаны как SDF и покрыты по альфе — край мягкий.
+    //  Углы скруглений рисуются из спрайта 1:1 (без масштабирования текстуры),
+    //  поэтому сглаживание сохраняется на любом размере панели.
+    // ─────────────────────────────────────────────────────────────────────
+
+    private static final String SHAPE_DIR = "textures/gui/shapes/";
+    private static final int[] SPRITE_RADII = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28};
+    private static final int[] DISC_SIZES = {4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64};
+    private static final int SHADOW_TEX = 64;
+    /** Отступ формы внутри спрайта тени (ширина размытия) + радиус. */
+    private static final int SHADOW_NINE = 26;
+    /** Спрайты есть под каждый масштаб интерфейса: _x1 (1:1) ... _x4. */
+    private static final int K_MAX = 4;
+    private static final Map<String, Identifier> TEX_CACHE = new HashMap<>();
+
+    /**
+     * Текущий масштаб интерфейса игры (1..4). Игра умножает единицы интерфейса
+     * на этот множитель, поэтому спрайт нужного размера берём под него — тогда
+     * сглаженный край ложится ровно в пиксели, без «ступенек» из квадратов.
+     */
+    public static int shapeScale() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.getWindow() == null) {
+            return 1;
+        }
+        return Math.max(1, Math.min(K_MAX, mc.getWindow().getGuiScale()));
+    }
+
+    private static Identifier shape(String name, int scale) {
+        String key = name + "_x" + Math.max(1, Math.min(K_MAX, scale));
+        Identifier id = TEX_CACHE.get(key);
+        if (id == null) {
+            id = Identifier.fromNamespaceAndPath("elytrixclient", SHAPE_DIR + key + ".png");
+            TEX_CACHE.put(key, id);
+        }
+        return id;
+    }
+
+    /** Текстура из папки спрайтов форм под текущий масштаб интерфейса. */
+    public static Identifier shapeTexture(String name) {
+        return shape(name, shapeScale());
+    }
+
+    private static int nearest(int[] values, int want) {
+        int best = values[0];
+        int bestDelta = Integer.MAX_VALUE;
+        for (int v : values) {
+            int d = Math.abs(v - want);
+            if (d < bestDelta) {
+                bestDelta = d;
+                best = v;
+            }
+        }
+        return best;
+    }
+
+    private static void blitShape(GuiGraphicsExtractor g, Identifier texture, int x, int y, int u, int v,
+                                  int w, int h, int srcW, int srcH, int texSize, int color) {
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, u, v, w, h, srcW, srcH, texSize, texSize, color);
+    }
+
+    /** Растягивание спрайта по 9 частям: углы не искажаются, края и центр тянутся. */
+    private static void nineSlice(GuiGraphicsExtractor g, Identifier texture, int texSize, int m,
+                                  int x, int y, int w, int h, int color) {
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        int k = shapeScale();
+        int texPx = texSize * k;
+        int mPx = m * k;
+        int midPx = texPx - 2 * mPx;
+        if (w < 2 * m + 1 || h < 2 * m + 1) {
+            // мало места — тянем целиком (мягкие края всё равно сглажены)
+            g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0f, 0f, w, h, texPx, texPx, texPx, texPx, color);
+            return;
+        }
+        blitShape(g, texture, x, y, 0, 0, m, m, mPx, mPx, texPx, color);
+        blitShape(g, texture, x + w - m, y, mPx + midPx, 0, m, m, mPx, mPx, texPx, color);
+        blitShape(g, texture, x, y + h - m, 0, mPx + midPx, m, m, mPx, mPx, texPx, color);
+        blitShape(g, texture, x + w - m, y + h - m, mPx + midPx, mPx + midPx, m, m, mPx, mPx, texPx, color);
+        blitShape(g, texture, x + m, y, mPx, 0, w - 2 * m, m, midPx, mPx, texPx, color);
+        blitShape(g, texture, x + m, y + h - m, mPx, mPx + midPx, w - 2 * m, m, midPx, mPx, texPx, color);
+        blitShape(g, texture, x, y + m, 0, mPx, m, h - 2 * m, mPx, midPx, texPx, color);
+        blitShape(g, texture, x + w - m, y + m, mPx + midPx, mPx, m, h - 2 * m, mPx, midPx, texPx, color);
+        blitShape(g, texture, x + m, y + m, mPx, mPx, w - 2 * m, h - 2 * m, midPx, midPx, texPx, color);
+    }
 
     private UiDraw() {
     }
@@ -29,21 +130,31 @@ public final class UiDraw {
         if (w <= 0 || h <= 0) {
             return;
         }
+        if (color == 0) {
+            return;
+        }
         int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
-        if (r == 0) {
+        if (r < 2) {
             g.fill(x, y, x + w, y + h, color);
             return;
         }
+        int k = shapeScale();
+        int sr = nearest(SPRITE_RADII, r);
+        Identifier tex = shape("round_" + sr, k);
+        int src = sr * k;                 // сторона угла в пикселях спрайта
+        int off = src + 2 * k;            // смещение до правого/нижнего угла
+        int ts = (2 * sr + 2) * k;        // размер всего спрайта
+        if (w - 2 * r > 0) {
+            g.fill(x + r, y, x + w - r, y + h, color);
+        }
         if (h - 2 * r > 0) {
-            g.fill(x, y + r, x + w, y + h - r, color);
+            g.fill(x, y + r, x + r, y + h - r, color);
+            g.fill(x + w - r, y + r, x + w, y + h - r, color);
         }
-        for (int i = 0; i < r; i++) {
-            double dy = r - i - 0.5;
-            int inset = (int) Math.round(r - Math.sqrt(Math.max(0.0, (double) r * r - dy * dy)));
-            inset = Math.max(0, Math.min(inset, r));
-            g.fill(x + inset, y + i, x + w - inset, y + i + 1, color);
-            g.fill(x + inset, y + h - 1 - i, x + w - inset, y + h - i, color);
-        }
+        blitShape(g, tex, x, y, 0, 0, r, r, src, src, ts, color);
+        blitShape(g, tex, x + w - r, y, off, 0, r, r, src, src, ts, color);
+        blitShape(g, tex, x, y + h - r, 0, off, r, r, src, src, ts, color);
+        blitShape(g, tex, x + w - r, y + h - r, off, off, r, r, src, src, ts, color);
     }
 
     /** Скруглённый прямоугольник с вертикальным градиентом (сверху {@code top} → снизу {@code bottom}). */
@@ -55,16 +166,28 @@ public final class UiDraw {
         for (int i = 0; i < h; i++) {
             float t = h <= 1 ? 0f : (float) i / (h - 1);
             int color = UiTheme.mix(top, bottom, t);
-            int inset = 0;
-            if (i < r) {
-                double dy = r - i - 0.5;
-                inset = (int) Math.round(r - Math.sqrt(Math.max(0.0, (double) r * r - dy * dy)));
-            } else if (i >= h - r) {
-                double dy = r - (h - i) + 0.5;
-                inset = (int) Math.round(r - Math.sqrt(Math.max(0.0, (double) r * r - dy * dy)));
+            if (r >= 2 && (i < r || i >= h - r)) {
+                // угловые полосы: прямую часть рисуем заливкой, углы — спрайтом с AA
+                if (w - 2 * r > 0) {
+                    g.fill(x + r, y + i, x + w - r, y + i + 1, color);
+                }
+            } else {
+                g.fill(x, y + i, x + w, y + i + 1, color);
             }
-            inset = Math.max(0, Math.min(inset, r));
-            g.fill(x + inset, y + i, x + w - inset, y + i + 1, color);
+        }
+        if (r >= 2) {
+            int k = shapeScale();
+            int sr = nearest(SPRITE_RADII, r);
+            Identifier tex = shape("round_" + sr, k);
+            int src = sr * k;
+            int off = src + 2 * k;
+            int ts = (2 * sr + 2) * k;
+            int tc = UiTheme.mix(top, bottom, Math.min(1f, (r * 0.5f) / Math.max(1, h - 1)));
+            int bc = UiTheme.mix(top, bottom, Math.max(0f, 1f - (r * 0.5f) / Math.max(1, h - 1)));
+            blitShape(g, tex, x, y, 0, 0, r, r, src, src, ts, tc);
+            blitShape(g, tex, x + w - r, y, off, 0, r, r, src, src, ts, tc);
+            blitShape(g, tex, x, y + h - r, 0, off, r, r, src, src, ts, bc);
+            blitShape(g, tex, x + w - r, y + h - r, off, off, r, r, src, src, ts, bc);
         }
     }
 
@@ -76,9 +199,13 @@ public final class UiDraw {
 
     /** Вертикальная тень-«облако» вокруг панели (несколько полупрозрачных слоёв). */
     public static void shadow(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int layers, int color) {
-        for (int i = layers; i >= 1; i--) {
-            roundRect(g, x - i, y - i + 1, w + 2 * i, h + 2 * i, radius + i, color);
+        if (color == 0) {
+            return;
         }
+        // один размытый спрайт вместо стопки жёстких прямоугольников
+        int spread = Math.max(4, 2 + layers * 3);
+        nineSlice(g, shapeTexture("shadow"), SHADOW_TEX, SHADOW_NINE,
+                x - spread, y - spread + 2, w + 2 * spread, h + 2 * spread, color);
     }
 
     /** Горизонтальный градиент — рисуем полосками (в 26.2 есть только вертикальный fillGradient). */
@@ -134,22 +261,18 @@ public final class UiDraw {
     }
 
     public static void disc(GuiGraphicsExtractor g, float cx, float cy, float r, int color) {
-        if (r <= 0) {
+        if (r <= 0 || color == 0) {
             return;
         }
-        int ri = (int) Math.ceil(r);
-        int icx = Math.round(cx);
-        int icy = Math.round(cy);
-        for (int i = -ri; i <= ri; i++) {
-            float y = i + 0.5f;
-            if (Math.abs(y) > r) {
-                continue;
-            }
-            int half = Math.round((float) Math.sqrt(Math.max(0.0, r * r - y * y)));
-            if (half > 0) {
-                g.fill(icx - half, icy + i, icx + half, icy + i + 1, color);
-            }
+        int d = Math.max(2, Math.round(r * 2f));
+        if (d < 4) {
+            g.fill(Math.round(cx - r), Math.round(cy - r), Math.round(cx - r) + d, Math.round(cy - r) + d, color);
+            return;
         }
+        int k = shapeScale();
+        int size = nearest(DISC_SIZES, d);
+        blitShape(g, shape("disc_" + size, k), Math.round(cx - r), Math.round(cy - r), 0, 0,
+                d, d, size * k, size * k, size * k, color);
     }
 
     /** Кольцо (контур круга) — не требует знания цвета фона под ним. */
@@ -239,6 +362,23 @@ public final class UiDraw {
         g.text(font, s, cx - font.width(s) / 2, y, color, true);
     }
 
+    /** Обрезает строку так, чтобы она влезла в {@code maxWidth} (с «…»), — для узких мест. */
+    public static String trim(Font font, String text, int maxWidth) {
+        if (text == null || maxWidth <= 0) {
+            return "";
+        }
+        if (font.width(text) <= maxWidth) {
+            return text;
+        }
+        String ellipsis = "…";
+        int ew = font.width(ellipsis);
+        int end = text.length();
+        while (end > 0 && font.width(text.substring(0, end)) + ew > maxWidth) {
+            end--;
+        }
+        return text.substring(0, end) + ellipsis;
+    }
+
     public static void textComponentCenter(GuiGraphicsExtractor g, Font font, Component c, int cx, int y, int color) {
         g.centeredText(font, c, cx, y, color);
     }
@@ -287,12 +427,11 @@ public final class UiDraw {
         if (!GLOW || strength <= 0.02f) {
             return;
         }
-        int layers = Math.max(1, Math.min(4, Math.round(4 * strength)));
-        float base = 0.10f * strength;
-        for (int i = layers; i >= 1; i--) {
-            float a = base * (1f - (float) (i - 1) / layers);
-            roundRect(g, x - i, y - i, w + 2 * i, h + 2 * i, radius + i, withAlpha(accent, a));
-        }
+        // мягкое свечение — размытый спрайт акцентного цвета
+        int spread = Math.max(3, Math.round(9 * strength));
+        int col = withAlpha(accent, Math.min(0.5f, 0.22f * strength));
+        nineSlice(g, shapeTexture("shadow"), SHADOW_TEX, SHADOW_NINE,
+                x - spread, y - spread, w + 2 * spread, h + 2 * spread, col);
     }
 
     private static int withAlpha(int color, float a) {

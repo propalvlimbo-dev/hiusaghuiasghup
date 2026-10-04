@@ -25,7 +25,7 @@ public class UiEmpty extends UiWidget {
         int cy = y + 30;
         UiDraw.disc(graphics, cx, cy, 17f, UiTheme.withAlpha(UiTheme.accentSoft(accent, 0.35f), Math.max(0.05f, appear)));
         UiDraw.ring(graphics, cx, cy, 17f, 1.4f, UiTheme.withAlpha(accent, 0.65f * Math.max(0.05f, appear)));
-        icon.drawCentered(graphics, cx, cy, 17, UiTheme.withAlpha(UiTheme.mix(accent, 0xFFFFFFFF, 0.25f), Math.max(0.05f, appear)));
+        icon.drawCentered(graphics, cx, cy, 16, UiTheme.withAlpha(UiTheme.mix(accent, 0xFFFFFFFF, 0.25f), Math.max(0.05f, appear)));
 
         var font = font();
         UiDraw.textCenter(graphics, font, title, cx, cy + 24, fadeIn(UiTheme.TEXT_SOFT));

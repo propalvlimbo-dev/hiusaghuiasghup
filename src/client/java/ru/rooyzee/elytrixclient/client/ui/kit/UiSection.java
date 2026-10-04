@@ -88,8 +88,8 @@ public class UiSection extends UiWidget {
         int ty = y + 9;
         int titleX = x + 11;
         if (icon != null) {
-            int size = 13;
-            icon.draw(graphics, titleX, ty - 2, size, fadeIn(UiTheme.mix(accent, UiTheme.TEXT, 0.35f)));
+            int size = 16;
+            icon.draw(graphics, titleX, ty - 4, size, fadeIn(UiTheme.mix(accent, UiTheme.TEXT, 0.35f)));
             titleX += size + 6;
         }
         if (title != null) {

@@ -19,6 +19,10 @@ import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
  */
 public final class ElytrixLoader {
 
+    /** Размер логотипа в единицах интерфейса (для него сгенерированы спрайты logo_88_xN). */
+    private static final int LOGO_SIZE = 88;
+
+    @SuppressWarnings("unused")
     private static final Identifier LOGO =
             Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/logo.png");
 
@@ -53,12 +57,15 @@ public final class ElytrixLoader {
 
         // ── логотип с пульсацией и орбитальной точкой
         float pulse = 1f + 0.035f * (float) Math.sin(t * 2.4f);
-        int size = Math.round(88 * pulse);
+        int size = Math.round(LOGO_SIZE * pulse);
         int glowR = (int) (size * 0.78f);
         UiDraw.disc(g, cx, cy, glowR, UiTheme.withAlpha(accent, 0.16f * alpha));
         UiDraw.disc(g, cx, cy, size * 0.60f, UiTheme.withAlpha(accent, 0.10f * alpha));
         UiDraw.ring(g, cx, cy, size * 0.62f, 1.4f, UiTheme.withAlpha(accent, 0.55f * alpha));
-        UiDraw.icon(g, LOGO, cx - size / 2, cy - size / 2, size, size, 256, 256,
+        // логотип — спрайтом под текущий масштаб интерфейса (сглаженный, не пиксельный)
+        int k = UiDraw.shapeScale();
+        UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), cx - LOGO_SIZE / 2, cy - LOGO_SIZE / 2,
+                LOGO_SIZE, LOGO_SIZE, LOGO_SIZE * k, LOGO_SIZE * k,
                 UiTheme.withAlpha(0xFFFFFFFF, alpha));
         double orbit = t * 1.9;
         float ox = cx + (float) Math.cos(orbit) * size * 0.62f;

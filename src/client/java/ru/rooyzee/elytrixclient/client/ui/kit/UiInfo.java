@@ -33,8 +33,8 @@ public class UiInfo extends UiWidget {
         var font = font();
         int textX = x + 10;
         if (icon != null) {
-            icon.draw(graphics, textX, y + (h - 12) / 2, 12, fadeIn(UiTheme.TEXT_DIM));
-            textX += 17;
+            icon.draw(graphics, textX, y + (h - 16) / 2, 16, fadeIn(UiTheme.TEXT_DIM));
+            textX += 20;
         }
         UiDraw.text(graphics, font, key, textX, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT_DIM));
 
