@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "elytrixclient",
+  "version": "${version}",
+  "name": "ElytrixClient",
+  "description": "Клиент для ботов",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/elytrixclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "ru.rooyzee.elytrixclient.client.ElytrixclientClient"
+    ],
+    "main": [
+      "ru.rooyzee.elytrixclient.Elytrixclient"
+    ]
+  },
+  "mixins": [
+    "elytrixclient.mixins.json",
+    {
+      "config": "elytrixclient.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
