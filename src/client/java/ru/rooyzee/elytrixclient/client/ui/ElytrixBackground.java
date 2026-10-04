@@ -89,9 +89,10 @@ public final class ElytrixBackground {
     }
 
     private static final Layer[] LAYERS = {
-            new Layer("mx_s", 9f, 0.55f, 0.7f),
-            new Layer("mx_m", 13f, 0.80f, 1.0f),
-            new Layer("mx_l", 20f, 1.00f, 1.3f),
+            // ближний слой крупный, но приглушённый — «вне фокуса», не режет глаза
+            new Layer("mx_s", 9f, 0.42f, 0.55f),
+            new Layer("mx_m", 13f, 0.58f, 0.75f),
+            new Layer("mx_l", 20f, 0.32f, 0.95f),
     };
 
     private static long lastNanos;
@@ -135,6 +136,8 @@ public final class ElytrixBackground {
         lastMouseY = my;
 
         // виньетка: края темнее, центр (где кнопки) — спокойнее
+        // мягкая тёмная вуаль поверх цифр — меньше контраста, кнопки читаются лучше
+        g.fill(0, 0, width, height, col(0xFF07050A, 0.28f * alpha));
         g.fillGradient(0, 0, width, height / 4, col(0xFF000000, 0.55f * alpha), 0x00000000);
         g.fillGradient(0, height - height / 3, width, height, 0x00000000, col(0xFF000000, 0.6f * alpha));
     }
@@ -190,7 +193,8 @@ public final class ElytrixBackground {
                                   int accent, float alpha, boolean full) {
         int cols = layer.cols;
         int rows = layer.rows;
-        int pinkSoft = UiTheme.mix(accent, 0xFFFFFFFF, 0.35f);
+        int pinkSoft = UiTheme.mix(accent, 0xFFFFFFFF, 0.3f);
+        int headSoft = UiTheme.mix(accent, 0xFFFFFFFF, 0.6f);
         // тусклая «подложка» из всех цифр — только для ближних слоёв и не на огромной сетке
         float base = full && layer.alpha > 0.6f && cols * rows < 4500 ? 0.07f : 0f;
         for (int c = 0; c < cols; c++) {
@@ -215,15 +219,15 @@ public final class ElytrixBackground {
                     layer.glyph[i] = DIGITS[RANDOM.nextInt(DIGITS.length)];
                 }
 
-                float b = Math.max(base, streak * streak);
+                float b = Math.max(base, streak * streak * 0.8f);
                 b = b + (1f - b) * h * 0.85f;                 // непрерывно, без порогов
                 float a = b * layer.alpha * alpha;
                 if (a < 0.035f) {
                     continue;
                 }
-                int color = d >= 0f && d < 1f ? 0xFFFFFFFF          // голова полосы — белая
+                int color = d >= 0f && d < 1f ? headSoft            // голова полосы — светлая, но не белая
                         : UiTheme.mix(accent, pinkSoft, streak);
-                color = UiTheme.mix(color, 0xFFFFFFFF, h * 0.8f);    // след мыши — плавно к белому
+                color = UiTheme.mix(color, 0xFFFFFFFF, h * 0.55f);   // след мыши — плавно светлеет
                 int y = Math.round(r * layer.cell);
                 g.text(font, layer.digit(layer.glyph[i]), x, y,
                         UiTheme.withAlpha(color, Math.min(1f, a)), false);

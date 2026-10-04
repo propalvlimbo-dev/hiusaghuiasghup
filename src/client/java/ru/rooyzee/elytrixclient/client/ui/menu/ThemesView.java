@@ -8,7 +8,7 @@ import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 
 import static ru.rooyzee.elytrixclient.client.ui.menu.MenuKit.*;
 
-/** Вкладка «Темы»: акценты сеткой 4×N и выбор темы интерфейса с мини-превью. */
+/** Вкладка «Темы»: 4 акцента; акцент меняет и цвет фона панели. */
 public final class ThemesView {
     private static final int COLS = 4;
     private static final float CARD_H = 50;
@@ -94,23 +94,6 @@ public final class ThemesView {
             }
         }
 
-        float top = themesTop();
-        text(g, font, "Тема интерфейса", x, ty(SMALL, top - 8), dim(), SMALL);
-        float tw = themeW();
-        for (int i = 0; i < UiTheme.PRESET_NAMES.length; i++) {
-            float tx = x + i * (tw + GAP);
-            boolean on = i == cfg.themeIndex;
-            boolean hv = inside(mx, my, tx, top, tw, 70);
-            themeSel[i] = themeSel[i] < 0 ? (on ? 1f : 0f) : approach(themeSel[i], on ? 1f : 0f, 14f, dt);
-            themeHov[i] = approach(themeHov[i], hv ? 1f : 0f, 16f, dt);
-            card(g, tx, top, tw, 70, 6, cardFill(),
-                    UiTheme.mix(cardEdge(), accent, Math.max(themeSel[i], 0.35f * themeHov[i])));
-            miniPanel(g, tx + 6, top + 6, tw - 12, 44, i == 1);
-            text(g, font, UiTheme.PRESET_NAMES[i], tx + 8, ty(SMALL, top + 60), UiTheme.mix(soft(), text(), themeSel[i]), SMALL);
-            if (themeSel[i] > 0.01f) {
-                disc(g, tx + tw - 11, top + 60, 3.5f * themeSel[i], accent);
-            }
-        }
         MenuKit.alpha = saved;
     }
 
@@ -148,16 +131,6 @@ public final class ThemesView {
                 cfg.accentIndex = i;
                 MenuKit.accent = UiTheme.accent(i);
                 cfg.accent = String.format("#%06X", MenuKit.accent & 0xFFFFFF);
-                dirty.run();
-                return true;
-            }
-        }
-        float top = themesTop();
-        float tw = themeW();
-        for (int i = 0; i < UiTheme.PRESET_NAMES.length; i++) {
-            if (inside(mx, my, x + i * (tw + GAP), top, tw, 70)) {
-                cfg.themeIndex = i;
-                UiTheme.applyPreset(i);
                 dirty.run();
                 return true;
             }

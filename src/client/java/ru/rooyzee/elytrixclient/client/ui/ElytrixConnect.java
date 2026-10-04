@@ -9,6 +9,7 @@ import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
+import ru.rooyzee.elytrixclient.client.ui.menu.MenuKit;
 
 /**
  * Анимация загрузки мира и подключения к серверу.
@@ -64,45 +65,46 @@ public final class ElytrixConnect {
         ElytrixBackground.render(g, w, h, t, accent, 0.55f + 0.45f * a);
 
         int cx = w / 2;
-        int cy = h / 2 - 26;
+        int cy = h / 2;
+        int spinY = cy - 26;
 
         // индикатор: восемь точек по кругу, «бегущая» волна
         float orbit = t * 1.6f;
         for (int i = 0; i < 8; i++) {
             double angle = orbit + i * (Math.PI / 4.0);
-            float px = cx + (float) Math.cos(angle) * 17f;
-            float py = cy + (float) Math.sin(angle) * 17f;
+            float px = cx + (float) Math.cos(angle) * 11f;
+            float py = spinY + (float) Math.sin(angle) * 11f;
             float closeness = (float) ((Math.sin(orbit * 2.0 + i * 0.9) + 1.0) * 0.5);
             int alpha = (int) (40 + 190 * closeness);
-            UiDraw.disc(g, px, py, 1.6f + 0.9f * closeness, UiTheme.withAlpha(accent, (alpha / 255f) * a));
+            UiDraw.disc(g, px, py, 1.2f + 0.7f * closeness, UiTheme.withAlpha(accent, (alpha / 255f) * a));
         }
 
         String title = kind == 1 ? "ПОДКЛЮЧЕНИЕ" : "ЗАГРУЗКА МИРА";
-        int spacing = 6;
-        int titleW = UiDraw.spacedWidth(font, title, spacing, UiText.TITLE);
-        UiDraw.textSpaced(g, font, title, cx - titleW / 2, cy + 16, spacing,
-                UiTheme.withAlpha(0xFFFFFFFF, a), false, UiText.TITLE);
+        int spacing = 2;
+        int titleW = UiDraw.spacedWidth(font, title, spacing, MenuKit.TITLE);
+        UiDraw.textSpaced(g, font, title, cx - titleW / 2, cy - 8, spacing,
+                UiTheme.withAlpha(0xFFFFFFFF, a), false, MenuKit.TITLE);
 
         // «неопределённая» полоса: сегмент ходит туда-сюда
-        int barW = Math.min(220, w - 120);
+        int barW = Math.min(160, w - 80);
         int barX = cx - barW / 2;
-        int barY = cy + 44;
+        int barY = cy + 9;
         UiDraw.roundRect(g, barX, barY, barW, 3, 2, UiTheme.withAlpha(UiTheme.TRACK, a));
         float cycle = (t * 0.7f) % 1f;
         float ping = cycle < 0.5f ? cycle * 2f : (1f - cycle) * 2f;
         int segW = Math.max(40, barW / 3);
         int segX = barX + Math.round(ping * (barW - segW));
-        UiDraw.hGradient(g, segX, barY, segW, 3, 0x00000000, UiTheme.withAlpha(accent, a), 12);
-        UiDraw.hGradient(g, segX, barY, segW, 3, UiTheme.withAlpha(accent, a), 0x00000000, 12);
+        int half = segW / 2;
+        UiDraw.hGradient(g, segX, barY, half, 3, 0x00000000, UiTheme.withAlpha(accent, a), 12);
+        UiDraw.hGradient(g, segX + half, barY, segW - half, 3, UiTheme.withAlpha(accent, a), 0x00000000, 12);
 
         // строка состояния с бегущими точками
         String base = kind == 1 ? "устанавливаю соединение" : "получаю данные мира";
         int dots = (int) ((t * 2f) % 4f);
-        StringBuilder sb = new StringBuilder(base);
-        for (int i = 0; i < dots; i++) {
-            sb.append('.');
-        }
-        UiDraw.textCenter(g, font, sb.toString(), cx, barY + 14,
-                UiTheme.withAlpha(UiTheme.TEXT_DIM, a), UiText.MONO);
+        // центрируем по тексту без точек — строка не «прыгает», точки дописываются справа
+        int baseW = UiText.width(font, base, MenuKit.MONO);
+        int textX = cx - baseW / 2;
+        int col = UiTheme.withAlpha(UiTheme.TEXT_DIM, a);
+        UiText.draw(g, font, base + ".".repeat(dots), textX, barY + 9, col, MenuKit.MONO, false);
     }
 }

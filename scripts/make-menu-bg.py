@@ -20,7 +20,7 @@ import zlib
 S = 3                      # пикселей на GUI-единицу (350 → 1050 px)
 W = H = 350 * S
 OUT = os.path.join(os.path.dirname(__file__), "..", "src", "main", "resources",
-                   "assets", "elytrixclient", "textures", "gui", "menu_bg.png")
+                   "assets", "elytrixclient", "textures", "gui", "menu_bg_0.png")
 
 TOP = (0x16, 0x13, 0x1B)
 BOTTOM = (0x0C, 0x0A, 0x0F)

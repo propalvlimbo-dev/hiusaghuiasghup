@@ -53,7 +53,19 @@ public class ElytrixScreen extends Screen {
     private static final float CW = W - BAR - 20;
     private static final int[] SCALE_OPTIONS = {0, 90, 100, 115, 130};
 
-    private static final Identifier MENU_BG = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/menu_bg.png");
+    /** Фон панели: свой вариант под каждый акцент (лента и подсветка в цвет акцента). */
+    private static final Identifier[] MENU_BG = new Identifier[UiTheme.ACCENTS.length];
+
+    static {
+        for (int i = 0; i < MENU_BG.length; i++) {
+            MENU_BG[i] = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/menu_bg_" + i + ".png");
+        }
+    }
+
+    /** Плавная смена фона при переключении акцента: старый → новый. */
+    private int bgCurrent = -1;
+    private int bgPrevious = -1;
+    private float bgFade = 1f;
 
     private static final int VIEW_CARDS = 0;
     private static final int VIEW_CONSOLE = 1;
@@ -110,6 +122,9 @@ public class ElytrixScreen extends Screen {
         lastFrame = Util.getMillis();
         UiTheme.applyPreset(cfg.themeIndex);
         UiWidget.ANIMATIONS = cfg.animations;
+        if (cfg.accentIndex < 0 || cfg.accentIndex >= UiTheme.ACCENTS.length) {
+            cfg.accentIndex = 0;
+        }
         MenuKit.accent = UiTheme.accent(cfg.accentIndex);
         if (tabs.isEmpty()) {
             buildTabs();
@@ -308,6 +323,15 @@ public class ElytrixScreen extends Screen {
         graphics.pose().translate(originX, originY);
         graphics.pose().scale(scale, scale);
 
+        int want = Mth.clamp(cfg.accentIndex, 0, MENU_BG.length - 1);
+        if (bgCurrent < 0) {
+            bgCurrent = want;
+        } else if (want != bgCurrent) {
+            bgPrevious = bgCurrent;
+            bgCurrent = want;
+            bgFade = 0f;
+        }
+        bgFade = approach(bgFade, 1f, 5f, dt);
         drawFrame(graphics);
         drawSidebar(graphics, font, mx, my, dt);
         drawContent(graphics, font, mx, my, dt);
@@ -322,8 +346,12 @@ public class ElytrixScreen extends Screen {
         fill(g, 0, 0, BAR, H, 8, 0, 0, 8, UiTheme.withAlpha(sidebar(), op));
         fill(g, BAR, 0, W - BAR, H, 0, 8, 8, 0, UiTheme.withAlpha(content(), op));
         if (!UiTheme.isLight()) {
-            g.blit(RenderPipelines.GUI_TEXTURED, MENU_BG, (int) BAR, 0, 0f, 0f, (int) (W - BAR), (int) H,
-                    1050, 1050, 1050, 1050, a(0xFFFFFFFF, op));
+            if (bgFade < 1f && bgPrevious >= 0) {
+                g.blit(RenderPipelines.GUI_TEXTURED, MENU_BG[bgPrevious], (int) BAR, 0, 0f, 0f, (int) (W - BAR), (int) H,
+                        1050, 1050, 1050, 1050, a(0xFFFFFFFF, op));
+            }
+            g.blit(RenderPipelines.GUI_TEXTURED, MENU_BG[bgCurrent], (int) BAR, 0, 0f, 0f, (int) (W - BAR), (int) H,
+                    1050, 1050, 1050, 1050, a(0xFFFFFFFF, op * easeOut(bgFade)));
         }
         UiVector.rect(g, BAR, 0, 0.5f, H, a(divider()));
         outline(g, 0, 0, W, H, 8, 0.5f, UiTheme.isLight() ? 0x2414141A : 0x24FFFFFF);

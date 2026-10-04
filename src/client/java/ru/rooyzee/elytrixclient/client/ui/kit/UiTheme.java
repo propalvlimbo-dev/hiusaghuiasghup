@@ -15,7 +15,7 @@ public final class UiTheme {
 
     // ── темы ─────────────────────────────────────────────────────────────
     /** 0 — «графит» (тёмная, стиль Apple + хакерская тема), 1 — светлая «бумага». */
-    public static final String[] PRESET_NAMES = {"Графит", "Светлая"};
+    public static final String[] PRESET_NAMES = {"Графит"};
     private static final int PRESET_GRAPHITE = 0;
     private static final int PRESET_LIGHT = 1;
 
@@ -56,10 +56,10 @@ public final class UiTheme {
     public static final int ROW_H_TALL = 42;
 
     // ── акценты ──────────────────────────────────────────────────────────
-    public static final String[] ACCENT_NAMES = {"Розовый", "Малиновый", "Сиреневый", "Голубой", "Зелёный", "Оранжевый"};
-    public static final int[] ACCENTS = {0xFFFF4FC3, 0xFFFF5C8A, 0xFFA45CFF, 0xFF38BDF8, 0xFF34D399, 0xFFFFA34D};
+    public static final String[] ACCENT_NAMES = {"Розовый", "Сиреневый", "Голубой", "Мятный"};
+    public static final int[] ACCENTS = {0xFFFF4FC3, 0xFFA45CFF, 0xFF38BDF8, 0xFF34D399};
 
-    private static boolean light = true;
+    private static boolean light = false;
 
     static {
         applyPreset(PRESET_GRAPHITE);
@@ -71,7 +71,8 @@ public final class UiTheme {
      * 1 — светлая «бумага» (розовый акцент остаётся).
      */
     public static void applyPreset(int index) {
-        if (index == PRESET_LIGHT) {
+        // светлая тема убрана — всегда «графит»
+        if (false) {
             light = true;
             SCRIM = 0x59F4F4F7;
             PANEL = 0xFBFFFFFF;

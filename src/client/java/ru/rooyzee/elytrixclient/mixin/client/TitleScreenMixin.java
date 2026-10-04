@@ -3,13 +3,17 @@ package ru.rooyzee.elytrixclient.mixin.client;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.LogoRenderer;
+import net.minecraft.client.gui.components.PlainTextButton;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.components.SplashRenderer;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import java.util.ArrayList;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixBrand;
 
@@ -21,7 +25,34 @@ import ru.rooyzee.elytrixclient.client.ui.ElytrixBrand;
  * не сделает (останется ваниль), игра не упадёт.
  */
 @Mixin(TitleScreen.class)
-public abstract class TitleScreenMixin {
+public abstract class TitleScreenMixin extends Screen {
+
+    protected TitleScreenMixin() {
+        super(null);
+    }
+
+    /** Убираем надпись копирайта внизу справа (это кликабельный PlainTextButton). */
+    @Inject(method = "init", at = @At("TAIL"), require = 0)
+    private void elytrix$noCopyright(CallbackInfo ci) {
+        if (!ElytrixclientClient.CONFIG.hackerBackground) {
+            return;
+        }
+        for (GuiEventListener child : new ArrayList<>(this.children())) {
+            if (child instanceof PlainTextButton) {
+                this.removeWidget(child);
+            }
+        }
+    }
+
+    /** Убираем строку версии «Minecraft 26.2 (модифицировано)» внизу слева. */
+    @Redirect(method = "extractRenderState", require = 0,
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"))
+    private void elytrix$noVersion(GuiGraphicsExtractor graphics, Font font, String str, int x, int y, int color) {
+        if (!ElytrixclientClient.CONFIG.hackerBackground) {
+            graphics.text(font, str, x, y, color);
+        }
+    }
 
     @Redirect(method = "extractRenderState", require = 0,
             at = @At(value = "INVOKE",
