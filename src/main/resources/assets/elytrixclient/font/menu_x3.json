@@ -3,11 +3,11 @@
     {
       "type": "ttf",
       "file": "elytrixclient:inter.ttf",
-      "size": 7.5,
+      "size": 8.0,
       "oversample": 3.0,
       "shift": [
         0.0,
-        0.5
+        0.0
       ],
       "skip": ""
     }

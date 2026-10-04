@@ -188,8 +188,9 @@ public final class MenuKit {
      * высота заглавных у Inter/JetBrains Mono ≈ 0.73 размера шрифта.
      */
     public static float ty(Identifier face, float centerY) {
-        float size = face == TITLE ? 9f : (face == BODY ? 7.5f : 6.5f);
-        return centerY + size * 0.73f / 2f - 7.5f;
+        float size = face == TITLE ? 10f : (face == BODY ? 8f : 7f);
+        // shift = 0 → базовая линия ровно на y + 7; координата целая → глиф в сетке пикселей
+        return Math.round(centerY + size * 0.73f / 2f - 7f);
     }
 
     public static int width(Font font, String s, Identifier face) {
