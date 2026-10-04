@@ -7,7 +7,8 @@
     "GuiGraphicsExtractorAccessor",
     "LoadingOverlayMixin",
     "ScreenMixin",
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "LoadingScreensMixin"
   ],
   "injectors": {
     "defaultRequire": 1

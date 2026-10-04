@@ -35,29 +35,13 @@ public final class ElytrixBrand {
         int accent = UiTheme.accent(ElytrixclientClient.CONFIG.accentIndex);
         int cx = screenWidth / 2;
 
-        int mark = 56;
+        // только знак клиента: без названия, версии и подписей, без «ореола»-плашки
+        int mark = 64;
         int markX = cx - mark / 2;
-        int markY = 26;
-
-        // знак с ореолом
-        UiDraw.glow(g, markX, markY, mark, mark, 14, accent, 0.9f * alpha);
+        int markY = 30;
         int k = UiDraw.shapeScale();
         UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), markX, markY, mark, mark,
                 LOGO_SIZE * k, LOGO_SIZE * k, UiTheme.withAlpha(0xFFFFFFFF, alpha));
-
-        // название в разрядку своим шрифтом
-        String name = "ELYTRIX";
-        int spacing = 6;
-        int nameW = UiDraw.spacedWidth(font, name, spacing, UiText.TITLE);
-        UiDraw.textSpaced(g, font, name, cx - nameW / 2, markY + mark + 14, spacing,
-                UiTheme.withAlpha(0xFFFFFFFF, alpha), false, UiText.TITLE);
-
-        // тонкая линия и подпись
-        int lineY = markY + mark + 40;
-        int lineW = Math.min(160, screenWidth - 60);
-        UiDraw.hLine(g, cx - lineW / 2, cx + lineW / 2, lineY, 1, UiTheme.withAlpha(UiTheme.DIVIDER, alpha));
-        UiDraw.textCenter(g, font, "minecraft " + version() + " · fabric", cx, lineY + 8,
-                UiTheme.withAlpha(accent, 0.9f * alpha), UiText.MONO);
     }
 
     private static String version() {

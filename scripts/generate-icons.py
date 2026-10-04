@@ -194,6 +194,19 @@ def write_png(path, w, h, px):
         f.write(png)
 
 
+def thin(sdf):
+    """Тонкая контурная версия для компактного набора (сайдбар): залитые фигуры
+    превращаются в обводку, линейные — становятся тоньше."""
+    depth = 0.0
+    for gy in range(32):
+        for gx in range(32):
+            depth = max(depth, -sdf(gx * 0.5 + 0.25, gy * 0.5 + 0.25))
+    if depth > 1.3:
+        return lambda x, y: abs(sdf(x, y) + 0.5) - 0.45
+    shrink = min(0.45, depth * 0.4)
+    return lambda x, y: sdf(x, y) + shrink
+
+
 def render(sdf, size=SIZE):
     # SDF описаны в сетке 16×16: переводим пиксель в эти координаты,
     # а расстояние — обратно в пиксели (иначе x2..x4 занимали бы четверть картинки)
@@ -226,7 +239,7 @@ def main():
             # базовый набор 16 единиц и компактный 10 единиц (сайдбар, поиск)
             for base, suffix in ((SIZE, ""), (10, "_10")):
                 size = base * k
-                px = render(sdf, size)
+                px = render(sdf if base == SIZE else thin(sdf), size)
                 write_png(os.path.join(OUT, f"{name}{suffix}_x{k}.png"), size, size, px)
                 total += 1
     print(f"Готово: {len(ICONS)} иконок x {len(SCALES)} масштаба = {total} файлов.")

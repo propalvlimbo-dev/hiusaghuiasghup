@@ -3,7 +3,6 @@ package ru.rooyzee.elytrixclient.client.ui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.util.Util;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
@@ -32,40 +31,21 @@ public final class ElytrixConnect {
     private ElytrixConnect() {
     }
 
-    /** Известные ванильные экраны загрузки: 1 — подключение, 2 — загрузка мира. */
-    private static int kindOf(Object screen) {
-        Class<?> type = screen.getClass();
-        while (type != null && type != Object.class) {
-            String name = type.getSimpleName();
-            if (name.equals("ConnectScreen")) {
-                return 1;
-            }
-            if (name.equals("ReceivingLevelScreen") || name.equals("LevelLoadingScreen")
-                    || name.equals("DownloadingTerrainScreen")) {
-                return 2;
-            }
-            type = type.getSuperclass();
-        }
-        return 0;
-    }
-
-    /** Вызывается из миксина на каждом экране; рисует оверлей только на экранах загрузки. */
-    public static void renderIfLoading(GuiGraphicsExtractor g, Screen screen) {
+    /**
+     * Свой экран загрузки мира/подключения. Вызывается из {@code LoadingScreensMixin}
+     * вместо ванильной отрисовки. {@code kind}: 1 — подключение, 2 — загрузка мира.
+     */
+    public static void render(GuiGraphicsExtractor g, int kind) {
         long now = Util.getMillis();
-        int kind = kindOf(screen);
-        if (kind == 0) {
-            shownAt = 0L;
-            fade = 0f;
-            lastFrame = now;
-            return;
-        }
-        if (shownAt == 0L) {
+        // экран показывается заново, если между кадрами был перерыв
+        if (now - lastFrame > 400L) {
             shownAt = now;
+            fade = 0f;
             lastFrame = now;
         }
         float dt = Math.max(0.0005f, Math.min(0.1f, (now - lastFrame) / 1000f));
         lastFrame = now;
-        fade = Math.min(1f, fade + (UiWidget.ANIMATIONS ? dt * 5f : 1f));
+        fade = Math.min(1f, fade + (UiWidget.ANIMATIONS ? dt * 6f : 1f));
 
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) {
@@ -78,9 +58,10 @@ public final class ElytrixConnect {
         float a = fade;
         float t = ElytrixBackground.time();
 
-        // затемнение и тихая сетка вместо ванильного «красного» вида
-        g.fill(0, 0, w, h, UiTheme.withAlpha(0xFF05040A, 0.72f * a));
-        ElytrixBackground.render(g, w, h, t, accent, 0.45f * a);
+        // фон непрозрачный с первого кадра — ванильный экран под ним не мелькает,
+        // а содержимое (индикатор, текст) проявляется плавно
+        g.fill(0, 0, w, h, 0xFF07050A);
+        ElytrixBackground.render(g, w, h, t, accent, 0.55f + 0.45f * a);
 
         int cx = w / 2;
         int cy = h / 2 - 26;

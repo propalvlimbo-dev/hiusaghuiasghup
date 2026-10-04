@@ -141,10 +141,11 @@ public final class ElytrixBackground {
 
     /** Мышь «нагревает» клетки вдоль пути курсора: там цифры перебираются и светятся. */
     private static void stir(Layer layer, double mx, double my, float dt) {
-        float decay = (float) Math.exp(-dt * 1.6f);
+        // быстрое плавное затухание: ~0.3 с до почти нуля, без «ступенек»
+        float decay = (float) Math.exp(-dt * 7f);
         float[] heat = layer.heat;
         for (int i = 0; i < heat.length; i++) {
-            if (heat[i] > 0.002f) {
+            if (heat[i] > 0.004f) {
                 heat[i] *= decay;
             } else {
                 heat[i] = 0f;
@@ -157,9 +158,12 @@ public final class ElytrixBackground {
         double fromY = Double.isNaN(lastMouseY) ? my : lastMouseY;
         double dist = Math.hypot(mx - fromX, my - fromY);
         // точки вдоль отрезка движения, чтобы быстрый рывок оставлял сплошной след
-        int steps = Math.max(1, Math.min(24, (int) (dist / (layer.cell * 0.6))));
-        float radius = 34f;
-        float moving = (float) Math.min(1.0, 0.25 + dist / 12.0);
+        if (dist < 0.5) {
+            return;                                   // мышь стоит — экран не «греется»
+        }
+        int steps = Math.max(1, Math.min(32, (int) (dist / 4.0)));
+        float radius = 14f;                           // тонкий след, одинаковый во всех слоях
+        float strength = (float) Math.min(1.0, dist / 10.0);
         for (int s = 1; s <= steps; s++) {
             double px = fromX + (mx - fromX) * s / steps;
             double py = fromY + (my - fromY) * s / steps;
@@ -174,8 +178,8 @@ public final class ElytrixBackground {
                     double d = Math.sqrt(dx * dx + dy * dy) / radius;
                     if (d < 1.0) {
                         int i = r * layer.cols + c;
-                        float add = (float) ((1.0 - d) * (1.0 - d)) * moving * (dt * 9f / steps + 0.02f);
-                        heat[i] = Math.min(1f, heat[i] + add);
+                        float add = (float) ((1.0 - d) * (1.0 - d)) * strength;
+                        heat[i] = Math.max(heat[i], Math.min(1f, add));
                     }
                 }
             }
@@ -206,25 +210,20 @@ public final class ElytrixBackground {
                 float h = layer.heat[i];
 
                 // цифры живут: редкая смена сама по себе, частая — под курсором и у головы
-                float change = dt * (0.25f + streak * 2.5f + h * 30f);
+                float change = dt * (0.25f + streak * 2.5f + h * 18f);
                 if (RANDOM.nextFloat() < change) {
                     layer.glyph[i] = DIGITS[RANDOM.nextInt(DIGITS.length)];
                 }
 
                 float b = Math.max(base, streak * streak);
-                b = Math.min(1f, b + h * 0.9f);
+                b = b + (1f - b) * h * 0.85f;                 // непрерывно, без порогов
                 float a = b * layer.alpha * alpha;
                 if (a < 0.035f) {
                     continue;
                 }
-                int color;
-                if (d >= 0f && d < 1f) {
-                    color = 0xFFFFFFFF;                       // голова полосы — белая
-                } else if (h > 0.35f) {
-                    color = UiTheme.mix(pinkSoft, 0xFFFFFFFF, Math.min(1f, (h - 0.35f) * 1.6f));
-                } else {
-                    color = UiTheme.mix(accent, pinkSoft, streak);
-                }
+                int color = d >= 0f && d < 1f ? 0xFFFFFFFF          // голова полосы — белая
+                        : UiTheme.mix(accent, pinkSoft, streak);
+                color = UiTheme.mix(color, 0xFFFFFFFF, h * 0.8f);    // след мыши — плавно к белому
                 int y = Math.round(r * layer.cell);
                 g.text(font, layer.digit(layer.glyph[i]), x, y,
                         UiTheme.withAlpha(color, Math.min(1f, a)), false);

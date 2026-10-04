@@ -9,7 +9,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixBackground;
-import ru.rooyzee.elytrixclient.client.ui.ElytrixConnect;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 
 /**
@@ -35,18 +34,5 @@ public abstract class ScreenMixin {
         ElytrixBackground.render(graphics, graphics.guiWidth(), graphics.guiHeight(),
                 ElytrixBackground.time(), UiTheme.accent(ElytrixclientClient.CONFIG.accentIndex), alpha);
         ci.cancel();
-    }
-
-    /**
-     * Анимация загрузки мира и подключения к серверу: рисуется поверх ванильных
-     * экранов подключения ({@code ConnectScreen}, {@code ReceivingLevelScreen},
-     * {@code LevelLoadingScreen}). {@code require = 0} — если Mojang переименует
-     * метод, миксин просто не применится и игра не упадёт.
-     */
-    @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
-            at = @At("TAIL"), require = 0)
-    private void elytrix$connectOverlay(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a,
-                                        CallbackInfo ci) {
-        ElytrixConnect.renderIfLoading(graphics, (Screen) (Object) this);
     }
 }

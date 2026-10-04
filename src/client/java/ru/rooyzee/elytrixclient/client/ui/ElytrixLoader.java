@@ -52,35 +52,20 @@ public final class ElytrixLoader {
         int cx = w / 2;
         int cy = h / 2 - 34;
 
-        // ── знак клиента с мягким ореолом
-        int mark = 72;
-        UiDraw.glow(g, cx - mark / 2, cy - mark / 2, mark, mark, 18, accent, 1.15f * alpha);
+        // ── только знак клиента (без названия/версии и без плашки-ореола)
+        int mark = 80;
         int k = UiDraw.shapeScale();
         UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), cx - mark / 2, cy - mark / 2, mark, mark,
                 LOGO_SIZE * k, LOGO_SIZE * k, UiTheme.withAlpha(0xFFFFFFFF, alpha));
-
-        // ── название в разрядку
-        String name = "ELYTRIX";
-        int spacing = 7;
-        int nameW = UiDraw.spacedWidth(font, name, spacing, UiText.TITLE);
-        UiDraw.textSpaced(g, font, name, cx - nameW / 2, cy + mark / 2 + 20, spacing,
-                UiTheme.withAlpha(0xFFFFFFFF, alpha), false, UiText.TITLE);
-
-        // ── хайрлайн и подпись
-        int lineY = cy + mark / 2 + 52;
-        int lineW = Math.min(230, w - 80);
-        UiDraw.hLine(g, cx - lineW / 2, cx + lineW / 2, lineY, 1, UiTheme.withAlpha(UiTheme.DIVIDER, alpha));
-        UiDraw.textCenter(g, font, "minecraft " + mcVersion() + " · fabric · v" + version(),
-                cx, lineY + 9, UiTheme.withAlpha(UiTheme.TEXT_DIM, alpha), UiText.MONO);
+        int lineY = cy + mark / 2;
 
         // ── тонкая линия прогресса
         int barW = Math.min(260, w - 120);
         int barX = cx - barW / 2;
-        int barY = lineY + 40;
+        int barY = lineY + 26;
         UiDraw.roundRect(g, barX, barY, barW, 3, 2, UiTheme.withAlpha(UiTheme.TRACK, alpha));
         int fillW = Math.round(barW * p);
         if (fillW > 2) {
-            UiDraw.glow(g, barX, barY - 2, fillW, 7, 3, accent, 0.5f * alpha);
             UiDraw.roundRect(g, barX, barY, fillW, 3, 2, UiTheme.withAlpha(accent, alpha));
         }
         int shineW = Math.max(16, barW / 7);

@@ -381,7 +381,6 @@ public class ElytrixScreen extends Screen {
             if (t > 0.01f) {
                 // выбранный пункт: мягкая подложка + тонкая полоска акцента слева
                 fill(g, 5, y, BAR - 10, 15, 4, UiTheme.withAlpha(text(), 0.07f * t));
-                fill(g, 5, y + 4, 2, 7 * t, 1, accent);
             }
             int col = UiTheme.mix(UiTheme.mix(dim(), soft(), tabHover[i]), text(), t);
             int iconCol = UiTheme.mix(UiTheme.mix(dim(), soft(), tabHover[i]), accent, t);
