@@ -15,6 +15,9 @@ import net.minecraft.resources.Identifier;
  * {@code fill(...)} не страшны: скругление угла — это несколько тонких полосок.
  */
 public final class UiDraw {
+    /** Рисовать ли «свечения» (glow) — выключается режимом качества на больших разрешениях. */
+    public static boolean GLOW = true;
+
     private UiDraw() {
     }
 
@@ -115,12 +118,13 @@ public final class UiDraw {
         g.fill(x, y0, x + Math.max(1, thickness), y1, color);
     }
 
-    /** Отрезок произвольной длины: раскладываем на маленькие квадраты вдоль линии. */
+    /** Отрезок произвольной длины: раскладываем на квадраты вдоль линии (шаг = толщина). */
     public static void line(GuiGraphicsExtractor g, float x0, float y0, float x1, float y1, float thickness, int color) {
         float dx = x1 - x0;
         float dy = y1 - y0;
-        int steps = (int) Math.max(Math.abs(dx), Math.abs(dy)) + 1;
         int size = Math.max(1, Math.round(thickness));
+        // шаг по толщине, но не меньше 1 px и не больше 96 квадратов — иначе это уже не иконка
+        int steps = Math.min(96, Math.max(1, (int) (Math.max(Math.abs(dx), Math.abs(dy)) / size)));
         for (int i = 0; i <= steps; i++) {
             float t = (float) i / steps;
             int px = Math.round(x0 + dx * t);
@@ -280,7 +284,10 @@ public final class UiDraw {
 
     /** Мягкое «свечение» вокруг прямоугольника — несколько полупрозрачных слоёв акцента. */
     public static void glow(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int accent, float strength) {
-        int layers = Math.max(1, Math.round(6 * strength));
+        if (!GLOW || strength <= 0.02f) {
+            return;
+        }
+        int layers = Math.max(1, Math.min(4, Math.round(4 * strength)));
         float base = 0.10f * strength;
         for (int i = layers; i >= 1; i--) {
             float a = base * (1f - (float) (i - 1) / layers);

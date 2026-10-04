@@ -48,6 +48,8 @@ public class ElytrixConfig {
     public int themeIndex = 0;
     /** Масштаб панели: 0 — как масштаб интерфейса игры, иначе 90/100/115/130 %. */
     public int uiScaleIndex = 0;
+    /** Качество эффектов: 0 — авто (по размеру кадра и FPS), 1 — низкое, 2 — высокое. */
+    public int effectsQuality = 0;
     /** «Хакерский» анимированный фон в главном меню вместо панорамы. */
     public boolean hackerBackground = true;
     /** Свой экран загрузки вместо ванильного красного лоадера. */

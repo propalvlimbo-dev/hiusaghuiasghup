@@ -39,9 +39,13 @@ import java.util.List;
  */
 public class ElytrixScreen extends Screen {
 
-    // ── базовая сетка композиции ─────────────────────────────────────────
+    // ── базовая сетка композиции (эталон) ────────────────────────────────
     private static final int BASE_W = 560;
     private static final int BASE_H = 344;
+    /** Наименьший «базовый» размер: ниже него включается компактная вёрстка. */
+    private static final int MIN_BASE_W = 380;
+    private static final int MIN_BASE_H = 250;
+    private static final int COMPACT_BELOW = 500;
     private static final int SCROLLBAR_W = 4;
     private static final int[] SCALE_OPTIONS = {0, 90, 100, 115, 130};
     private static final String[] SCALE_NAMES = {"Как в игре", "90%", "100%", "115%", "130%"};
@@ -81,6 +85,12 @@ public class ElytrixScreen extends Screen {
     private long dirtyAt;
 
     private float uiScale = 1f;
+    /** Текущий «базовый» размер композиции: 560×344 на нормальном экране, меньше — на маленьком. */
+    private int baseW = BASE_W;
+    private int baseH = BASE_H;
+    /** Ширина сайдбара: в компактном режиме — только иконки. */
+    private int sidebarW = UiTheme.SIDEBAR_W;
+    private boolean compact;
     private int panelX;
     private int panelY;
     private int panelW;
@@ -259,6 +269,14 @@ public class ElytrixScreen extends Screen {
             cfg.blurBackground = v;
             markDirty();
         }));
+        anim.add(new UiDropdown("Качество эффектов", List.of(ElytrixQuality.NAMES), cfg.effectsQuality, i -> {
+            cfg.effectsQuality = i;
+            ElytrixQuality.update(cfg, this.minecraft.getWindow().getWidth() * this.minecraft.getWindow().getHeight(),
+                    this.minecraft.getFps());
+            markDirty();
+        }));
+        anim.add(new UiInfo("FPS / эффекты", () -> this.minecraft.getFps() + " · " + ElytrixQuality.summary(), UiTheme.OK)
+                .icon(UiIcon.CHART));
         list.add(anim);
 
         UiSection menu = new UiSection("Главное меню и загрузка", null);
@@ -302,6 +320,7 @@ public class ElytrixScreen extends Screen {
         cfg.themeIndex = 0;
         cfg.accentIndex = 0;
         cfg.uiScaleIndex = 0;
+        cfg.effectsQuality = 0;
         cfg.panelOpacity = 88;
         cfg.animations = true;
         cfg.blurBackground = true;
@@ -321,15 +340,31 @@ public class ElytrixScreen extends Screen {
     //  Раскладка и анимация панели
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Адаптация под любое разрешение и масштаб интерфейса.
+     *
+     * <p>Логика: сначала выбираем масштаб (пользовательский или как MC GUI Scale),
+     * но не меньше {@code 0.62} — иначе текст «рассыпается». Затем считаем, сколько
+     * «базовых» единиц влезает в окно при этом масштабе: на большом мониторе это
+     * эталонные 560×344 (панель «растёт» вместе с масштабом игры), на маленьком окне
+     * композиция сжимается, а панель занимает почти весь экран. Совсем узкие окна
+     * переключаются в компактную вёрстку — сайдбар становится иконочным.
+     */
     private void layoutPanel() {
         float user = cfg.uiScaleIndex <= 0 ? 0f
                 : SCALE_OPTIONS[Mth.clamp(cfg.uiScaleIndex, 0, SCALE_OPTIONS.length - 1)] / 100f;
         float auto = Math.max(1f, this.minecraft.getWindow().getGuiScale()) / 2f;
-        float base = user > 0f ? user : auto;
-        float fit = Math.min((this.width - 16f) / BASE_W, (this.height - 16f) / BASE_H);
-        uiScale = Mth.clamp(Math.min(base, fit), 0.5f, 2.5f);
-        panelW = Math.round(BASE_W * uiScale);
-        panelH = Math.round(BASE_H * uiScale);
+        float want = user > 0f ? user : auto;
+        float fit = Math.min((this.width - 14f) / BASE_W, (this.height - 14f) / BASE_H);
+        uiScale = Mth.clamp(Math.min(want, fit), 0.62f, 2.6f);
+
+        baseW = Mth.clamp(Math.round((this.width - 12f) / uiScale), MIN_BASE_W, BASE_W);
+        baseH = Mth.clamp(Math.round((this.height - 12f) / uiScale), MIN_BASE_H, BASE_H);
+        compact = baseW < COMPACT_BELOW || baseH < 300;
+        sidebarW = compact ? 54 : UiTheme.SIDEBAR_W;
+
+        panelW = Math.round(baseW * uiScale);
+        panelH = Math.round(baseH * uiScale);
         panelX = (this.width - panelW) / 2;
         panelY = (this.height - panelH) / 2;
     }
@@ -353,7 +388,8 @@ public class ElytrixScreen extends Screen {
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractBackground(graphics, mouseX, mouseY, a);
-        if (cfg.blurBackground && this.minecraft != null
+        // на больших разрешениях blur стоит дорого — режим «Авто» его выключает
+        if (cfg.blurBackground && ElytrixQuality.blur() && this.minecraft != null
                 && this.minecraft.options.getMenuBackgroundBlurriness() < 1.0F) {
             graphics.blurBeforeThisStratum();
         }
@@ -364,6 +400,7 @@ public class ElytrixScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         layoutPanel();
+        ElytrixQuality.updateFrom(this.minecraft, cfg);
         long now = Util.getMillis();
         float dt = frameDelta(now);
         float f = easeOut(Mth.clamp(panelT, 0f, 1f));
@@ -402,11 +439,11 @@ public class ElytrixScreen extends Screen {
     private void drawPanel(GuiGraphicsExtractor graphics, Font font,
                            int mouseX, int mouseY, float dt, float f) {
         float fo = f * Mth.clamp(cfg.panelOpacity / 100f, 0.35f, 1f);
-        UiDraw.shadow(graphics, 0, 0, BASE_W, BASE_H, UiTheme.R_LG, 7, UiTheme.withAlpha(UiTheme.SHADOW, f));
-        UiDraw.roundRectBordered(graphics, 0, 0, BASE_W, BASE_H, UiTheme.R_LG,
+        UiDraw.shadow(graphics, 0, 0, baseW, baseH, UiTheme.R_LG, 5, UiTheme.withAlpha(UiTheme.SHADOW, f));
+        UiDraw.roundRectBordered(graphics, 0, 0, baseW, baseH, UiTheme.R_LG,
                 UiTheme.withAlpha(UiTheme.PANEL, fo), UiTheme.withAlpha(UiTheme.BORDER, fo));
         // акцентная кромка сверху — «подсветка» панели
-        int edgeW = BASE_W - 2 * UiTheme.R_LG;
+        int edgeW = baseW - 2 * UiTheme.R_LG;
         int edgeHalf = edgeW / 2;
         UiDraw.hGradient(graphics, UiTheme.R_LG, 0, edgeHalf, 2,
                 0x00000000, UiTheme.withAlpha(accentColor, 0.8f * f), 40);
@@ -414,23 +451,32 @@ public class ElytrixScreen extends Screen {
                 UiTheme.withAlpha(accentColor, 0.8f * f), 0x00000000, 40);
     }
 
+    private int navItemH() {
+        return compact ? 28 : 30;
+    }
+
+    private int navStep() {
+        return compact ? 30 : 34;
+    }
+
+    private static final int NAV_FIRST_Y = 18;
+
     private void drawSidebar(GuiGraphicsExtractor graphics, Font font,
                              int mouseX, int mouseY, float dt, float f) {
         int cardX = 6;
         int cardY = 6;
-        int cardW = UiTheme.SIDEBAR_W - 6;
-        int cardH = BASE_H - 12;
+        int cardW = sidebarW - 6;
+        int cardH = baseH - 12;
         UiDraw.roundRectBordered(graphics, cardX, cardY, cardW, cardH, UiTheme.R_MD,
                 UiTheme.withAlpha(UiTheme.SIDEBAR, f * 0.96f), UiTheme.withAlpha(UiTheme.BORDER_SOFT, f));
 
         int navX = cardX + 5;
         int navW = cardW - 10;
-        int itemH = 30;
-        int step = 34;
-        int firstY = cardY + 12;
+        int itemH = navItemH();
+        int step = navStep();
 
         // плавно переезжающий индикатор выбранного пункта
-        float targetY = firstY + tab * step;
+        float targetY = NAV_FIRST_Y + tab * step;
         if (!indicatorInit) {
             indicatorY = targetY;
             indicatorInit = true;
@@ -444,7 +490,7 @@ public class ElytrixScreen extends Screen {
         double mx = ux(mouseX);
         double my = uy(mouseY);
         for (int i = 0; i < TAB_NAMES.length; i++) {
-            int iy = firstY + i * step;
+            int iy = NAV_FIRST_Y + i * step;
             boolean selected = i == tab;
             boolean hover = mx >= navX && mx < navX + navW && my >= iy && my < iy + itemH;
             if (hover && !selected) {
@@ -452,34 +498,45 @@ public class ElytrixScreen extends Screen {
             }
             int iconColor = selected ? UiTheme.mix(accentColor, 0xFFFFFFFF, 0.25f)
                     : (hover ? UiTheme.TEXT : UiTheme.TEXT_DIM);
-            TAB_ICONS[i].draw(graphics, navX + 9, iy + 7, 16, UiTheme.withAlpha(iconColor, f));
-            UiDraw.text(graphics, font, TAB_NAMES[i], navX + 33, iy + 11,
-                    UiTheme.withAlpha(selected ? UiTheme.TEXT : UiTheme.TEXT_SOFT, f));
-            if (selected) {
-                UiDraw.disc(graphics, navX + navW - 9, iy + itemH / 2f, 2.4f, UiTheme.withAlpha(accentColor, f));
+            if (compact) {
+                // компактно: только иконка по центру, без подписей
+                TAB_ICONS[i].drawCentered(graphics, navX + navW / 2, iy + itemH / 2, 16,
+                        UiTheme.withAlpha(iconColor, f));
+            } else {
+                TAB_ICONS[i].draw(graphics, navX + 9, iy + 7, 16, UiTheme.withAlpha(iconColor, f));
+                UiDraw.text(graphics, font, trim(font, TAB_NAMES[i], navW - 44), navX + 33, iy + 11,
+                        UiTheme.withAlpha(selected ? UiTheme.TEXT : UiTheme.TEXT_SOFT, f));
+                if (selected) {
+                    UiDraw.disc(graphics, navX + navW - 9, iy + itemH / 2f, 2.4f, UiTheme.withAlpha(accentColor, f));
+                }
             }
         }
 
-        UiDraw.text(graphics, font, "правый Ctrl · Esc", cardX + 12, cardY + cardH - 18,
-                UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
-        UiDraw.textSpaced(graphics, font, "ELYTRIX", cardX + 12, cardY + cardH - 32, 2,
-                UiTheme.withAlpha(UiTheme.mix(accentColor, UiTheme.TEXT, 0.35f), f), false);
+        if (!compact) {
+            UiDraw.text(graphics, font, "правый Ctrl · Esc", cardX + 12, cardY + cardH - 18,
+                    UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
+            UiDraw.textSpaced(graphics, font, "ELYTRIX", cardX + 12, cardY + cardH - 32, 2,
+                    UiTheme.withAlpha(UiTheme.mix(accentColor, UiTheme.TEXT, 0.35f), f), false);
+        }
     }
 
     private void drawHeader(GuiGraphicsExtractor graphics, Font font,
                             int mouseX, int mouseY, float f) {
-        int hx = UiTheme.SIDEBAR_W + 4;
+        int hx = sidebarW + 4;
+        float titleScale = compact ? 1.25f : 1.4f;
         graphics.pose().pushMatrix();
-        graphics.pose().translate(hx + 12, 12);
-        graphics.pose().scale(1.4f, 1.4f);
+        graphics.pose().translate(hx + 12, compact ? 14 : 12);
+        graphics.pose().scale(titleScale, titleScale);
         UiDraw.text(graphics, font, TAB_NAMES[tab], 0, 0, UiTheme.withAlpha(UiTheme.TEXT, f));
         graphics.pose().popMatrix();
-        UiDraw.text(graphics, font, TAB_SUBS[tab], hx + 13, 30, UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
-        UiDraw.hLine(graphics, hx + 10, BASE_W - 12, UiTheme.HEADER_H - 3, 1,
+        if (!compact) {
+            UiDraw.text(graphics, font, TAB_SUBS[tab], hx + 13, 30, UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
+        }
+        UiDraw.hLine(graphics, hx + 10, baseW - 12, UiTheme.HEADER_H - 3, 1,
                 UiTheme.withAlpha(UiTheme.DIVIDER, f));
 
         // кнопка закрытия
-        int closeX = BASE_W - 38;
+        int closeX = baseW - 38;
         int closeY = 13;
         double mx = ux(mouseX);
         double my = uy(mouseY);
@@ -492,10 +549,10 @@ public class ElytrixScreen extends Screen {
 
     private void drawContent(GuiGraphicsExtractor graphics, Font font,
                              int mouseX, int mouseY, float dt, float f) {
-        int contentX = UiTheme.SIDEBAR_W + 4;
+        int contentX = sidebarW + 4;
         int contentY = UiTheme.HEADER_H;
-        int contentW = BASE_W - contentX - 22;
-        int contentH = BASE_H - contentY - 10;
+        int contentW = baseW - contentX - 22;
+        int contentH = baseH - contentY - 10;
 
         List<UiSection> sections = tabs.get(tab);
         int total = 0;
@@ -565,7 +622,7 @@ public class ElytrixScreen extends Screen {
     private boolean inContent(double mx, double my) {
         double x = ux(mx);
         double y = uy(my);
-        return x >= UiTheme.SIDEBAR_W + 4 && x < BASE_W && y >= UiTheme.HEADER_H && y < BASE_H;
+        return x >= sidebarW + 4 && x < baseW && y >= UiTheme.HEADER_H && y < baseH;
     }
 
     @Override
@@ -587,18 +644,19 @@ public class ElytrixScreen extends Screen {
         }
 
         // кнопка закрытия
-        if (lx >= BASE_W - 38 && lx < BASE_W - 12 && ly >= 13 && ly < 33) {
+        if (lx >= baseW - 38 && lx < baseW - 12 && ly >= 13 && ly < 33) {
             onClose();
             return true;
         }
 
         // сайдбар
         int cardX = 6;
-        int cardW = UiTheme.SIDEBAR_W - 6;
-        int firstY = 18;
+        int cardW = sidebarW - 6;
+        int itemH = navItemH();
+        int step = navStep();
         for (int i = 0; i < TAB_NAMES.length; i++) {
-            int iy = firstY + i * 34;
-            if (lx >= cardX + 5 && lx < cardX + cardW - 5 && ly >= iy && ly < iy + 30) {
+            int iy = NAV_FIRST_Y + i * step;
+            if (lx >= cardX + 5 && lx < cardX + cardW - 5 && ly >= iy && ly < iy + itemH) {
                 if (i != tab) {
                     prevTab = tab;
                     tab = i;
@@ -663,7 +721,7 @@ public class ElytrixScreen extends Screen {
 
     private void scrollToMouse(double mouseY) {
         double contentY = UiTheme.HEADER_H;
-        double contentH = BASE_H - contentY - 10;
+        double contentH = baseH - contentY - 10;
         double t = (uy(mouseY) - contentY - 6) / Math.max(1.0, contentH - 12);
         scrollTarget = clamp(t, 0, 1) * maxScroll;
         scroll = scrollTarget;
