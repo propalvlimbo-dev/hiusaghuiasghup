@@ -367,10 +367,26 @@ public final class UiVector {
 
         /** Квад из четырёх точек; цвет каждой вершины берётся из градиента фигуры. */
         private void quad(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3) {
-            vertex(x0, y0, color(x0, y0));
-            vertex(x1, y1, color(x1, y1));
-            vertex(x2, y2, color(x2, y2));
-            vertex(x3, y3, color(x3, y3));
+            // Пайплайн GUI отсекает задние грани (cull = true). Ваниль кладёт вершины
+            // в порядке TL -> BL -> BR -> TR, т.е. в экранных координатах (Y вниз)
+            // ориентированная площадь отрицательна. Приводим любой квад к этому обходу,
+            // иначе GPU молча выбрасывает фигуру.
+            float area = (x0 * y1 - x1 * y0) + (x1 * y2 - x2 * y1)
+                    + (x2 * y3 - x3 * y2) + (x3 * y0 - x0 * y3);
+            if (Math.abs(area) < 1.0e-6f) {
+                return;
+            }
+            if (area > 0f) {
+                vertex(x0, y0, color(x0, y0));
+                vertex(x3, y3, color(x3, y3));
+                vertex(x2, y2, color(x2, y2));
+                vertex(x1, y1, color(x1, y1));
+            } else {
+                vertex(x0, y0, color(x0, y0));
+                vertex(x1, y1, color(x1, y1));
+                vertex(x2, y2, color(x2, y2));
+                vertex(x3, y3, color(x3, y3));
+            }
         }
 
         private void vertex(float vx, float vy, int color) {
