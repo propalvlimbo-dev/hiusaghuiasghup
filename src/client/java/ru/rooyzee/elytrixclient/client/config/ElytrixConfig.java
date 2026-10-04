@@ -44,7 +44,20 @@ public class ElytrixConfig {
     public String soulfireCommand = "";
 
     // ---------- UI ----------
+    /** Цвет акцента строкой (для совместимости и внешних правок файла). */
     public String accent = "#8B5CF6";
+    /** Индекс акцента в палитре UiTheme.ACCENTS (0 — розовый). */
+    public int accentIndex = 0;
+    /** Непрозрачность поверхностей панели, % (60…100). */
+    public int panelOpacity = 88;
+    /** Плавные анимации интерфейса. */
+    public boolean animations = true;
+    /** Размывать фон за панелью. */
+    public boolean blurBackground = true;
+    /** Закрывать панель кликом вне её. */
+    public boolean closeOnOutsideClick = false;
+    /** Открывать панель правым Ctrl. */
+    public boolean panelKey = true;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 

@@ -3,7 +3,7 @@
   "id": "elytrixclient",
   "version": "${version}",
   "name": "ElytrixClient",
-  "description": "Панель нагрузочного теста своего сервера: BotMark + SoulFire в одном GUI (YACL).",
+  "description": "Клиент Elytrix: свой рендер интерфейса, в планах — нагрузочный тест своего сервера (BotMark + SoulFire).",
   "authors": [
     "rooyzee"
   ],

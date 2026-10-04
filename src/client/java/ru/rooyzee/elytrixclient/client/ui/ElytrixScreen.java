@@ -1,365 +1,540 @@
 package ru.rooyzee.elytrixclient.client.ui;
 
-import dev.isxander.yacl3.api.ButtonOption;
-import dev.isxander.yacl3.api.ConfigCategory;
-import dev.isxander.yacl3.api.LabelOption;
-import dev.isxander.yacl3.api.Option;
-import dev.isxander.yacl3.api.OptionDescription;
-import dev.isxander.yacl3.api.OptionGroup;
-import dev.isxander.yacl3.api.YetAnotherConfigLib;
-import dev.isxander.yacl3.api.controller.DropdownStringControllerBuilder;
-import dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder;
-import dev.isxander.yacl3.api.controller.StringControllerBuilder;
-import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
-import dev.isxander.yacl3.gui.YACLScreen;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Util;
+import org.lwjgl.glfw.GLFW;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
-import ru.rooyzee.elytrixclient.client.util.LogBuffer;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiButton;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiDropdown;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiEmpty;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiInfo;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiSection;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiSlider;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiToggle;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
- * Панель ElytrixClient целиком на YACL (YetAnotherConfigLib 3.9.7+26.2).
+ * Панель ElytrixClient — полностью кастомный рендер (см. пакет {@code ui.kit}), без ванильных виджетов.
  *
- * 5 категорий YACL = 5 вкладок прежней самописной панели:
- * Обзор / BotMark / SoulFire / Консоль / Настройки.
+ * <p>Слева — сайдбар с разделами, справа — карточки-разделы со строками.
+ * Пока это только интерфейс: модули ботов подключим следующим шагом.
  *
- * Особенности YACL, о которых надо помнить:
- *  • значения опций применяются к конфигу не сразу, а при applyValue()
- *    (кнопка «Сохранить» внизу экрана либо наши кнопки действий — они
- *    вызывают applyAll() + cfg.save() перед запуском процессов);
- *  • категории рисуются как таб-бар сверху, группы — как секции,
- *    подписи к опциям показываются в тултипе и в подзаголовке группы.
+ * <p>Открывается правым Ctrl (см. {@link ElytrixclientClient}), закрывается Esc,
+ * повторным правым Ctrl или кликом вне панели.
  */
-public final class ElytrixScreen {
+public class ElytrixScreen extends Screen {
 
-    private static final String[] ACCENTS = {"#8B5CF6", "#22D3EE", "#4ADE80", "#F472B6", "#FBBF24"};
-    private static final int CONSOLE_LINES = 22;
-    private static final int CONSOLE_LINE_WIDTH = 110;
+    private static final int TAB_HOME = 0;
+    private static final int TAB_BOTS = 1;
+    private static final int TAB_PROXY = 2;
+    private static final int TAB_CONSOLE = 3;
+    private static final int TAB_SETTINGS = 4;
 
+    private static final String[] TAB_NAMES = {"Главная", "Боты", "Прокси", "Консоль", "Настройки"};
+    private static final String[] TAB_SUBS = {
+            "Обзор клиента",
+            "Список ботов",
+            "Прокси для ботов",
+            "Вывод процессов",
+            "Вид и поведение"
+    };
+    private static final UiDraw.Icon[] TAB_ICONS = {
+            UiDraw.Icon.HOME, UiDraw.Icon.BOTS, UiDraw.Icon.PROXY, UiDraw.Icon.CONSOLE, UiDraw.Icon.SETTINGS
+    };
+
+    private final Screen parent;
     private final ElytrixConfig cfg = ElytrixclientClient.CONFIG;
-    private final List<Option<?>> options = new ArrayList<>();
+    private final List<List<UiSection>> tabs = new ArrayList<>();
 
-    private ElytrixScreen() {
+    private int tab = TAB_HOME;
+    private double scroll;
+    private double scrollTarget;
+    private double maxScroll;
+    private boolean draggingScrollbar;
+
+    private long openedAt;
+    private long lastFrame;
+    private boolean closing;
+    private long closingAt;
+    private boolean dirty;
+    private long dirtyAt;
+
+    private int panelX;
+    private int panelY;
+    private int panelW;
+    private int panelH;
+    private int accentColor = UiTheme.ACCENTS[0];
+
+    public ElytrixScreen(Screen parent) {
+        super(Component.literal("Elytrix Client"));
+        this.parent = parent;
     }
 
-    /** Открыть панель. parent == null — вернёмся в игру, а не в предыдущий экран. */
-    public static Screen create(Screen parent) {
-        return new ElytrixScreen().build(parent);
+    public static ElytrixScreen create(Screen parent) {
+        return new ElytrixScreen(parent);
     }
 
-    private Screen build(Screen parent) {
-        return YetAnotherConfigLib.createBuilder()
-                .title(c("ElytrixClient — панель нагрузочного теста"))
-                .category(overview())
-                .category(botMark())
-                .category(soulFire())
-                .category(consoleCategory())
-                .category(settings())
-                .save(cfg::save)
-                .build()
-                .generateScreen(parent);
+    // ─────────────────────────────────────────────────────────────────────
+    //  Жизненный цикл
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Override
+    protected void init() {
+        super.init();
+        long now = Util.getMillis();
+        if (openedAt == 0L) {
+            openedAt = now;
+        }
+        lastFrame = now;
+        rebuild();
     }
 
-    // ------------------------------------------------------------------ Обзор
-
-    private ConfigCategory overview() {
-        return ConfigCategory.createBuilder()
-                .name(c("Обзор"))
-                .group(OptionGroup.createBuilder()
-                        .name(c("Цель — только свой сервер"))
-                        .option(text("Хост", "Адрес сервера, который ты тестируешь.",
-                                "127.0.0.1", () -> cfg.host, v -> cfg.host = v))
-                        .option(slider("Порт", "Порт сервера.", 25565, 1, 65535,
-                                () -> cfg.port, v -> cfg.port = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Управление"))
-                        .option(button("Запустить всё", "BotMark + SoulFire", (screen, opt) -> run(() -> {
-                            ElytrixclientClient.BOTMARK.start(cfg);
-                            ElytrixclientClient.SOULFIRE.botsStart(cfg);
-                        })))
-                        .option(button("Остановить всё", "стоп", (screen, opt) -> run(() -> {
-                            ElytrixclientClient.BOTMARK.stop();
-                            ElytrixclientClient.SOULFIRE.botsStop(cfg);
-                        })))
-                        .build())
-                .option(LabelOption.create(c("BotMark: " + ElytrixclientClient.BOTMARK.status())))
-                .option(LabelOption.create(c("SoulFire: " + ElytrixclientClient.SOULFIRE.status(cfg))))
-                .option(LabelOption.create(c("BotMark — сырой поток ботов (сервер в offline-mode).")
-                        .withStyle(ChatFormatting.GRAY)))
-                .option(LabelOption.create(c("SoulFire — умные боты: капча, регистрация, прокси.")
-                        .withStyle(ChatFormatting.GRAY)))
-                .option(button("Обновить статус", "обновить", (screen, opt) -> reopen()))
-                .build();
+    private void rebuild() {
+        accentColor = UiTheme.accent(cfg.accentIndex);
+        tabs.clear();
+        tabs.add(homeTab());
+        tabs.add(botsTab());
+        tabs.add(proxyTab());
+        tabs.add(consoleTab());
+        tabs.add(settingsTab());
     }
 
-    // ------------------------------------------------------------------ BotMark
-
-    private ConfigCategory botMark() {
-        return ConfigCategory.createBuilder()
-                .name(c("BotMark"))
-                .group(OptionGroup.createBuilder()
-                        .name(c("Процесс"))
-                        .option(text("Путь к botmark", "botmark.exe (Windows) или бинарник Linux.",
-                                "C:/tools/botmark.exe", () -> cfg.botmarkPath, v -> cfg.botmarkPath = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Нагрузка"))
-                        .option(slider("Ботов", "Сколько клиентов поднимать.", 50, 1, 5000,
-                                () -> cfg.botmarkCount, v -> cfg.botmarkCount = v))
-                        .option(slider("Задержка, мс", "Пауза между запусками ботов.", 200, 0, 5000,
-                                () -> cfg.botmarkDelay, v -> cfg.botmarkDelay = v))
-                        .option(slider("Таймаут, мс", "Таймаут подключения.", 5000, 500, 60000,
-                                () -> cfg.botmarkTimeout, v -> cfg.botmarkTimeout = v))
-                        .option(text("Текст спама", "Что боты пишут в чат (--spam_message).",
-                                "Please do not spam!", () -> cfg.bmSpamMessage, v -> cfg.bmSpamMessage = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Поведение"))
-                        .option(tick("Спам в чат", "Флаг --enable_spam_message.", true,
-                                () -> cfg.bmSpam, v -> cfg.bmSpam = v))
-                        .option(tick("Повороты", "Флаг --enable_rotation.", true,
-                                () -> cfg.bmRotation, v -> cfg.bmRotation = v))
-                        .option(tick("Взмахи", "Флаг --enable_swing.", true,
-                                () -> cfg.bmSwing, v -> cfg.bmSwing = v))
-                        .option(tick("Ходьба", "Флаг --enable_movement.", true,
-                                () -> cfg.bmMovement, v -> cfg.bmMovement = v))
-                        .option(tick("Прыжки", "Флаг --enable_jumping.", true,
-                                () -> cfg.bmJumping, v -> cfg.bmJumping = v))
-                        .option(tick("Физика", "Флаг --enable_physics.", true,
-                                () -> cfg.bmPhysics, v -> cfg.bmPhysics = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Действия"))
-                        .option(button("Запустить BotMark", "запустить", (screen, opt) -> run(
-                                () -> ElytrixclientClient.BOTMARK.start(cfg))))
-                        .option(button("Остановить BotMark", "остановить", (screen, opt) ->
-                                ElytrixclientClient.BOTMARK.stop()))
-                        .build())
-                .build();
+    @Override
+    public void tick() {
+        long now = Util.getMillis();
+        if (dirty && now - dirtyAt > 450L) {
+            dirty = false;
+            cfg.save();
+        }
+        scrollTarget = clamp(scrollTarget, 0, maxScroll);
+        scroll += (scrollTarget - scroll) * (cfg.animations ? 0.35 : 1.0);
+        if (closing && now - closingAt > 130L) {
+            this.minecraft.gui.setScreen(parent);
+        }
     }
 
-    // ------------------------------------------------------------------ SoulFire
-
-    private ConfigCategory soulFire() {
-        return ConfigCategory.createBuilder()
-                .name(c("SoulFire"))
-                .group(OptionGroup.createBuilder()
-                        .name(c("Режим работы"))
-                        .option(dropdown("Режим", "cli — локальный процесс SoulFireCLI, mcp — HTTP MCP API.",
-                                "cli", List.of("cli", "mcp"), () -> cfg.soulfireMode, v -> cfg.soulfireMode = v))
-                        .option(text("Инстанс (instance_id)", "Заполняется после запуска; нужен для MCP-вызовов.",
-                                "", () -> cfg.soulfireInstanceId, v -> cfg.soulfireInstanceId = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Пути и доступ"))
-                        .option(text("SoulFireCLI.jar", "Путь к jar-нику SoulFire CLI.",
-                                "C:/soulfire/SoulFireCLI.jar", () -> cfg.soulfireJar, v -> cfg.soulfireJar = v))
-                        .option(text("Память JVM", "Аргумент -Xmx для SoulFire.", "-Xmx2G",
-                                () -> cfg.soulfireJavaArgs, v -> cfg.soulfireJavaArgs = v))
-                        .option(text("MCP URL", "Адрес MCP-эндпоинта SoulFire.",
-                                "http://127.0.0.1:38765/mcp", () -> cfg.soulfireApiUrl, v -> cfg.soulfireApiUrl = v))
-                        .option(text("API-токен", "Профиль → API token в SoulFire GUI.",
-                                "", () -> cfg.soulfireToken, v -> cfg.soulfireToken = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Действия"))
-                        .option(button("Запустить SoulFire CLI", "старт", (screen, opt) -> run(
-                                () -> ElytrixclientClient.SOULFIRE.startSoulFire(cfg))))
-                        .option(button("Стоп SoulFire", "стоп", (screen, opt) ->
-                                ElytrixclientClient.SOULFIRE.stopSoulFire()))
-                        .option(button("Боты: старт", "bots start", (screen, opt) -> run(
-                                () -> ElytrixclientClient.SOULFIRE.botsStart(cfg))))
-                        .option(button("Боты: стоп", "bots stop", (screen, opt) ->
-                                ElytrixclientClient.SOULFIRE.botsStop(cfg)))
-                        .option(button("Кто онлайн", "online", (screen, opt) ->
-                                ElytrixclientClient.SOULFIRE.online(cfg)))
-                        .option(button("MCP: список ботов", "MCP", (screen, opt) ->
-                                ElytrixclientClient.SOULFIRE.callMcp(cfg, "get_bot_list", null)))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Команда в консоль SoulFire"))
-                        .option(text("Команда", "Например: bots start или bot <имя> say <текст>.",
-                                "", () -> cfg.soulfireCommand, v -> cfg.soulfireCommand = v))
-                        .option(button("Отправить команду", "отправить", (screen, opt) -> run(() -> {
-                            if (!cfg.soulfireCommand.isBlank()) {
-                                ElytrixclientClient.SOULFIRE.send(cfg.soulfireCommand.trim());
-                            }
-                        })))
-                        .build())
-                .build();
+    @Override
+    public void onClose() {
+        if (closing) {
+            return;
+        }
+        closing = true;
+        closingAt = Util.getMillis();
     }
 
-    // ------------------------------------------------------------------ Консоль
+    private void markDirty() {
+        dirty = true;
+        dirtyAt = Util.getMillis();
+    }
 
-    private ConfigCategory consoleCategory() {
-        LogBuffer log = ElytrixclientClient.LOG;
-        List<String> lines = log.snapshot();
+    // ─────────────────────────────────────────────────────────────────────
+    //  Наполнение вкладок
+    // ─────────────────────────────────────────────────────────────────────
 
-        ConfigCategory.Builder builder = ConfigCategory.createBuilder().name(c("Консоль"))
-                .group(OptionGroup.createBuilder()
-                        .name(c("Действия"))
-                        .option(button("Обновить", "обновить", (screen, opt) -> reopen()))
-                        .option(button("Очистить", "очистить", (screen, opt) -> {
-                            log.clear();
-                            reopen();
-                        }))
-                        .option(button("Копировать в буфер", "копировать", (screen, opt) ->
-                                Minecraft.getInstance().keyboardHandler.setClipboard(String.join("\n", log.snapshot()))))
-                        .build());
+    private List<UiSection> homeTab() {
+        List<UiSection> list = new ArrayList<>();
 
-        OptionGroup.Builder linesGroup = OptionGroup.createBuilder().name(c("Последние " + CONSOLE_LINES + " строк"));
-        if (lines.isEmpty()) {
-            linesGroup.option(LabelOption.create(c("Лог пуст.").withStyle(ChatFormatting.GRAY)));
-        } else {
-            int from = Math.max(0, lines.size() - CONSOLE_LINES);
-            for (int i = from; i < lines.size(); i++) {
-                linesGroup.option(LabelOption.create(consoleLine(lines.get(i))));
+        UiSection client = new UiSection("Elytrix Client", "Minecraft 26.2 · Fabric").badge("v" + version());
+        client.add(new UiInfo("Панель", () -> "правый Ctrl", UiTheme.OK));
+        client.add(new UiInfo("Цель по умолчанию", cfg::target, 0));
+        client.add(new UiInfo("Файл конфига", () -> String.valueOf(ElytrixConfig.file().getFileName()), 0));
+        list.add(client);
+
+        UiSection modules = new UiSection("Модули", "Пока подключён только интерфейс");
+        modules.add(new UiEmpty(UiDraw.Icon.BOTS, "Здесь появятся боты", "BotMark и SoulFire сведём в один список"));
+        list.add(modules);
+        return list;
+    }
+
+    private List<UiSection> botsTab() {
+        UiSection bots = new UiSection("Боты", "Запуск и управление — следующим шагом").badge("0");
+        bots.add(new UiEmpty(UiDraw.Icon.BOTS, "Список пуст", "Пока это только каркас интерфейса"));
+        return List.of(bots);
+    }
+
+    private List<UiSection> proxyTab() {
+        UiSection proxy = new UiSection("Прокси", "Хранилище и проверка прокси").badge("0");
+        proxy.add(new UiEmpty(UiDraw.Icon.PROXY, "Прокси пока нет", "Сюда переедет импорт и проверка прокси"));
+        return List.of(proxy);
+    }
+
+    private List<UiSection> consoleTab() {
+        UiSection console = new UiSection("Консоль", "Вывод запущенных процессов").badge("●");
+        console.add(new UiEmpty(UiDraw.Icon.CONSOLE, "Логов пока нет", "Запустим ботов — здесь появятся строки"));
+        return List.of(console);
+    }
+
+    private List<UiSection> settingsTab() {
+        List<UiSection> list = new ArrayList<>();
+
+        UiSection look = new UiSection("Внешний вид", "Настройки интерфейса применяются сразу");
+        look.add(new UiDropdown("Акцент", List.of(UiTheme.ACCENT_NAMES), cfg.accentIndex, i -> {
+            cfg.accentIndex = i;
+            accentColor = UiTheme.accent(i);
+            markDirty();
+        }));
+        look.add(new UiSlider("Прозрачность панели", "%", 60, 100, cfg.panelOpacity, v -> {
+            cfg.panelOpacity = v;
+            markDirty();
+        }));
+        look.add(new UiToggle("Плавные анимации", "Появление панели, переключатели, слайдеры",
+                cfg.animations, v -> {
+            cfg.animations = v;
+            markDirty();
+        }));
+        look.add(new UiToggle("Размытие фона", "Блюр того, что за панелью",
+                cfg.blurBackground, v -> {
+            cfg.blurBackground = v;
+            markDirty();
+        }));
+        list.add(look);
+
+        UiSection behaviour = new UiSection("Поведение", null);
+        behaviour.add(new UiToggle("Панель по правому Ctrl", cfg.panelKey, v -> {
+            cfg.panelKey = v;
+            markDirty();
+        }));
+        behaviour.add(new UiToggle("Закрывать кликом вне панели", cfg.closeOnOutsideClick, v -> {
+            cfg.closeOnOutsideClick = v;
+            markDirty();
+        }));
+        behaviour.add(new UiButton("Открыть папку конфига", UiDraw.Icon.SETTINGS, UiButton.Style.SECONDARY,
+                this::openConfigFolder));
+        behaviour.add(new UiButton("Сбросить настройки интерфейса", UiDraw.Icon.CLOSE, UiButton.Style.DANGER,
+                this::resetInterface));
+        list.add(behaviour);
+
+        return list;
+    }
+
+    private void openConfigFolder() {
+        try {
+            Util.getPlatform().openFile(ElytrixConfig.file().getParent().toFile());
+        } catch (Throwable t) {
+            ElytrixclientClient.LOG.add("[Elytrix] Не удалось открыть папку конфига: " + t);
+        }
+    }
+
+    private void resetInterface() {
+        cfg.accentIndex = 0;
+        cfg.panelOpacity = 88;
+        cfg.animations = true;
+        cfg.blurBackground = true;
+        cfg.closeOnOutsideClick = false;
+        cfg.panelKey = true;
+        cfg.save();
+        rebuild();
+    }
+
+    private static String version() {
+        return FabricLoader.getInstance().getModContainer("elytrixclient")
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("dev");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Отрисовка
+    // ─────────────────────────────────────────────────────────────────────
+
+    private float fade() {
+        long now = Util.getMillis();
+        float appear = cfg.animations ? easeOut(Math.min(1f, (now - openedAt) / 190f)) : 1f;
+        float close = closing ? 1f - Math.min(1f, (now - closingAt) / 130f) : 1f;
+        return Math.max(0f, Math.min(1f, appear * close));
+    }
+
+    private static float easeOut(float t) {
+        return 1f - (1f - t) * (1f - t);
+    }
+
+    private void layoutPanel() {
+        panelW = Math.max(320, Math.min(600, this.width - 30));
+        panelH = Math.max(200, Math.min(370, this.height - 30));
+        panelX = (this.width - panelW) / 2;
+        panelY = (this.height - panelH) / 2;
+    }
+
+    @Override
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        super.extractBackground(graphics, mouseX, mouseY, a);
+        if (cfg.blurBackground && this.minecraft != null
+                && this.minecraft.options.getMenuBackgroundBlurriness() < 1.0F) {
+            graphics.blurBeforeThisStratum();
+        }
+        graphics.fill(0, 0, this.width, this.height, UiTheme.withAlpha(UiTheme.SCRIM, fade()));
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        layoutPanel();
+        long now = Util.getMillis();
+        float dt = Math.max(0.001f, Math.min(0.1f, (now - lastFrame) / 1000f));
+        lastFrame = now;
+        float f = fade();
+        var font = this.font;
+
+        int cardX = panelX + 6;
+        int cardY = panelY + 6;
+        int cardW = UiTheme.SIDEBAR_W - 6;
+        int cardH = panelH - 12;
+        int contentX = panelX + UiTheme.SIDEBAR_W;
+        int contentY = panelY + UiTheme.HEADER_H;
+        int contentW = panelX + panelW - contentX - 12;
+        int contentH = panelY + panelH - contentY - 10;
+
+        // непрозрачность поверхностей панели (настройка «Прозрачность панели»)
+        float fo = f * Math.max(0.35f, Math.min(1f, cfg.panelOpacity / 100f));
+
+        // ── панель
+        UiDraw.shadow(graphics, panelX, panelY, panelW, panelH, UiTheme.R_LG, 6, UiTheme.withAlpha(UiTheme.SHADOW, f));
+        UiDraw.roundRectBordered(graphics, panelX, panelY, panelW, panelH, UiTheme.R_LG,
+                UiTheme.withAlpha(UiTheme.PANEL, fo), UiTheme.withAlpha(UiTheme.BORDER, fo));
+
+        // ── сайдбар
+        UiDraw.roundRectBordered(graphics, cardX, cardY, cardW, cardH, UiTheme.R_MD,
+                UiTheme.withAlpha(UiTheme.SIDEBAR, fo), UiTheme.withAlpha(UiTheme.BORDER_SOFT, fo));
+        int navX = cardX + 5;
+        int navW = cardW - 10;
+        for (int i = 0; i < TAB_NAMES.length; i++) {
+            int iy = cardY + 8 + i * 30;
+            boolean selected = i == tab;
+            boolean hover = mouseX >= navX && mouseX < navX + navW && mouseY >= iy && mouseY < iy + 26;
+            if (selected) {
+                UiDraw.roundRect(graphics, navX, iy, navW, 26, UiTheme.R_MD,
+                        UiTheme.withAlpha(UiTheme.accentSoft(accentColor, 0.30f), f));
+                UiDraw.roundRect(graphics, navX + 1, iy + 6, 2, 14, 1, UiTheme.withAlpha(accentColor, f));
+            } else if (hover) {
+                UiDraw.roundRect(graphics, navX, iy, navW, 26, UiTheme.R_MD, UiTheme.withAlpha(UiTheme.ROW_HOVER, f));
+            }
+            int iconColor = selected ? UiTheme.mix(accentColor, 0xFFFFFFFF, 0.25f) : UiTheme.TEXT_DIM;
+            UiDraw.icon(graphics, TAB_ICONS[i], navX + 9, iy + 5, 16, UiTheme.withAlpha(iconColor, f));
+            UiDraw.text(graphics, font, TAB_NAMES[i], navX + 32, iy + 9,
+                    UiTheme.withAlpha(selected ? UiTheme.TEXT : UiTheme.TEXT_SOFT, f));
+        }
+        UiDraw.text(graphics, font, "правый Ctrl · Esc", cardX + 10, cardY + cardH - 16, UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
+
+        // ── заголовок раздела
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(contentX + 14, panelY + 11);
+        graphics.pose().scale(1.35f, 1.35f);
+        UiDraw.text(graphics, font, TAB_NAMES[tab], 0, 0, UiTheme.withAlpha(UiTheme.TEXT, f));
+        graphics.pose().popMatrix();
+        UiDraw.text(graphics, font, TAB_SUBS[tab], contentX + 15, panelY + 27, UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
+        UiDraw.hLine(graphics, contentX + 10, panelX + panelW - 10, panelY + UiTheme.HEADER_H - 2, 1,
+                UiTheme.withAlpha(UiTheme.DIVIDER, f));
+
+        // ── кнопка закрытия
+        int closeX = panelX + panelW - 34;
+        int closeY = panelY + 11;
+        boolean closeHover = mouseX >= closeX && mouseX < closeX + 24 && mouseY >= closeY && mouseY < closeY + 20;
+        UiDraw.roundRect(graphics, closeX, closeY, 24, 20, UiTheme.R_SM,
+                closeHover ? UiTheme.withAlpha(UiTheme.ERROR, 0.85f) : UiTheme.withAlpha(UiTheme.ROW, f));
+        UiDraw.icon(graphics, UiDraw.Icon.CLOSE, closeX + 6, closeY + 4, 12,
+                UiTheme.withAlpha(closeHover ? 0xFFFFFFFF : UiTheme.TEXT_SOFT, f));
+
+        // ── содержимое вкладки
+        int total = 0;
+        for (UiSection s : tabs.get(tab)) {
+            total += s.contentHeight() + 8;
+        }
+        maxScroll = Math.max(0, total - contentH);
+        scrollTarget = clamp(scrollTarget, 0, maxScroll);
+        scroll += (scrollTarget - scroll) * (cfg.animations ? 0.35 : 1.0);
+
+        graphics.enableScissor(contentX, contentY, contentX + contentW, contentY + contentH);
+        int y = (int) Math.round(contentY + 4 - scroll);
+        for (UiSection s : tabs.get(tab)) {
+            s.accent = accentColor;
+            s.layoutAt(contentX + 6, y, contentW - 12);
+            s.render(graphics, mouseX, mouseY, dt);
+            y += s.contentHeight() + 8;
+        }
+        for (UiSection s : tabs.get(tab)) {
+            for (UiWidget w : s.children()) {
+                if (w.hasPopup()) {
+                    w.popupLimitTop = contentY;
+                    w.popupLimitBottom = contentY + contentH;
+                    w.renderPopup(graphics, mouseX, mouseY, dt);
+                }
             }
         }
-        return builder.group(linesGroup.build())
-                .option(LabelOption.create(c("всего строк: " + lines.size()).withStyle(ChatFormatting.DARK_GRAY)))
-                .build();
-    }
+        graphics.disableScissor();
 
-    // ------------------------------------------------------------------ Настройки
-
-    private ConfigCategory settings() {
-        return ConfigCategory.createBuilder()
-                .name(c("Настройки"))
-                .group(OptionGroup.createBuilder()
-                        .name(c("Внешний вид"))
-                        .option(dropdown("Акцент", "Цвет акцента (пока хранится в конфиге).",
-                                "#8B5CF6", List.of(ACCENTS), () -> cfg.accent, v -> cfg.accent = v))
-                        .build())
-                .group(OptionGroup.createBuilder()
-                        .name(c("Конфиг"))
-                        .option(button("Сохранить конфиг", "сохранить", (screen, opt) -> run(() -> {
-                        })))
-                        .option(button("Открыть папку конфига", "открыть", (screen, opt) -> {
-                            Path dir = ElytrixConfig.file().getParent();
-                            if (dir != null) Util.getPlatform().openPath(dir);
-                        }))
-                        .build())
-                .option(LabelOption.create(c("Файл конфига: " + ElytrixConfig.file()).withStyle(ChatFormatting.GRAY)))
-                .option(LabelOption.create(c("Шорткат панели — правый Ctrl.").withStyle(ChatFormatting.GRAY)))
-                .option(LabelOption.create(c("Лого, сплэши и иконка — встроенный ресурспак ElytrixClient.")
-                        .withStyle(ChatFormatting.GRAY)))
-                .build();
-    }
-
-    // ------------------------------------------------------------------ утилиты
-
-    private Option<String> text(String name, String description, String def,
-                                Supplier<String> get, Consumer<String> set) {
-        return register(Option.<String>createBuilder()
-                .name(c(name))
-                .description(OptionDescription.of(c(description)))
-                .binding(def, get, set)
-                .controller(StringControllerBuilder::create)
-                .build());
-    }
-
-    private Option<String> dropdown(String name, String description, String def, List<String> values,
-                                    Supplier<String> get, Consumer<String> set) {
-        return register(Option.<String>createBuilder()
-                .name(c(name))
-                .description(OptionDescription.of(c(description)))
-                .binding(def, get, set)
-                .controller(opt -> DropdownStringControllerBuilder.create(opt).values(values).allowAnyValue(true))
-                .build());
-    }
-
-    private Option<Integer> slider(String name, String description, int def, int min, int max,
-                                   Supplier<Integer> get, Consumer<Integer> set) {
-        return register(Option.<Integer>createBuilder()
-                .name(c(name))
-                .description(OptionDescription.of(c(description)))
-                .binding(def, get, set)
-                .controller(opt -> IntegerSliderControllerBuilder.create(opt).range(min, max).step(1))
-                .build());
-    }
-
-    private Option<Boolean> tick(String name, String description, boolean def,
-                                 Supplier<Boolean> get, Consumer<Boolean> set) {
-        return register(Option.<Boolean>createBuilder()
-                .name(c(name))
-                .description(OptionDescription.of(c(description)))
-                .binding(def, get, set)
-                .controller(TickBoxControllerBuilder::create)
-                .build());
-    }
-
-    private ButtonOption button(String name, String text, BiConsumer<YACLScreen, ButtonOption> action) {
-        return ButtonOption.createBuilder()
-                .name(c(name))
-                .text(c(text))
-                .description(OptionDescription.of(c(name)))
-                .action(action)
-                .build();
-    }
-
-    private <T extends Option<?>> T register(T option) {
-        options.add(option);
-        return option;
-    }
-
-    /**
-     * Кнопки действий: сначала применяем введённые в поля значения к конфигу
-     * (в YACL они «висят» до сохранения), сохраняем на диск и только потом
-     * запускаем процесс — иначе боты ушли бы со старыми настройками.
-     */
-    private void run(Runnable action) {
-        for (Option<?> option : options) {
-            option.applyValue();
+        // ── полоса прокрутки
+        if (maxScroll > 1) {
+            int barX = contentX + contentW + 3;
+            int barTop = contentY + 6;
+            int barH = contentH - 12;
+            UiDraw.roundRect(graphics, barX, barTop, 3, barH, 1, UiTheme.withAlpha(UiTheme.TRACK, 0.7f * f));
+            int thumbH = Math.max(20, (int) (barH * (contentH / (double) (contentH + maxScroll))));
+            int thumbY = barTop + (int) ((barH - thumbH) * (scroll / maxScroll));
+            UiDraw.roundRect(graphics, barX - 1, thumbY, 4, thumbH, 2, UiTheme.withAlpha(accentColor, 0.9f * f));
         }
-        cfg.save();
-        action.run();
-    }
 
-    private void reopen() {
-        Minecraft.getInstance().setScreenAndShow(create(null));
-    }
-
-    private static Component consoleLine(String line) {
-        ChatFormatting color = ChatFormatting.GRAY;
-        String lower = line.toLowerCase();
-        if (lower.contains("ошиб") || lower.contains("error") || lower.contains("exception")) {
-            color = ChatFormatting.RED;
-        } else if (lower.contains("warn")) {
-            color = ChatFormatting.YELLOW;
-        } else if (line.startsWith("[BotMark]")) {
-            color = ChatFormatting.LIGHT_PURPLE;
-        } else if (line.startsWith("[SoulFire")) {
-            color = ChatFormatting.AQUA;
+        // ── подсказка
+        if (mouseY > contentY && mouseY < contentY + contentH) {
+            String tip = hoveredTooltip(mouseX, mouseY);
+            if (tip != null) {
+                int tw = font.width(tip) + 10;
+                int tx = Math.min(mouseX + 8, panelX + panelW - tw - 4);
+                int ty = mouseY + 10;
+                UiDraw.roundRect(graphics, tx, ty, tw, 16, UiTheme.R_SM, 0xF00B0E14);
+                UiDraw.text(graphics, font, tip, tx + 5, ty + 4, UiTheme.TEXT_SOFT);
+            }
         }
-        return c(ellipsize(line)).withStyle(color);
     }
 
-    private static String ellipsize(String line) {
-        if (line.length() <= CONSOLE_LINE_WIDTH) {
-            return line;
+    private String hoveredTooltip(int mouseX, int mouseY) {
+        for (UiSection s : tabs.get(tab)) {
+            for (UiWidget w : s.children()) {
+                if (w.tooltip != null && w.contains(mouseX, mouseY)) {
+                    return w.tooltip;
+                }
+            }
         }
-        return line.substring(0, CONSOLE_LINE_WIDTH) + "…";
+        return null;
     }
 
-    /**
-     * В 26.2 метод withStyle есть только у MutableComponent (у интерфейса Component его нет),
-     * поэтому хелпер возвращает MutableComponent, а не Component.
-     */
-    private static MutableComponent c(String value) {
-        return Component.literal(value);
+    // ─────────────────────────────────────────────────────────────────────
+    //  Ввод
+    // ─────────────────────────────────────────────────────────────────────
+
+    private boolean inContent(double mx, double my) {
+        int contentX = panelX + UiTheme.SIDEBAR_W;
+        int contentY = panelY + UiTheme.HEADER_H;
+        return mx >= contentX && mx < panelX + panelW && my >= contentY && my < panelY + panelH;
+    }
+
+    private boolean inPanel(double mx, double my) {
+        return mx >= panelX && mx < panelX + panelW && my >= panelY && my < panelY + panelH;
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mx = event.x();
+        double my = event.y();
+        int button = event.button();
+        layoutPanel();
+
+        // открытые выпадающие списки перехватывают клик первыми
+        for (UiSection s : tabs.get(tab)) {
+            for (UiWidget w : s.children()) {
+                if (w.hasPopup() && w.mouseClicked(mx, my, button)) {
+                    return true;
+                }
+            }
+        }
+
+        // кнопка закрытия
+        int closeX = panelX + panelW - 34;
+        int closeY = panelY + 11;
+        if (mx >= closeX && mx < closeX + 24 && my >= closeY && my < closeY + 20) {
+            onClose();
+            return true;
+        }
+
+        // сайдбар
+        int cardX = panelX + 6;
+        int cardY = panelY + 6;
+        int cardW = UiTheme.SIDEBAR_W - 6;
+        for (int i = 0; i < TAB_NAMES.length; i++) {
+            int iy = cardY + 8 + i * 30;
+            if (mx >= cardX + 5 && mx < cardX + cardW - 5 && my >= iy && my < iy + 26) {
+                if (i != tab) {
+                    tab = i;
+                    scroll = 0;
+                    scrollTarget = 0;
+                }
+                return true;
+            }
+        }
+
+        // содержимое
+        if (inContent(mx, my)) {
+            for (UiSection s : tabs.get(tab)) {
+                for (UiWidget w : s.children()) {
+                    if (w.mouseClicked(mx, my, button)) {
+                        return true;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // клик вне панели — закрыть
+        if (!inPanel(mx, my) && cfg.closeOnOutsideClick) {
+            onClose();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        draggingScrollbar = false;
+        for (UiSection s : tabs.get(tab)) {
+            for (UiWidget w : s.children()) {
+                if (w.mouseReleased(event.x(), event.y(), event.button())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (draggingScrollbar) {
+            scrollToMouse(event.y());
+            return true;
+        }
+        for (UiSection s : tabs.get(tab)) {
+            for (UiWidget w : s.children()) {
+                if (w.mouseDragged(event.x(), event.y(), event.button())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void scrollToMouse(double mouseY) {
+        int contentY = panelY + UiTheme.HEADER_H;
+        int contentH = panelY + panelH - contentY - 10;
+        double t = (mouseY - contentY - 6) / Math.max(1.0, contentH - 12);
+        scrollTarget = clamp(t, 0, 1) * maxScroll;
+        scroll = scrollTarget;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        if (inContent(mx, my)) {
+            scrollTarget = clamp(scrollTarget - scrollY * 26, 0, maxScroll);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_RIGHT_CONTROL) {
+            onClose();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    private static double clamp(double v, double min, double max) {
+        return v < min ? min : (v > max ? max : v);
     }
 }

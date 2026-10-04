@@ -238,32 +238,19 @@ def fit_into(sw, sh, src, max_w, max_h):
 
 # ----------------------------------------------------------------------- main
 def main():
-    print("Иконка приложения (icon-master.png):")
+    print("Иконка клиента (icon-master.png):")
     w, h, px = read_png(os.path.join(ART, "icon-master.png"))
     px = key_corner_background(w, h, px)
     for size, name in ((128, "icon.png"), (256, "window_icon_256.png"),
                        (128, "window_icon_128.png"), (64, "window_icon_64.png"),
-                       (32, "window_icon_32.png"), (16, "window_icon_16.png"),
-                       (64, os.path.join("..", "..", "resourcepacks", "elytrixclient", "pack.png"))):
+                       (32, "window_icon_32.png"), (16, "window_icon_16.png")):
         nw, nh, out = resize(w, h, px, size, size)
         write_png(os.path.join(ASSETS, name), nw, nh, out)
 
-    print("Логотип для главного меню (logo-master.png):")
-    w, h, px = read_png(os.path.join(ART, "logo-master.png"))
-    key_dark_background(w, h, px, lo=14, hi=52)
-    restore_outline(w, h, px, steps=2)
-    box = bbox_alpha(w, h, px)
-    cw, ch, cropped = crop(w, h, px, box)
-    # Текстура ванильного логотипа: 256x64, сам логотип рисуется в полосе 256x44 сверху.
-    nw, nh, scaled = fit_into(cw, ch, cropped, 250, 42)
-    canvas = bytearray(256 * 64 * 4)
-    canvas = blit(256, 64, canvas, nw, nh, scaled, (256 - nw) // 2, (44 - nh) // 2)
-    write_png(os.path.join(PACK, "assets/minecraft/textures/gui/title/minecraft.png"), 256, 64, canvas)
-
-    # «JAVA EDITION» под логотипом убираем полностью
-    write_png(os.path.join(PACK, "assets/minecraft/textures/gui/title/edition.png"),
-              128, 16, bytearray(128 * 16 * 4))
-
+    # Тот же значок 256x256, но под textures/ — его рисует экран загрузки
+    # (GuiGraphicsExtractor.blit по Identifier).
+    nw, nh, out = resize(w, h, px, 256, 256)
+    write_png(os.path.join(ASSETS, "textures/gui/logo.png"), nw, nh, out)
     print("Готово.")
 
 

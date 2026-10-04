@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Подменяет иконку окна Minecraft (и значок в панели задач) на иконку ElytrixClient,
- * заодно меняет заголовок окна.
+ * Подменяет иконку окна Minecraft (и значок в панели задач) на иконку ElytrixClient.
+ * Заголовок окна не трогаем — главное меню и окно остаются ванильными.
  *
  * Текстуры лежат в нашем jar: assets/elytrixclient/window_icon_*.png (генерируются
  * скриптом scripts/make-textures.py из art/icon-master.png).
@@ -74,7 +74,6 @@ public final class WindowIcon {
                 buffer.get(i).width(width).height(height).pixels(pixels);
             }
             GLFW.glfwSetWindowIcon(windowHandle, buffer);
-            GLFW.glfwSetWindowTitle(windowHandle, "ElytrixClient — Minecraft 26.2");
             Elytrixclient.LOG.info("[Elytrix] Иконка окна заменена ({} размеров)", images.size());
         }
     }
