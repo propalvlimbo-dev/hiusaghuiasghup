@@ -58,8 +58,16 @@ public class ElytrixConfig {
     public String accent = "#FF4FC3";
     /** Индекс акцента в палитре UiTheme.ACCENTS (0 — розовый). */
     public int accentIndex = 0;
-    /** Непрозрачность поверхностей панели, % (60…100). */
+    /** Непрозрачность фона панели, % (0…100). Карточки и текст не затрагивает. */
     public int panelOpacity = 88;
+    /** Звуки меню. */
+    public boolean menuSounds = true;
+    /** Набор звуков: 0 — «Мягкий», 1 — «Стеклянный», 2 — «Ванильный» (UiSound.SET_NAMES). */
+    public int soundSet = 0;
+    /** Громкость звуков меню, % (0…100). */
+    public int soundVolume = 70;
+    /** Тихий звук при наведении на элементы. */
+    public boolean hoverSounds = true;
     /** Плавные анимации интерфейса. */
     public boolean animations = true;
     /** Размывать фон за панелью. */

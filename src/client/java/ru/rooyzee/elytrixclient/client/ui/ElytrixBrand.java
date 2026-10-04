@@ -38,7 +38,9 @@ public final class ElytrixBrand {
         // только знак клиента: без названия, версии и подписей, без «ореола»-плашки
         int mark = 64;
         int markX = cx - mark / 2;
-        int markY = 30;
+        // ближе к кнопкам: кнопки меню начинаются с height/4 + 48
+        int buttonsTop = g.guiHeight() / 4 + 48;
+        int markY = Math.max(8, buttonsTop - mark - 8);
         int k = UiDraw.shapeScale();
         UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), markX, markY, mark, mark,
                 LOGO_SIZE * k, LOGO_SIZE * k, UiTheme.withAlpha(0xFFFFFFFF, alpha));

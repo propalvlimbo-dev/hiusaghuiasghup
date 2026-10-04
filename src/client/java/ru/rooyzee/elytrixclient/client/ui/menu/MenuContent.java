@@ -6,6 +6,7 @@ import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixLoader;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixQuality;
+import ru.rooyzee.elytrixclient.client.ui.UiSound;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
 
@@ -74,7 +75,7 @@ public final class MenuContent {
         list.add(new MenuCard("Быстрый доступ")
                 .add(new MenuRow.Button("Открыть консоль", MenuRow.Button.Kind.PRIMARY, () -> open.accept(3)))
                 .add(new MenuRow.Button("Боты", MenuRow.Button.Kind.SECONDARY, () -> open.accept(1)))
-                .add(new MenuRow.Button("Темы", MenuRow.Button.Kind.SECONDARY, () -> open.accept(4))));
+                .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY, () -> open.accept(4))));
         return list;
     }
 
@@ -174,11 +175,17 @@ public final class MenuContent {
     public List<MenuCard> settings() {
         List<MenuCard> list = new ArrayList<>();
         list.add(new MenuCard("Внешний вид")
+                .add(new MenuRow.Swatches("Акцент", UiTheme.ACCENTS, () -> cfg.accentIndex, i -> {
+                    cfg.accentIndex = i;
+                    MenuKit.accent = UiTheme.accent(i);
+                    cfg.accent = String.format("#%06X", MenuKit.accent & 0xFFFFFF);
+                    dirty.run();
+                }))
                 .add(new MenuRow.Mode("Размер панели", SCALE_NAMES, () -> cfg.uiScaleIndex, i -> {
                     cfg.uiScaleIndex = i;
                     dirty.run();
                 }))
-                .add(new MenuRow.Slider("Непрозрачность", 60, 100, 1, "%", () -> cfg.panelOpacity, v -> {
+                .add(new MenuRow.Slider("Непрозрачность фона", 0, 100, 1, "%", () -> cfg.panelOpacity, v -> {
                     cfg.panelOpacity = v;
                     dirty.run();
                 }))
@@ -186,6 +193,19 @@ public final class MenuContent {
                     cfg.effectsQuality = i;
                     dirty.run();
                 })));
+
+        list.add(new MenuCard("Звуки")
+                .add(toggle("Звуки меню", () -> cfg.menuSounds, v -> cfg.menuSounds = v))
+                .add(new MenuRow.Mode("Набор звуков", UiSound.SET_NAMES, () -> cfg.soundSet, i -> {
+                    cfg.soundSet = i;
+                    dirty.run();
+                }).when(() -> cfg.menuSounds))
+                .add(new MenuRow.Slider("Громкость", 0, 100, 5, "%", () -> cfg.soundVolume, v -> {
+                    cfg.soundVolume = v;
+                    dirty.run();
+                }).when(() -> cfg.menuSounds))
+                .add(toggle("Звук при наведении", () -> cfg.hoverSounds, v -> cfg.hoverSounds = v)
+                        .when(() -> cfg.menuSounds)));
 
         list.add(new MenuCard("Анимации")
                 .add(toggle("Плавные анимации", () -> cfg.animations, v -> {
@@ -197,12 +217,6 @@ public final class MenuContent {
         list.add(new MenuCard("Меню и загрузка")
                 .add(toggle("Хакерский фон меню", () -> cfg.hackerBackground, v -> cfg.hackerBackground = v))
                 .add(toggle("Свой экран загрузки", () -> cfg.customLoading, v -> cfg.customLoading = v)));
-
-        list.add(new MenuCard("Поведение")
-                .add(toggle("Панель по правому Ctrl", () -> cfg.panelKey, v -> cfg.panelKey = v))
-                .add(toggle("Закрывать кликом мимо", () -> cfg.closeOnOutsideClick, v -> cfg.closeOnOutsideClick = v))
-                .add(new MenuRow.Button("Папка конфига", MenuRow.Button.Kind.SECONDARY, MenuContent::openConfigFolder))
-                .add(new MenuRow.Button("Сбросить интерфейс", MenuRow.Button.Kind.DANGER, resetUi)));
         return list;
     }
 

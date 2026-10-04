@@ -8,7 +8,9 @@
     "LoadingOverlayMixin",
     "ScreenMixin",
     "TitleScreenMixin",
-    "LoadingScreensMixin"
+    "LoadingScreensMixin",
+    "AbstractButtonMixin",
+    "AbstractWidgetMixin"
   ],
   "injectors": {
     "defaultRequire": 1

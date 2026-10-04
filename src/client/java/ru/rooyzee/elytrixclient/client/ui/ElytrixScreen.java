@@ -129,6 +129,7 @@ public class ElytrixScreen extends Screen {
         if (tabs.isEmpty()) {
             buildTabs();
             replay();
+            UiSound.play(UiSound.Event.OPEN);
         }
     }
 
@@ -140,8 +141,8 @@ public class ElytrixScreen extends Screen {
         tabs.add(new Tab("Боты", UiIcon.BOTS, VIEW_CARDS, content.bots()));
         tabs.add(new Tab("Прокси", UiIcon.PROXY, VIEW_CARDS, content.proxy()));
         tabs.add(new Tab("Консоль", UiIcon.CONSOLE, VIEW_CONSOLE, List.of()));
-        tabs.add(new Tab("Темы", UiIcon.CHART, VIEW_THEMES, List.of()));
         tabs.add(new Tab("Настройки", UiIcon.SETTINGS, VIEW_CARDS, content.settings()));
+        current = Mth.clamp(current, 0, tabs.size() - 1);
         tabAnim = new float[tabs.size()];
         tabHover = new float[tabs.size()];
         tabAnim[current] = 1f;
@@ -163,6 +164,9 @@ public class ElytrixScreen extends Screen {
 
     @Override
     public void onClose() {
+        if (!closing) {
+            UiSound.play(UiSound.Event.CLOSE);
+        }
         closing = true;
         if (!UiWidget.ANIMATIONS) {
             finishClose();
@@ -187,6 +191,7 @@ public class ElytrixScreen extends Screen {
             return;
         }
         current = index;
+        UiSound.play(UiSound.Event.CLICK);
         search = "";
         searching = false;
         scroll = 0;
@@ -217,11 +222,23 @@ public class ElytrixScreen extends Screen {
         cfg.customLoading = true;
         cfg.closeOnOutsideClick = false;
         cfg.panelKey = true;
+        cfg.menuSounds = true;
+        cfg.soundSet = 0;
+        cfg.soundVolume = 70;
+        cfg.hoverSounds = true;
         UiTheme.applyPreset(0);
         MenuKit.accent = UiTheme.accent(0);
         UiWidget.ANIMATIONS = true;
         cfg.save();
     }
+
+    /** Ссылка внизу раздела «Настройки». */
+    private String footerText() {
+        return search.isEmpty() && "Настройки".equals(tabs.get(current).name()) ? "Сбросить интерфейс" : null;
+    }
+
+    private float footerY;
+    private float footerHover;
 
     private int view() {
         return search.isEmpty() ? tabs.get(current).view() : VIEW_CARDS;
@@ -341,8 +358,8 @@ public class ElytrixScreen extends Screen {
     }
 
     private void drawFrame(GuiGraphicsExtractor g) {
-        float op = Mth.clamp(cfg.panelOpacity / 100f, 0.6f, 1f);
-        shadow(g, 0, 0, W, H, 8, 18, 0x73000000);
+        float op = Mth.clamp(cfg.panelOpacity / 100f, 0f, 1f);
+        shadow(g, 0, 0, W, H, 8, 26, UiTheme.withAlpha(0x80000000, 0.3f + 0.7f * op));
         fill(g, 0, 0, BAR, H, 8, 0, 0, 8, UiTheme.withAlpha(sidebar(), op));
         fill(g, BAR, 0, W - BAR, H, 0, 8, 8, 0, UiTheme.withAlpha(content(), op));
         if (!UiTheme.isLight()) {
@@ -400,6 +417,9 @@ public class ElytrixScreen extends Screen {
             float y = tabY(i);
             boolean active = i == current && search.isEmpty();
             boolean hv = inside(mx, my, 5, y, BAR - 10, 15);
+            if (hv && tabHover[i] < 0.02f && !active) {
+                UiSound.play(UiSound.Event.HOVER);
+            }
             tabAnim[i] = approach(tabAnim[i], active ? 1f : 0f, 14f, dt);
             tabHover[i] = approach(tabHover[i], hv ? 1f : 0f, 16f, dt);
             float t = tabAnim[i];
@@ -475,13 +495,30 @@ public class ElytrixScreen extends Screen {
             float h = card.layout(font, colX[c], colY[c], COL_W);
             colY[c] += h + 8;
         }
-        float total = Math.max(colY[0], colY[1]) + scroll + 2;
+        String footer = footerText();
+        footerY = Math.max(colY[0], colY[1]) + 4;
+        float total = Math.max(colY[0], colY[1]) + scroll + 2 + (footer != null ? 22 : 0);
         maxScroll = Math.max(0f, total - H);
         scrollTarget = Mth.clamp(scrollTarget, 0f, maxScroll);
 
         UiDraw.scissor(g, (int) BAR + 1, 1, (int) W - 1, (int) H - 1);
         for (MenuCard card : cards) {
             card.render(g, font, mx, my, dt);
+        }
+        if (footer != null) {
+            // неприметная текстовая ссылка внизу раздела
+            float fw = width(font, footer, SMALL);
+            float fx = CX + (CW - fw) / 2f;
+            boolean fh = inside(mx, my, fx - 4, footerY, fw + 8, 14);
+            if (fh && footerHover < 0.02f) {
+                UiSound.play(UiSound.Event.HOVER);
+            }
+            footerHover = approach(footerHover, fh ? 1f : 0f, 14f, dt);
+            int fc = UiTheme.mix(UiTheme.withAlpha(dim(), 0.8f), UiTheme.ERROR, footerHover);
+            text(g, font, footer, fx, ty(SMALL, footerY + 7), fc, SMALL);
+            if (footerHover > 0.01f) {
+                hline(g, fx, footerY + 11, fw, UiTheme.withAlpha(UiTheme.ERROR, 0.6f * footerHover));
+            }
         }
         UiDraw.unscissor(g);
 
@@ -552,6 +589,16 @@ public class ElytrixScreen extends Screen {
         if (view == VIEW_THEMES) {
             themes.mouseClicked(mx, my, button);
             return true;
+        }
+        String footer = footerText();
+        if (footer != null && button == 0) {
+            float fw = width(this.font, footer, SMALL);
+            float fx = CX + (CW - fw) / 2f;
+            if (inside(mx, my, fx - 4, footerY, fw + 8, 14)) {
+                UiSound.play(UiSound.Event.OFF);
+                resetInterface();
+                return true;
+            }
         }
         if (mx >= BAR) {
             for (MenuCard card : visibleCards()) {

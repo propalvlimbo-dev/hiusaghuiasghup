@@ -20,7 +20,7 @@ public enum UiIcon {
     SEARCH("search"), PLUS("plus"), MINUS("minus"), DOTS("dots"),
     BOLT("bolt"), PLAY("play"), STOP("stop"), REFRESH("refresh"),
     TRASH("trash"), COPY("copy"), KEY("key"), CLOCK("clock"),
-    USER("user"), LIST("list"), FOLDER("folder"), CHART("chart");
+    USER("user"), LIST("list"), FOLDER("folder"), CHART("chart"), PALETTE("palette"), SOUND("sound");
 
     private static final int K_MAX = 4;
     /** Нетекстовый (белый) цвет: blit с ним не перекрашивает текстуру. */

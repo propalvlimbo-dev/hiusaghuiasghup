@@ -7,6 +7,7 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.util.Util;
 import org.lwjgl.glfw.GLFW;
+import ru.rooyzee.elytrixclient.client.ui.UiSound;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 
 import java.util.function.BooleanSupplier;
@@ -135,6 +136,7 @@ public abstract class MenuRow {
         public boolean mouseClicked(double mx, double my, int button) {
             if (button == 0 && hover(mx, my)) {
                 set.accept(!get.getAsBoolean());
+                UiSound.play(get.getAsBoolean() ? UiSound.Event.ON : UiSound.Event.OFF);
                 return true;
             }
             return false;
@@ -213,6 +215,7 @@ public abstract class MenuRow {
             if (button == 0 && hover(mx, my)) {
                 dragging = true;
                 apply(mx);
+                UiSound.play(UiSound.Event.CLICK);
                 return true;
             }
             return false;
@@ -238,6 +241,7 @@ public abstract class MenuRow {
         private float[] cy = new float[0];
         private float[] cw = new float[0];
         private float[] sel = new float[0];
+        private int hoveredChip = -1;
 
         public Mode(String label, String[] options, IntSupplier get, IntConsumer set) {
             super(label);
@@ -293,16 +297,27 @@ public abstract class MenuRow {
         public void render(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
             text(g, font, label, x + 10, ty(SMALL, y + 7), soft(), SMALL);
             int current = get.getAsInt();
+            boolean anyHover = false;
             for (int i = 0; i < options.length; i++) {
                 boolean on = i == current;
                 sel[i] = sel[i] < 0 ? (on ? 1f : 0f) : approach(sel[i], on ? 1f : 0f, 16f, dt);
                 boolean hv = inside(mx, my, cx[i], cy[i], cw[i], CHIP_H);
+                if (hv && hoveredChip != i) {
+                    UiSound.play(UiSound.Event.HOVER);
+                }
+                if (hv) {
+                    anyHover = true;
+                    hoveredChip = i;
+                }
                 fill(g, cx[i], cy[i], cw[i], CHIP_H, 4, hv ? UiTheme.mix(field(), text(), 0.06f) : field());
                 if (sel[i] > 0.01f) {
                     fill(g, cx[i], cy[i], cw[i], CHIP_H, 4, UiTheme.withAlpha(accent, sel[i]));
                 }
                 int col = UiTheme.mix(hv ? text() : soft(), 0xFFFFFFFF, sel[i]);
                 textCenter(g, font, options[i], cx[i] + cw[i] / 2f, ty(SMALL, cy[i] + CHIP_H / 2f), col, SMALL);
+            }
+            if (!anyHover) {
+                hoveredChip = -1;
             }
         }
 
@@ -314,6 +329,7 @@ public abstract class MenuRow {
             for (int i = 0; i < options.length; i++) {
                 if (inside(mx, my, cx[i], cy[i], cw[i], CHIP_H)) {
                     set.accept(i);
+                    UiSound.play(UiSound.Event.CLICK);
                     return true;
                 }
             }
@@ -361,6 +377,7 @@ public abstract class MenuRow {
         private final Kind kind;
         private final Runnable action;
         private float press;
+        private boolean wasHover;
 
         public Button(String label, Kind kind, Runnable action) {
             this(() -> label, kind, action);
@@ -386,6 +403,10 @@ public abstract class MenuRow {
             float bw = w - 20;
             float bh = 14;
             boolean hv = inside(mx, my, bx, by, bw, bh);
+            if (hv && !wasHover) {
+                UiSound.play(UiSound.Event.HOVER);
+            }
+            wasHover = hv;
             hoverT = approach(hoverT, hv ? 1f : 0f, 16f, dt);
             press = approach(press, 0f, 10f, dt);
             float s = press * 0.8f;
@@ -418,6 +439,7 @@ public abstract class MenuRow {
         public boolean mouseClicked(double mx, double my, int button) {
             if (button == 0 && inside(mx, my, x + 10, y + 3, w - 20, 14)) {
                 press = 1f;
+                UiSound.play(UiSound.Event.CLICK);
                 action.run();
                 return true;
             }
@@ -542,6 +564,79 @@ public abstract class MenuRow {
         @Override
         public void blur() {
             focused = false;
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    //  Выбор цвета — кружки-образцы
+    // ═════════════════════════════════════════════════════════════════════
+
+    public static final class Swatches extends MenuRow {
+        private static final float R = 5.5f;
+        private static final float STEP = 17;
+        private final int[] colors;
+        private final IntSupplier get;
+        private final IntConsumer set;
+        private final float[] sel;
+        private int hovered = -1;
+
+        public Swatches(String label, int[] colors, IntSupplier get, IntConsumer set) {
+            super(label);
+            this.colors = colors;
+            this.get = get;
+            this.set = set;
+            this.sel = new float[colors.length];
+            java.util.Arrays.fill(sel, -1f);
+            this.h = 30;
+        }
+
+        private float sx(int i) {
+            return x + 10 + R + i * STEP;
+        }
+
+        private float sy() {
+            return y + 20;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
+            text(g, font, label, x + 10, ty(SMALL, y + 7), soft(), SMALL);
+            int current = get.getAsInt();
+            int hv = -1;
+            for (int i = 0; i < colors.length; i++) {
+                boolean on = i == current;
+                sel[i] = sel[i] < 0 ? (on ? 1f : 0f) : approach(sel[i], on ? 1f : 0f, 16f, dt);
+                float cx = sx(i);
+                float cy = sy();
+                boolean over = Math.hypot(mx - cx, my - cy) <= R + 2;
+                if (over) {
+                    hv = i;
+                }
+                if (sel[i] > 0.01f) {
+                    float rr = R + 2.4f;
+                    outline(g, cx - rr, cy - rr, rr * 2, rr * 2, rr, 1f, UiTheme.withAlpha(colors[i], 0.9f * sel[i]));
+                }
+                disc(g, cx, cy, R - (over && !on ? -0.4f : 0f), colors[i]);
+            }
+            if (hv >= 0 && hv != hovered) {
+                UiSound.play(UiSound.Event.HOVER);
+            }
+            hovered = hv;
+        }
+
+        @Override
+        public boolean mouseClicked(double mx, double my, int button) {
+            if (button != 0) {
+                return false;
+            }
+            for (int i = 0; i < colors.length; i++) {
+                if (Math.hypot(mx - sx(i), my - sy()) <= R + 2) {
+                    set.accept(i);
+                    UiSound.play(UiSound.Event.CLICK);
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

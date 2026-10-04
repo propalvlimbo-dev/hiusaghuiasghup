@@ -198,7 +198,7 @@ public final class UiVector {
         if (g == null || w <= 0.05f || h <= 0.05f || spread <= 0.05f || layers <= 0) {
             return;
         }
-        int n = Math.max(1, Math.min(layers, 12));
+        int n = Math.max(1, Math.min(layers, 40));
         float base = ((color >>> 24) & 0xFF) / 255f;
         if (base <= 0f) {
             return;
@@ -207,7 +207,8 @@ public final class UiVector {
         for (int i = n; i >= 1; i--) {
             float t = (float) i / n;
             float grow = spread * t;
-            float alpha = base * (1f - t * t) * 1.6f / n;
+            // слои складываются: сумма 3(1-t)^2/n по внешним слоям ≈ (1-d)^3 — плавный спад без ступенек
+            float alpha = base * 3f * (1f - t) * (1f - t) / n + base * 0.02f / n;
             int col = (Math.round(255f * Math.min(1f, alpha)) << 24) | rgb;
             roundRect(g, x - grow, y - grow, w + 2 * grow, h + 2 * grow, radius + grow, col);
         }

@@ -151,7 +151,7 @@ public final class MenuKit {
 
     public static void shadow(GuiGraphicsExtractor g, float x, float y, float w, float h, float r,
                               float spread, int color) {
-        UiVector.shadow(g, x, y, w, h, r, spread, a(color), 6);
+        UiVector.shadow(g, x, y, w, h, r, spread, a(color), Math.max(8, Math.min(32, Math.round(spread * 1.4f))));
     }
 
     public static void hline(GuiGraphicsExtractor g, float x, float y, float w, int color) {

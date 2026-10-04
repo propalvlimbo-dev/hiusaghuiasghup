@@ -1,0 +1,86 @@
+{
+  "ui.soft.click": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/soft/click"
+      }
+    ]
+  },
+  "ui.soft.hover": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/soft/hover"
+      }
+    ]
+  },
+  "ui.soft.on": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/soft/on"
+      }
+    ]
+  },
+  "ui.soft.off": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/soft/off"
+      }
+    ]
+  },
+  "ui.soft.open": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/soft/open"
+      }
+    ]
+  },
+  "ui.soft.close": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/soft/close"
+      }
+    ]
+  },
+  "ui.glass.click": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/glass/click"
+      }
+    ]
+  },
+  "ui.glass.hover": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/glass/hover"
+      }
+    ]
+  },
+  "ui.glass.on": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/glass/on"
+      }
+    ]
+  },
+  "ui.glass.off": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/glass/off"
+      }
+    ]
+  },
+  "ui.glass.open": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/glass/open"
+      }
+    ]
+  },
+  "ui.glass.close": {
+    "sounds": [
+      {
+        "name": "elytrixclient:ui/glass/close"
+      }
+    ]
+  }
+}
