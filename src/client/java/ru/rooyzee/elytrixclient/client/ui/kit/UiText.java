@@ -6,6 +6,7 @@ import java.util.Map;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
@@ -35,9 +36,21 @@ public final class UiText {
     public static Identifier FACE = UI;
 
     private static final Map<String, Component> CACHE = new HashMap<>();
+    /** Идентификатор шрифта → описание для {@link Style#withFont(FontDescription)} (26.2). */
+    private static final Map<Identifier, FontDescription> DESCRIPTIONS = new HashMap<>();
     private static final int CACHE_LIMIT = 1024;
 
     private UiText() {
+    }
+
+    /** В 26.2 стиль принимает {@code FontDescription}, а не {@code Identifier}. */
+    private static FontDescription description(Identifier face) {
+        FontDescription cached = DESCRIPTIONS.get(face);
+        if (cached == null) {
+            cached = new FontDescription.Resource(face);
+            DESCRIPTIONS.put(face, cached);
+        }
+        return cached;
     }
 
     public static Component of(String text, Identifier face) {
@@ -47,7 +60,7 @@ public final class UiText {
         String key = face + "\u0000" + text;
         Component component = CACHE.get(key);
         if (component == null) {
-            component = Component.literal(text).withStyle(Style.EMPTY.withFont(face));
+            component = Component.literal(text).withStyle(Style.EMPTY.withFont(description(face)));
             if (CACHE.size() > CACHE_LIMIT) {
                 CACHE.clear();
             }
