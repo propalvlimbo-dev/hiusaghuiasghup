@@ -1,5 +1,7 @@
 package ru.rooyzee.elytrixclient.client.ui.kit;
 
+import net.minecraft.client.Minecraft;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,10 +55,38 @@ public final class UiText {
         return cached;
     }
 
-    public static Component of(String text, Identifier face) {
+    private static final Map<String, Identifier> RESOLVED = new HashMap<>();
+    private static final int SCALE_MAX = 6;
+
+    /**
+     * Вариант шрифта под текущий масштаб интерфейса: {@code <face>_x<k>}, где у TTF
+     * {@code oversample = k}. Тогда пиксель глифа совпадает с пикселем экрана.
+     * Если oversample больше масштаба, игра ужимает атлас без сглаживания
+     * (nearest), и у букв выпадают тонкие штрихи: «П» превращается в «Г».
+     */
+    public static Identifier resolve(Identifier face) {
+        if (!"elytrixclient".equals(face.getNamespace())) {
+            return face;
+        }
+        int k = 1;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getWindow() != null) {
+            k = Math.max(1, Math.min(SCALE_MAX, mc.getWindow().getGuiScale()));
+        }
+        String key = face.getPath() + "_x" + k;
+        Identifier id = RESOLVED.get(key);
+        if (id == null) {
+            id = Identifier.fromNamespaceAndPath(face.getNamespace(), key);
+            RESOLVED.put(key, id);
+        }
+        return id;
+    }
+
+    public static Component of(String text, Identifier logicalFace) {
         if (text == null || text.isEmpty()) {
             return Component.empty();
         }
+        Identifier face = resolve(logicalFace);
         String key = face + "\u0000" + text;
         Component component = CACHE.get(key);
         if (component == null) {

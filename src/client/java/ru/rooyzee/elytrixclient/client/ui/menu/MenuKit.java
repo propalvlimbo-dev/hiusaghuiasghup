@@ -56,11 +56,11 @@ public final class MenuKit {
     }
 
     public static int cardFill() {
-        return UiTheme.isLight() ? 0xF5FFFFFF : 0xEB141117;
+        return UiTheme.isLight() ? 0xF5FFFFFF : 0xE6161319;
     }
 
     public static int cardEdge() {
-        return UiTheme.isLight() ? 0x2414141A : 0xFF2A2430;
+        return UiTheme.isLight() ? 0x1F14141A : 0x1CFFFFFF;
     }
 
     public static int field() {
@@ -68,7 +68,7 @@ public final class MenuKit {
     }
 
     public static int divider() {
-        return UiTheme.isLight() ? 0x1A14141A : 0x1FFFFFFF;
+        return UiTheme.isLight() ? 0x1414141A : 0x12FFFFFF;
     }
 
     public static int text() {
@@ -141,8 +141,8 @@ public final class MenuKit {
     /** Карточка: тонкая рамка + заливка. */
     public static void card(GuiGraphicsExtractor g, float x, float y, float w, float h, float r,
                             int fill, int edge) {
-        fill(g, x, y, w, h, r, edge);
-        fill(g, x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1), fill);
+        fill(g, x, y, w, h, r, fill);
+        outline(g, x, y, w, h, r, 0.5f, edge);
     }
 
     public static void disc(GuiGraphicsExtractor g, float cx, float cy, float r, int color) {

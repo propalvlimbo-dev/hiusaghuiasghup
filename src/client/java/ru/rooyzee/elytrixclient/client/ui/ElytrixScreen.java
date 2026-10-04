@@ -54,7 +54,6 @@ public class ElytrixScreen extends Screen {
     private static final int[] SCALE_OPTIONS = {0, 90, 100, 115, 130};
 
     private static final Identifier MENU_BG = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/menu_bg.png");
-    private static final Identifier LOGO = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/logo.png");
 
     private static final int VIEW_CARDS = 0;
     private static final int VIEW_CONSOLE = 1;
@@ -250,6 +249,10 @@ public class ElytrixScreen extends Screen {
         scale = targetScale() * (0.96f + 0.04f * e);
         originX = this.width / 2f - W * scale / 2f;
         originY = this.height / 2f - H * scale / 2f + (1f - e) * 6f;
+        // привязка к сетке пикселей экрана — текст не «плывёт» между пикселями
+        float k = Math.max(1, UiDraw.shapeScale());
+        originX = Math.round(originX * k) / k;
+        originY = Math.round(originY * k) / k;
     }
 
     private double lx(double sx) {
@@ -315,10 +318,7 @@ public class ElytrixScreen extends Screen {
 
     private void drawFrame(GuiGraphicsExtractor g) {
         float op = Mth.clamp(cfg.panelOpacity / 100f, 0.6f, 1f);
-        shadow(g, 0, 0, W, H, 8, 16, 0x8C000000);
-        if (ElytrixQuality.glow()) {
-            shadow(g, 0, 0, W, H, 8, 10, UiTheme.withAlpha(accent, 0.12f));
-        }
+        shadow(g, 0, 0, W, H, 8, 18, 0x73000000);
         fill(g, 0, 0, BAR, H, 8, 0, 0, 8, UiTheme.withAlpha(sidebar(), op));
         fill(g, BAR, 0, W - BAR, H, 0, 8, 8, 0, UiTheme.withAlpha(content(), op));
         if (!UiTheme.isLight()) {
@@ -326,7 +326,7 @@ public class ElytrixScreen extends Screen {
                     1050, 1050, 1050, 1050, a(0xFFFFFFFF, op));
         }
         UiVector.rect(g, BAR, 0, 0.5f, H, a(divider()));
-        outline(g, 0, 0, W, H, 8, 0.6f, UiTheme.withAlpha(cardEdge(), 0.9f));
+        outline(g, 0, 0, W, H, 8, 0.5f, UiTheme.isLight() ? 0x2414141A : 0x24FFFFFF);
     }
 
     // ── сайдбар ─────────────────────────────────────────────────────────
@@ -337,9 +337,8 @@ public class ElytrixScreen extends Screen {
 
     private void drawSidebar(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
         // логотип
-        UiDraw.icon(g, LOGO, 12, 10, 14, 14, 256, 256, a(0xFFFFFFFF));
-        text(g, font, "elytrix", 31, ty(TITLE, 17), text(), TITLE);
-        disc(g, 31 + width(font, "elytrix", TITLE) + 3, 19.5f, 1.4f, accent);
+        text(g, font, "elytrix", 12, ty(TITLE, 17), text(), TITLE);
+        disc(g, 12 + width(font, "elytrix", TITLE) + 2.5f, 19.5f, 1.3f, accent);
 
         // поиск
         searchT = approach(searchT, searching ? 1f : 0f, 16f, dt);
@@ -349,7 +348,7 @@ public class ElytrixScreen extends Screen {
         float sh = 17;
         fill(g, sx, sy, sw, sh, 5, field());
         outline(g, sx, sy, sw, sh, 5, 0.7f, UiTheme.mix(cardEdge(), accent, searchT));
-        UiIcon.SEARCH.draw(g, (int) sx + 5, (int) (sy + sh / 2f - 4), 8, a(UiTheme.mix(dim(), accent, searchT)));
+        UiIcon.SEARCH.draw(g, (int) sx + 4, (int) (sy + 3.5f), 10, a(UiTheme.mix(dim(), accent, searchT)));
         UiDraw.scissor(g, (int) sx + 15, (int) sy, (int) (sx + sw - 4), (int) (sy + sh));
         float tcy = sy + sh / 2f;
         if (search.isEmpty() && !searching) {
@@ -380,15 +379,14 @@ public class ElytrixScreen extends Screen {
                 fill(g, 5, y, BAR - 10, 15, 4, UiTheme.withAlpha(text(), 0.05f * tabHover[i] * (1f - t)));
             }
             if (t > 0.01f) {
-                if (ElytrixQuality.glow()) {
-                    shadow(g, 5, y, BAR - 10, 15, 4, 5, UiTheme.withAlpha(accent, 0.22f * t));
-                }
-                hgrad(g, 5, y, BAR - 10, 15, 4, UiTheme.withAlpha(accent, 0.62f * t),
-                        UiTheme.withAlpha(accent2(), 0.62f * t));
+                // выбранный пункт: мягкая подложка + тонкая полоска акцента слева
+                fill(g, 5, y, BAR - 10, 15, 4, UiTheme.withAlpha(text(), 0.07f * t));
+                fill(g, 5, y + 4, 2, 7 * t, 1, accent);
             }
-            int col = UiTheme.mix(UiTheme.mix(dim(), soft(), tabHover[i]), 0xFFFFFFFF, t);
-            tab.icon().draw(g, 10, (int) (y + 3.5f), 8, a(col));
-            text(g, font, tab.name(), 22, ty(BODY, y + 7.5f), col, BODY);
+            int col = UiTheme.mix(UiTheme.mix(dim(), soft(), tabHover[i]), text(), t);
+            int iconCol = UiTheme.mix(UiTheme.mix(dim(), soft(), tabHover[i]), accent, t);
+            tab.icon().draw(g, 11, (int) y + 2, 10, a(iconCol));
+            text(g, font, tab.name(), 25, ty(BODY, y + 7.5f), col, BODY);
         }
 
         drawProfile(g, font);

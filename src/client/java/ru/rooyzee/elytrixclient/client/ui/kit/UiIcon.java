@@ -58,10 +58,29 @@ public enum UiIcon {
         UiDraw.icon(g, texture(), x, y, 16, argb);
     }
 
-    /** Иконка, растянутая в квадрат {@code size}×{@code size}. */
+    private final Identifier[] cache10 = new Identifier[K_MAX + 1];
+
+    /** Компактный набор 10×10 единиц (_10_x1 … _10_x4) — для сайдбара и поиска. */
+    public Identifier texture10(int scale) {
+        int k = Math.max(1, Math.min(K_MAX, scale));
+        if (cache10[k] == null) {
+            cache10[k] = Identifier.fromNamespaceAndPath("elytrixclient",
+                    "textures/gui/icons/" + id + "_10_x" + k + ".png");
+        }
+        return cache10[k];
+    }
+
+    /**
+     * Иконка {@code size}×{@code size}. Размеры 10 и 16 рисуются 1:1 из своего набора
+     * (пиксель текстуры = пиксель экрана), остальные — растяжением ближайшего.
+     */
     public void draw(GuiGraphicsExtractor g, int x, int y, int size, int argb) {
         int k = UiDraw.shapeScale();
-        UiDraw.icon(g, texture(k), x, y, size, size, size() * k, size() * k, argb);
+        if (size <= 12) {
+            UiDraw.icon(g, texture10(k), x, y, size, size, 10 * k, 10 * k, argb);
+        } else {
+            UiDraw.icon(g, texture(k), x, y, size, size, size() * k, size() * k, argb);
+        }
     }
 
     /** Иконка вписана в квадрат {@code box}×{@code box} с центром в (cx, cy). */

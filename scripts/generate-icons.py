@@ -195,10 +195,13 @@ def write_png(path, w, h, px):
 
 
 def render(sdf, size=SIZE):
+    # SDF описаны в сетке 16×16: переводим пиксель в эти координаты,
+    # а расстояние — обратно в пиксели (иначе x2..x4 занимали бы четверть картинки)
+    k = size / 16.0
     px = bytearray(size * size * 4)
     for y in range(size):
         for x in range(size):
-            d = sdf(x + 0.5, y + 0.5)
+            d = sdf((x + 0.5) / k, (y + 0.5) / k) * k
             cov = max(0.0, min(1.0, 0.5 - d))
             a = int(round(cov * 255))
             i = (y * size + x) * 4
@@ -220,10 +223,12 @@ def main():
     total = 0
     for name, sdf in sorted(ICONS.items()):
         for k in SCALES:
-            size = SIZE * k
-            px = render(sdf, size)
-            write_png(os.path.join(OUT, f"{name}_x{k}.png"), size, size, px)
-            total += 1
+            # базовый набор 16 единиц и компактный 10 единиц (сайдбар, поиск)
+            for base, suffix in ((SIZE, ""), (10, "_10")):
+                size = base * k
+                px = render(sdf, size)
+                write_png(os.path.join(OUT, f"{name}{suffix}_x{k}.png"), size, size, px)
+                total += 1
     print(f"Готово: {len(ICONS)} иконок x {len(SCALES)} масштаба = {total} файлов.")
 
 

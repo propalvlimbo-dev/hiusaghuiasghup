@@ -125,13 +125,7 @@ public abstract class MenuRow {
             float th = 9;
             float tx = x + w - 10 - tw;
             float tyy = cy - th / 2f;
-            if (t > 0.01f) {
-                fill(g, tx, tyy, tw, th, th / 2f, UiTheme.withAlpha(accent, 0.25f * t));
-            }
-            fill(g, tx, tyy, tw, th, th / 2f, UiTheme.mix(field(), accent, t));
-            if (t > 0.01f) {
-                hgrad(g, tx, tyy, tw, th, th / 2f, UiTheme.withAlpha(accent, t), UiTheme.withAlpha(accent2(), t));
-            }
+            fill(g, tx, tyy, tw, th, th / 2f, UiTheme.mix(UiTheme.mix(field(), text(), 0.08f), accent, t));
             float knob = 3.2f;
             float kx = tx + 4.5f + (tw - 9f) * t;
             disc(g, kx, cy, knob, UiTheme.mix(dim(), 0xFFFFFFFF, t));
@@ -205,14 +199,13 @@ public abstract class MenuRow {
             fill(g, trackX(), tyy, trackW(), 3, 1.5f, field());
             float fw = trackW() * shown;
             if (fw > 0.5f) {
-                hgrad(g, trackX(), tyy, fw, 3, 1.5f, accent, accent2());
+                fill(g, trackX(), tyy, fw, 3, 1.5f, accent);
             }
             float kx = trackX() + fw;
             if (dragging || hoverT > 0.01f) {
                 disc(g, kx, tyy + 1.5f, 6f, UiTheme.withAlpha(accent, 0.18f * Math.max(hoverT, dragging ? 1f : 0f)));
             }
             disc(g, kx, tyy + 1.5f, 3.6f, 0xFFFFFFFF);
-            disc(g, kx, tyy + 1.5f, 1.6f, accent);
         }
 
         @Override
@@ -306,8 +299,7 @@ public abstract class MenuRow {
                 boolean hv = inside(mx, my, cx[i], cy[i], cw[i], CHIP_H);
                 fill(g, cx[i], cy[i], cw[i], CHIP_H, 4, hv ? UiTheme.mix(field(), text(), 0.06f) : field());
                 if (sel[i] > 0.01f) {
-                    hgrad(g, cx[i], cy[i], cw[i], CHIP_H, 4,
-                            UiTheme.withAlpha(accent, sel[i]), UiTheme.withAlpha(accent2(), sel[i]));
+                    fill(g, cx[i], cy[i], cw[i], CHIP_H, 4, UiTheme.withAlpha(accent, sel[i]));
                 }
                 int col = UiTheme.mix(hv ? text() : soft(), 0xFFFFFFFF, sel[i]);
                 textCenter(g, font, options[i], cx[i] + cw[i] / 2f, ty(SMALL, cy[i] + CHIP_H / 2f), col, SMALL);
@@ -404,8 +396,7 @@ public abstract class MenuRow {
             int label;
             switch (kind) {
                 case PRIMARY -> {
-                    hgrad(g, bx, by, bw, bh, 4, UiTheme.mix(accent, 0xFFFFFFFF, 0.08f * hoverT),
-                            UiTheme.mix(accent2(), 0xFFFFFFFF, 0.08f * hoverT));
+                    fill(g, bx, by, bw, bh, 4, UiTheme.mix(accent, 0xFFFFFFFF, 0.12f * hoverT));
                     label = 0xFFFFFFFF;
                 }
                 case DANGER -> {
