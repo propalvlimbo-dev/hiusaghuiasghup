@@ -123,6 +123,31 @@ public final class CustomMusic {
         }
     }
 
+    /** Текущая громкость как дробь 0..1. */
+    public static float volumeFrac() {
+        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
+        return cfg != null ? cfg.musicVolume / 100f : 0.5f;
+    }
+
+    /** Прогресс трека 0..1 (заглушка — seek не поддерживается для стриминга). */
+    public static float progress() {
+        Player p = player;
+        if (p == null || !p.isAlive()) return 0f;
+        return p.getProgress();
+    }
+
+    /** Строка времени "MM:SS / MM:SS" (заглушка). */
+    public static String timeString() {
+        Player p = player;
+        if (p == null || !p.isAlive()) return null;
+        return p.getTimeString();
+    }
+
+    /** Перемотка (заглушка — для стриминга не реализована). */
+    public static void seekTo(float frac) {
+        // OpenAL streaming не поддерживает произвольный seek без перекодировки
+    }
+
     public static void stop() {
         Player p = player;
         player = null;
@@ -206,6 +231,16 @@ public final class CustomMusic {
         return Math.max(0f, Math.min(1f, music * cfg.musicVolume / 100f));
     }
 
+    private static long estimateDuration(Path file) {
+        try {
+            long size = Files.size(file);
+            // ~128kbps = 16000 bytes/sec
+            return Math.max(1, size * 1000L / 16000L);
+        } catch (IOException e) {
+            return 180_000L; // 3 min fallback
+        }
+    }
+
     /** Поток воспроизведения одного трека. */
     private static final class Player extends Thread {
         private final Path file;
@@ -228,6 +263,26 @@ public final class CustomMusic {
         void togglePause() {
             paused = !paused;
             pauseToggle = true;
+        }
+
+        /** Прогресс трека 0..1 (приблизительный, по количеству обработанных буферов). */
+        private volatile float progress;
+        private volatile long startTime;
+        private volatile long durationEstimate;
+
+        float getProgress() { return progress; }
+
+        String getTimeString() {
+            long elapsed = (System.currentTimeMillis() - startTime) / 1000;
+            long total = durationEstimate / 1000;
+            if (total <= 0) return null;
+            return fmt(elapsed) + " / " + fmt(total);
+        }
+
+        private static String fmt(long sec) {
+            long m = sec / 60;
+            long s = sec % 60;
+            return m + ":" + (s < 10 ? "0" : "") + s;
         }
 
         @Override
@@ -293,6 +348,8 @@ public final class CustomMusic {
                     AL10.alSourceQueueBuffers(source, b);
                 }
                 AL10.alSourcePlay(source);
+                startTime = System.currentTimeMillis();
+                durationEstimate = estimateDuration(file);
 
                 float gain = 0f;
                 while (!halted) {
@@ -304,6 +361,7 @@ public final class CustomMusic {
                         AL10.alSourcePlay(source);
                     }
                     gain += (volume - gain) * 0.2f;
+                    if (durationEstimate > 0) progress = Math.min(1f, (float)(System.currentTimeMillis() - startTime) / durationEstimate);
                     AL10.alSourcef(source, AL10.AL_GAIN, gain);
 
                     int processed = AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED);
@@ -407,6 +465,8 @@ public final class CustomMusic {
                     AL10.alSourceQueueBuffers(source, b);
                 }
                 AL10.alSourcePlay(source);
+                startTime = System.currentTimeMillis();
+                durationEstimate = estimateDuration(file);
 
                 float gain = 0f;
                 while (!halted) {
@@ -418,6 +478,7 @@ public final class CustomMusic {
                         AL10.alSourcePlay(source);
                     }
                     gain += (volume - gain) * 0.2f;
+                    if (durationEstimate > 0) progress = Math.min(1f, (float)(System.currentTimeMillis() - startTime) / durationEstimate);
                     AL10.alSourcef(source, AL10.AL_GAIN, gain);
 
                     int processed = AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED);
