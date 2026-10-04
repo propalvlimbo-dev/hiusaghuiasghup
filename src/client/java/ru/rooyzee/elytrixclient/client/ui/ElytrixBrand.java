@@ -22,6 +22,9 @@ public final class ElytrixBrand {
     /** Размер, под который сгенерированы спрайты знака (logo_88_xN). */
     private static final int LOGO_SIZE = 88;
 
+    /** Масштаб логотипа: 1.5x от базового размера кнопок. */
+    private static final float SCALE = 1.5f;
+
     private ElytrixBrand() {
     }
 
@@ -31,10 +34,11 @@ public final class ElytrixBrand {
         if (mc == null) {
             return;
         }
-        int mark = ElytrixMenuButtons.LOGO;
+        int base = ElytrixMenuButtons.LOGO;
+        int mark = Math.round(base * SCALE);
         // центрируем по горизонтали на экране
         int markX = (screenWidth - mark) / 2;
-        int markY = Math.max(8, ElytrixMenuButtons.logoY());
+        int markY = Math.max(6, ElytrixMenuButtons.logoY() - (mark - base) / 2);
         int k = UiDraw.shapeScale();
         UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), markX, markY, mark, mark,
                 LOGO_SIZE * k, LOGO_SIZE * k, UiTheme.withAlpha(0xFFFFFFFF, alpha));

@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixLoader;
+import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
 
 /**
  * Подменяет ванильный экран загрузки (красный фон и логотип Mojang) на свой —
@@ -89,6 +90,9 @@ public abstract class LoadingOverlayMixin {
         float actual = this.reload.getActualProgress();
         this.currentProgress = Mth.clamp(this.currentProgress * 0.95F + actual * 0.050000012F, 0.0F, 1.0F);
         ElytrixLoader.render(graphics, this.currentProgress, alpha);
+
+        // Островок музыки поверх загрузки
+        MusicIsland.render(graphics, graphics.guiWidth(), graphics.guiHeight(), mouseX, mouseY);
 
         if (fadeOutAnim >= 2.0F) {
             this.minecraft.gui.setOverlay(null);

@@ -84,6 +84,45 @@ public final class CustomMusic {
         nextStartAt = 0;
     }
 
+    /** Предыдущий трек — перезапускаем очередь. */
+    public static void prev() {
+        stop();
+        queue.clear();
+        nextStartAt = 0;
+    }
+
+    /** Пауза/продолжить. */
+    public static void togglePause() {
+        Player p = player;
+        if (p != null) {
+            p.togglePause();
+        }
+    }
+
+    /** Играет ли сейчас. */
+    public static boolean isPlaying() {
+        Player p = player;
+        return p != null && p.isAlive() && !p.paused;
+    }
+
+    /** Громкость +10%. */
+    public static void volumeUp() {
+        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
+        if (cfg != null) {
+            cfg.musicVolume = Math.min(100, cfg.musicVolume + 10);
+            cfg.save();
+        }
+    }
+
+    /** Громкость −10%. */
+    public static void volumeDown() {
+        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
+        if (cfg != null) {
+            cfg.musicVolume = Math.max(0, cfg.musicVolume - 10);
+            cfg.save();
+        }
+    }
+
     public static void stop() {
         Player p = player;
         player = null;
@@ -172,6 +211,8 @@ public final class CustomMusic {
         private final Path file;
         volatile float volume;
         private volatile boolean halted;
+        volatile boolean paused;
+        private volatile boolean pauseToggle;
 
         Player(Path file, float volume) {
             super("Elytrix music");
@@ -182,6 +223,11 @@ public final class CustomMusic {
 
         void halt() {
             halted = true;
+        }
+
+        void togglePause() {
+            paused = !paused;
+            pauseToggle = true;
         }
 
         @Override
@@ -241,6 +287,13 @@ public final class CustomMusic {
 
                 float gain = 0f;
                 while (!halted) {
+                    // пауза
+                    if (paused) {
+                        AL10.alSourcePause(source);
+                        while (paused && !halted) Thread.sleep(80L);
+                        if (halted) break;
+                        AL10.alSourcePlay(source);
+                    }
                     gain += (volume - gain) * 0.2f;
                     AL10.alSourcef(source, AL10.AL_GAIN, gain);
 
@@ -348,6 +401,13 @@ public final class CustomMusic {
 
                 float gain = 0f;
                 while (!halted) {
+                    // пауза
+                    if (paused) {
+                        AL10.alSourcePause(source);
+                        while (paused && !halted) Thread.sleep(80L);
+                        if (halted) break;
+                        AL10.alSourcePlay(source);
+                    }
                     gain += (volume - gain) * 0.2f;
                     AL10.alSourcef(source, AL10.AL_GAIN, gain);
 
