@@ -3,8 +3,10 @@
   "id": "elytrixclient",
   "version": "${version}",
   "name": "ElytrixClient",
-  "description": "Клиент для ботов",
-  "authors": [],
+  "description": "Клиент Elytrix: свой рендер интерфейса, в планах — нагрузочный тест своего сервера (BotMark + SoulFire).",
+  "authors": [
+    "rooyzee"
+  ],
   "contact": {},
   "license": "All-Rights-Reserved",
   "icon": "assets/elytrixclient/icon.png",
@@ -27,6 +29,7 @@
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
-    "minecraft": "${minecraft_version}"
+    "minecraft": "${minecraft_version}",
+    "java": ">=25"
   }
 }

@@ -1,0 +1,15 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "elytrixclient:inter.ttf",
+      "size": 20.0,
+      "oversample": 3.0,
+      "shift": [
+        0.0,
+        2.0
+      ],
+      "skip": ""
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "providers": [
+    {
+      "type": "reference",
+      "id": "minecraft:include/space"
+    },
+    {
+      "type": "ttf",
+      "file": "expensive-262:sora.ttf",
+      "size": 9.0,
+      "oversample": 2.0,
+      "shift": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "type": "ttf",
+      "file": "expensive-262:montserrat-medium.ttf",
+      "size": 9.0,
+      "oversample": 2.0,
+      "shift": [
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

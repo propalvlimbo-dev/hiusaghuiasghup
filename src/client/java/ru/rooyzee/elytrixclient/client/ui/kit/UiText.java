@@ -1,0 +1,114 @@
+package ru.rooyzee.elytrixclient.client.ui.kit;
+
+import net.minecraft.client.Minecraft;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.Identifier;
+
+/**
+ * Шрифты интерфейса ElytrixClient.
+ *
+ * <p>Ванильный шрифт Minecraft — bitmap 5×7, он «пиксельный» по рисунку и не
+ * годится для современного вида. Здесь свои TTF-шрифты (Inter для текста,
+ * JetBrains Mono для консоли и чисел), которые рендерит сама игра через
+ * font-провайдеры {@code type: ttf} — то есть со сглаживанием и под любым
+ * масштабом интерфейса.
+ *
+ * <p>Файлы: {@code assets/elytrixclient/font/*.json} + {@code .ttf}.
+ * Стиль со своим шрифтом применяется к {@link Component}, поэтому измерение
+ * ширины тоже делается через {@code UiDraw.width(font, component)} — иначе текст
+ * «не влезал» бы в отведённые рамки.
+ */
+public final class UiText {
+    /** Основной шрифт интерфейса (Inter). */
+    public static final Identifier UI = Identifier.fromNamespaceAndPath("elytrixclient", "ui");
+    /** Крупные заголовки (Inter, размер ~20). */
+    public static final Identifier TITLE = Identifier.fromNamespaceAndPath("elytrixclient", "ui_title");
+    /** Моноширинный: консоль, версии, адреса, числа (JetBrains Mono). */
+    public static final Identifier MONO = Identifier.fromNamespaceAndPath("elytrixclient", "mono");
+
+    /** Текущий шрифт по умолчанию для {@link UiDraw#text}. */
+    public static Identifier FACE = UI;
+
+    private static final Map<String, Component> CACHE = new HashMap<>();
+    /** Идентификатор шрифта → описание для {@link Style#withFont(FontDescription)} (26.2). */
+    private static final Map<Identifier, FontDescription> DESCRIPTIONS = new HashMap<>();
+    private static final int CACHE_LIMIT = 1024;
+
+    private UiText() {
+    }
+
+    /** В 26.2 стиль принимает {@code FontDescription}, а не {@code Identifier}. */
+    private static FontDescription description(Identifier face) {
+        FontDescription cached = DESCRIPTIONS.get(face);
+        if (cached == null) {
+            cached = new FontDescription.Resource(face);
+            DESCRIPTIONS.put(face, cached);
+        }
+        return cached;
+    }
+
+    private static final Map<String, Identifier> RESOLVED = new HashMap<>();
+    private static final int SCALE_MAX = 6;
+
+    /**
+     * Вариант шрифта под текущий масштаб интерфейса: {@code <face>_x<k>}, где у TTF
+     * {@code oversample = k}. Тогда пиксель глифа совпадает с пикселем экрана.
+     * Если oversample больше масштаба, игра ужимает атлас без сглаживания
+     * (nearest), и у букв выпадают тонкие штрихи: «П» превращается в «Г».
+     */
+    public static Identifier resolve(Identifier face) {
+        if (!"elytrixclient".equals(face.getNamespace())) {
+            return face;
+        }
+        int k = 1;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getWindow() != null) {
+            k = Math.max(1, Math.min(SCALE_MAX, UiDraw.scaleOverride > 0 ? UiDraw.scaleOverride
+                    : mc.getWindow().getGuiScale()));
+        }
+        String key = face.getPath() + "_x" + k;
+        Identifier id = RESOLVED.get(key);
+        if (id == null) {
+            id = Identifier.fromNamespaceAndPath(face.getNamespace(), key);
+            RESOLVED.put(key, id);
+        }
+        return id;
+    }
+
+    public static Component of(String text, Identifier logicalFace) {
+        if (text == null || text.isEmpty()) {
+            return Component.empty();
+        }
+        Identifier face = resolve(logicalFace);
+        String key = face + "\u0000" + text;
+        Component component = CACHE.get(key);
+        if (component == null) {
+            component = Component.literal(text).withStyle(Style.EMPTY.withFont(description(face)));
+            if (CACHE.size() > CACHE_LIMIT) {
+                CACHE.clear();
+            }
+            CACHE.put(key, component);
+        }
+        return component;
+    }
+
+    public static int width(Font font, String text, Identifier face) {
+        return font.width(of(text, face));
+    }
+
+    public static void draw(GuiGraphicsExtractor g, Font font, String text, int x, int y, int color,
+                            Identifier face, boolean shadow) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        g.text(font, of(text, face), x, y, color, shadow);
+    }
+}
