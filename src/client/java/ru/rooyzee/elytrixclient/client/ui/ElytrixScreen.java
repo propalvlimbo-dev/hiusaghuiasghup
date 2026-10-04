@@ -2,104 +2,94 @@ package ru.rooyzee.elytrixclient.client.ui;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
 import org.lwjgl.glfw.GLFW;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiButton;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiDropdown;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiEmpty;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiIcon;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiInfo;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiSection;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiSlider;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
-import ru.rooyzee.elytrixclient.client.ui.kit.UiToggle;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
+import ru.rooyzee.elytrixclient.client.ui.menu.ConsoleView;
+import ru.rooyzee.elytrixclient.client.ui.menu.MenuCard;
+import ru.rooyzee.elytrixclient.client.ui.menu.MenuContent;
+import ru.rooyzee.elytrixclient.client.ui.menu.MenuKit;
+import ru.rooyzee.elytrixclient.client.ui.menu.ThemesView;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static ru.rooyzee.elytrixclient.client.ui.menu.MenuKit.*;
+
 /**
- * Панель ElytrixClient — полностью кастомный рендер ({@code ui.kit}), без ванильных виджетов.
+ * Панель ElytrixClient (правый Ctrl).
  *
- * <p>Слева — сайдбар с разделами, справа — карточки со строками. Вся композиция описана
- * в «базовых» единицах (560×344) и затем масштабируется: либо как масштаб интерфейса самой
- * в единицах интерфейса игры (при {@code uiScaleIndex = 0}) или как заданный процент. Поэтому
- * панель перестаёт быть «одного размера» — её размер идёт за настройкой GUI Scale игры.
+ * <p>Панель 450×350 GUI-единиц. Слева бар 100: логотип, поиск, разделы
+ * с градиентной подсветкой, профиль игрока. Справа — свой фон-текстура и
+ * карточки в две колонки по 160 (раскладка «кирпичом»: следующая карточка
+ * ложится в более короткую колонку). Отдельные виды: «Консоль» и «Темы».
  *
- * <p>Открывается правым Ctrl (см. {@link ElytrixclientClient}), закрывается Esc,
- * повторным правым Ctrl или кликом вне панели.
+ * <p>Размеры в GUI-единицах — панель сама следует за «Масштабом интерфейса»;
+ * пресеты 90–130 % масштабируют её дополнительно, на маленьких окнах она
+ * ужимается, чтобы целиком влезать в экран.
  */
 public class ElytrixScreen extends Screen {
-
-    // ── базовая сетка композиции (эталон) ────────────────────────────────
-    private static final int BASE_W = 560;
-    private static final int BASE_H = 344;
-    /** Наименьший «базовый» размер: ниже него включается компактная вёрстка. */
-    private static final int MIN_BASE_W = 380;
-    private static final int MIN_BASE_H = 250;
-    private static final int COMPACT_BELOW = 500;
-    private static final int SCROLLBAR_W = 4;
-    /** Место справа под «оверлейный» скроллбар, чтобы он не перекрывал карточки. */
-    private static final int SCROLLBAR_SPACE = 12;
-    private static final int CLOSE_SIZE = 26;
-    private static final int CLOSE_Y = 16;
+    private static final float W = 450;
+    private static final float H = 350;
+    private static final float BAR = 100;
+    private static final float COL_W = 160;
+    private static final float GAP = 10;
+    private static final float CX = BAR + 10;
+    private static final float CW = W - BAR - 20;
     private static final int[] SCALE_OPTIONS = {0, 90, 100, 115, 130};
-    private static final String[] SCALE_NAMES = {"Авто (по окну)", "90%", "100%", "115%", "130%"};
 
-    private static final int TAB_HOME = 0;
-    private static final int TAB_BOTS = 1;
-    private static final int TAB_PROXY = 2;
-    private static final int TAB_CONSOLE = 3;
-    private static final int TAB_SETTINGS = 4;
+    private static final Identifier MENU_BG = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/menu_bg.png");
+    private static final Identifier LOGO = Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/logo.png");
 
-    private static final String[] TAB_NAMES = {"Главная", "Боты", "Прокси", "Консоль", "Настройки"};
-    private static final String[] TAB_SUBS = {"Обзор клиента", "Список ботов", "Прокси для ботов", "Вывод процессов", "Вид и поведение"};
-    private static final UiIcon[] TAB_ICONS = {
-            UiIcon.HOME, UiIcon.BOTS, UiIcon.PROXY, UiIcon.CONSOLE, UiIcon.SETTINGS
-    };
+    private static final int VIEW_CARDS = 0;
+    private static final int VIEW_CONSOLE = 1;
+    private static final int VIEW_THEMES = 2;
+    /** Разделитель в сайдбаре стоит перед этим разделом. */
+    private static final int SPLIT_AT = 4;
+
+    private record Tab(String name, UiIcon icon, int view, List<MenuCard> cards) {
+    }
 
     private final Screen parent;
     private final ElytrixConfig cfg = ElytrixclientClient.CONFIG;
-    private final List<List<UiSection>> tabs = new ArrayList<>();
+    private final List<Tab> tabs = new ArrayList<>();
+    private final ConsoleView console = new ConsoleView();
+    private ThemesView themes;
+    private float[] tabAnim = new float[0];
+    private float[] tabHover = new float[0];
+    private int current;
 
-    private int tab = TAB_HOME;
-    private int prevTab = TAB_HOME;
-    private double scroll;
-    private double scrollTarget;
-    private double maxScroll;
-    private boolean draggingScrollbar;
+    private float scroll;
+    private float scrollTarget;
+    private float maxScroll;
 
-    private long openedAt;
-    private long lastFrame;
-    private float panelT;
-    private float tabT = 1f;
-    private float indicatorY;
-    private boolean indicatorInit;
+    private float openT;
     private boolean closing;
-    private long closingAt;
+    private long lastFrame;
     private boolean dirty;
     private long dirtyAt;
 
-    /** Текущий «базовый» размер композиции: 560×344 на нормальном экране, меньше — на маленьком. */
-    private int baseW = BASE_W;
-    private int baseH = BASE_H;
-    /** Ширина сайдбара: в компактном режиме — только иконки. */
-    private int sidebarW = UiTheme.SIDEBAR_W;
-    private boolean compact;
-    private int panelX;
-    private int panelY;
-    private int panelW;
-    private int panelH;
-    private int accentColor = UiTheme.ACCENTS[0];
+    private String search = "";
+    private boolean searching;
+    private float searchT;
+
+    private float scale = 1f;
+    private float originX;
+    private float originY;
 
     public ElytrixScreen(Screen parent) {
         super(Component.literal("Elytrix Client"));
@@ -110,84 +100,66 @@ public class ElytrixScreen extends Screen {
         return new ElytrixScreen(parent);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════
     //  Жизненный цикл
-    // ─────────────────────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════
 
     @Override
     protected void init() {
         super.init();
-        long now = Util.getMillis();
-        if (openedAt == 0L) {
-            openedAt = now;
-        }
-        lastFrame = now;
+        lastFrame = Util.getMillis();
         UiTheme.applyPreset(cfg.themeIndex);
         UiWidget.ANIMATIONS = cfg.animations;
-        rebuild();
-        replayCurrent();
-    }
-
-    private void rebuild() {
-        accentColor = UiTheme.accent(cfg.accentIndex);
-        tabs.clear();
-        tabs.add(homeTab());
-        tabs.add(botsTab());
-        tabs.add(proxyTab());
-        tabs.add(consoleTab());
-        tabs.add(settingsTab());
-    }
-
-    /** Перезапускает анимацию входа у карточек текущей вкладки (каскадом). */
-    private void replayCurrent() {
-        tabT = UiWidget.ANIMATIONS ? 0f : 1f;
-        List<UiSection> sections = tabs.get(tab);
-        for (int i = 0; i < sections.size(); i++) {
-            UiSection section = sections.get(i);
-            float baseDelay = 0.03f * i;
-            section.replay(baseDelay);
-            List<UiWidget> kids = section.children();
-            for (int j = 0; j < kids.size(); j++) {
-                kids.get(j).replay(baseDelay + 0.03f * (j + 1));
-            }
+        MenuKit.accent = UiTheme.accent(cfg.accentIndex);
+        if (tabs.isEmpty()) {
+            buildTabs();
+            replay();
         }
-        indicatorInit = false;
+    }
+
+    private void buildTabs() {
+        MenuContent content = new MenuContent(this::markDirty, this::select, this::resetInterface);
+        themes = new ThemesView(this::markDirty);
+        tabs.clear();
+        tabs.add(new Tab("Главная", UiIcon.HOME, VIEW_CARDS, content.home()));
+        tabs.add(new Tab("Боты", UiIcon.BOTS, VIEW_CARDS, content.bots()));
+        tabs.add(new Tab("Прокси", UiIcon.PROXY, VIEW_CARDS, content.proxy()));
+        tabs.add(new Tab("Консоль", UiIcon.CONSOLE, VIEW_CONSOLE, List.of()));
+        tabs.add(new Tab("Темы", UiIcon.CHART, VIEW_THEMES, List.of()));
+        tabs.add(new Tab("Настройки", UiIcon.SETTINGS, VIEW_CARDS, content.settings()));
+        tabAnim = new float[tabs.size()];
+        tabHover = new float[tabs.size()];
+        tabAnim[current] = 1f;
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
     }
 
     @Override
     public void tick() {
-        long now = Util.getMillis();
-        if (dirty && now - dirtyAt > 450L) {
+        if (dirty && Util.getMillis() - dirtyAt > 450L) {
             dirty = false;
             cfg.save();
         }
         UiWidget.ANIMATIONS = cfg.animations;
-
-        float dt = frameDelta(now);
-        // открытие/закрытие — быстро (≈110 мс), иначе панель «вылезает» слишком долго
-        float k = UiWidget.ANIMATIONS ? dt * 11f : 1f;
-        panelT = closing ? Math.max(0f, panelT - k) : Math.min(1f, panelT + k);
-        tabT = Math.min(1f, tabT + (UiWidget.ANIMATIONS ? dt * 8f : 1f));
-        scrollTarget = clamp(scrollTarget, 0, maxScroll);
-        scroll += (scrollTarget - scroll) * (UiWidget.ANIMATIONS ? Math.min(1f, dt * 12f) : 1.0);
-        if (closing && now - closingAt > 110L) {
-            this.minecraft.gui.setScreen(parent);
-        }
-    }
-
-    private float frameDelta(long now) {
-        float dt = (now - lastFrame) / 1000f;
-        lastFrame = now;
-        return Math.max(0.0005f, Math.min(0.1f, dt));
     }
 
     @Override
     public void onClose() {
-        if (closing) {
-            return;
-        }
         closing = true;
-        closingAt = Util.getMillis();
+        if (!UiWidget.ANIMATIONS) {
+            finishClose();
+        }
+    }
+
+    private void finishClose() {
+        if (dirty) {
+            dirty = false;
+            cfg.save();
+        }
+        this.minecraft.gui.setScreen(parent);
     }
 
     private void markDirty() {
@@ -195,149 +167,32 @@ public class ElytrixScreen extends Screen {
         dirtyAt = Util.getMillis();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    //  Наполнение вкладок
-    // ─────────────────────────────────────────────────────────────────────
-
-    private List<UiSection> homeTab() {
-        List<UiSection> list = new ArrayList<>();
-
-        UiSection client = new UiSection("Elytrix Client", "Minecraft 26.2 · Fabric")
-                .badge("v" + ElytrixLoader.version());
-        client.icon(UiIcon.BOLT);
-        client.add(new UiInfo("Панель", () -> cfg.panelKey ? "правый Ctrl" : "выключена", UiTheme.OK)
-                .icon(UiIcon.KEY));
-        client.add(new UiInfo("Цель по умолчанию", cfg::target, 0).icon(UiIcon.SERVER));
-        client.add(new UiInfo("Конфиг", () -> String.valueOf(ElytrixConfig.file().getFileName()), 0)
-                .icon(UiIcon.FOLDER));
-        list.add(client);
-
-        UiSection live = new UiSection("Состояние", "Живые данные клиента");
-        live.icon(UiIcon.CHART);
-        live.add(new UiInfo("FPS / эффекты",
-                () -> this.minecraft.getFps() + " · " + ElytrixQuality.summary(), UiTheme.OK).icon(UiIcon.BOLT));
-        live.add(new UiInfo("Тема", () -> UiTheme.PRESET_NAMES[Mth.clamp(cfg.themeIndex, 0,
-                UiTheme.PRESET_NAMES.length - 1)], 0).icon(UiIcon.SETTINGS));
-        live.add(new UiInfo("Размер панели", () -> SCALE_NAMES[Mth.clamp(cfg.uiScaleIndex, 0,
-                SCALE_NAMES.length - 1)], 0).icon(UiIcon.LIST));
-        list.add(live);
-
-        UiSection modules = new UiSection("Модули", "Боты, прокси и стресс-тест — следующим шагом");
-        modules.icon(UiIcon.SHIELD);
-        modules.add(new UiEmpty(UiIcon.BOTS, "Здесь появятся боты",
-                "BotMark и SoulFire сведём в один список"));
-        list.add(modules);
-        return list;
+    private void select(int index) {
+        if (index < 0 || index >= tabs.size() || (index == current && search.isEmpty())) {
+            return;
+        }
+        current = index;
+        search = "";
+        searching = false;
+        scroll = 0;
+        scrollTarget = 0;
+        replay();
     }
 
-    private List<UiSection> botsTab() {
-        UiSection bots = new UiSection("Боты", "Запуск и управление — следующим шагом").badge("0");
-        bots.icon(UiIcon.BOTS);
-        bots.add(new UiEmpty(UiIcon.BOTS, "Список пуст", "Пока это только каркас интерфейса"));
-        return List.of(bots);
-    }
-
-    private List<UiSection> proxyTab() {
-        UiSection proxy = new UiSection("Прокси", "Хранилище и проверка прокси").badge("0");
-        proxy.icon(UiIcon.PROXY);
-        proxy.add(new UiEmpty(UiIcon.GLOBE, "Прокси пока нет", "Сюда переедет импорт и проверка прокси"));
-        return List.of(proxy);
-    }
-
-    private List<UiSection> consoleTab() {
-        UiSection console = new UiSection("Консоль", "Вывод запущенных процессов").badge("●");
-        console.icon(UiIcon.CONSOLE);
-        console.add(new UiEmpty(UiIcon.CONSOLE, "Логов пока нет", "Запустим ботов — здесь появятся строки"));
-        return List.of(console);
-    }
-
-    private List<UiSection> settingsTab() {
-        List<UiSection> list = new ArrayList<>();
-
-        UiSection look = new UiSection("Внешний вид", "Применяется сразу, сохраняется автоматически");
-        look.icon(UiIcon.SETTINGS);
-        look.add(new UiDropdown("Тема", List.of(UiTheme.PRESET_NAMES), cfg.themeIndex, i -> {
-            cfg.themeIndex = i;
-            UiTheme.applyPreset(i);
-            markDirty();
-        }));
-        look.add(new UiDropdown("Акцент", List.of(UiTheme.ACCENT_NAMES), cfg.accentIndex, i -> {
-            cfg.accentIndex = i;
-            accentColor = UiTheme.accent(i);
-            cfg.accent = String.format("#%06X", accentColor & 0xFFFFFF);
-            markDirty();
-        }));
-        look.add(new UiDropdown("Размер панели", List.of(SCALE_NAMES), cfg.uiScaleIndex, i -> {
-            cfg.uiScaleIndex = i;
-            markDirty();
-        }));
-        look.add(new UiSlider("Прозрачность панели", "%", 60, 100, cfg.panelOpacity, v -> {
-            cfg.panelOpacity = v;
-            markDirty();
-        }));
-        list.add(look);
-
-        UiSection anim = new UiSection("Анимации", "Появление, переключение вкладок, тумблеры");
-        anim.icon(UiIcon.PLAY);
-        anim.add(new UiToggle("Плавные анимации", cfg.animations, v -> {
-            cfg.animations = v;
-            UiWidget.ANIMATIONS = v;
-            markDirty();
-        }));
-        anim.add(new UiToggle("Размытие фона", "Размывает мир за панелью", cfg.blurBackground, v -> {
-            cfg.blurBackground = v;
-            markDirty();
-        }));
-        anim.add(new UiDropdown("Качество эффектов", List.of(ElytrixQuality.NAMES), cfg.effectsQuality, i -> {
-            cfg.effectsQuality = i;
-            ElytrixQuality.update(cfg, this.minecraft.getWindow().getWidth() * this.minecraft.getWindow().getHeight(),
-                    this.minecraft.getFps());
-            markDirty();
-        }));
-        anim.add(new UiInfo("FPS / эффекты", () -> this.minecraft.getFps() + " · " + ElytrixQuality.summary(), UiTheme.OK)
-                .icon(UiIcon.CHART));
-        list.add(anim);
-
-        UiSection menu = new UiSection("Главное меню и загрузка", null);
-        menu.icon(UiIcon.SHIELD);
-        menu.add(new UiToggle("Хакерский фон меню", "Свой анимированный фон вместо панорамы", cfg.hackerBackground, v -> {
-            cfg.hackerBackground = v;
-            markDirty();
-        }));
-        menu.add(new UiToggle("Свой экран загрузки", "Вместо ванильного красного лоадера", cfg.customLoading, v -> {
-            cfg.customLoading = v;
-            markDirty();
-        }));
-        list.add(menu);
-
-        UiSection behaviour = new UiSection("Поведение", null);
-        behaviour.icon(UiIcon.GLOBE);
-        behaviour.add(new UiToggle("Панель по правому Ctrl", cfg.panelKey, v -> {
-            cfg.panelKey = v;
-            markDirty();
-        }));
-        behaviour.add(new UiToggle("Закрывать кликом вне панели", cfg.closeOnOutsideClick, v -> {
-            cfg.closeOnOutsideClick = v;
-            markDirty();
-        }));
-        behaviour.add(new UiButton("Открыть папку конфига", UiIcon.FOLDER, UiButton.Style.SECONDARY, this::openConfigFolder));
-        behaviour.add(new UiButton("Сбросить настройки интерфейса", UiIcon.REFRESH, UiButton.Style.DANGER, this::resetInterface));
-        list.add(behaviour);
-
-        return list;
-    }
-
-    private void openConfigFolder() {
-        try {
-            Util.getPlatform().openFile(ElytrixConfig.file().getParent().toFile());
-        } catch (Throwable t) {
-            ElytrixclientClient.LOG.add("[Elytrix] Не удалось открыть папку конфига: " + t);
+    private void replay() {
+        List<MenuCard> cards = visibleCards();
+        for (int i = 0; i < cards.size(); i++) {
+            cards.get(i).replay(UiWidget.ANIMATIONS ? 0.03f * i : 0f);
+        }
+        if (themes != null && UiWidget.ANIMATIONS) {
+            themes.replay();
         }
     }
 
     private void resetInterface() {
         cfg.themeIndex = 0;
         cfg.accentIndex = 0;
+        cfg.accent = "#FF4FC3";
         cfg.uiScaleIndex = 0;
         cfg.effectsQuality = 0;
         cfg.panelOpacity = 88;
@@ -347,421 +202,358 @@ public class ElytrixScreen extends Screen {
         cfg.customLoading = true;
         cfg.closeOnOutsideClick = false;
         cfg.panelKey = true;
-        UiTheme.applyPreset(cfg.themeIndex);
-        UiWidget.ANIMATIONS = cfg.animations;
+        UiTheme.applyPreset(0);
+        MenuKit.accent = UiTheme.accent(0);
+        UiWidget.ANIMATIONS = true;
         cfg.save();
-        accentColor = UiTheme.accent(cfg.accentIndex);
-        rebuild();
-        replayCurrent();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    //  Раскладка и анимация панели
-    // ─────────────────────────────────────────────────────────────────────
+    private int view() {
+        return search.isEmpty() ? tabs.get(current).view() : VIEW_CARDS;
+    }
 
-    /**
-     * Адаптация под любое разрешение и масштаб интерфейса.
-     *
-     * <p>Панель раскладывается в тех же единицах, в которых рисует сама игра
-     * ({@code this.width}/{@code this.height} уже учитывают «Масштаб интерфейса»
-     * Minecraft). Раньше всё дополнительно масштабировалось матрицей на дробный
-     * множитель — именно из-за этого текст и иконки выглядели «пиксельно» и
-     * размыто. Теперь масштабирования нет вообще: 1 единица раскладки = 1 единица
-     * интерфейса, поэтому картинка резкая, а размер панели сам следует за
-     * настройкой масштаба игры. Пресет «Размер панели» меняет только габариты,
-     * «Авто» подбирает их по размеру окна. На маленьких окнах включается
-     * компактная вёрстка — сайдбар становится иконочным.
-     */
-    private void layoutPanel() {
-        float k;
-        if (cfg.uiScaleIndex <= 0) {
-            float area = Math.max(1f, this.width) * Math.max(1f, this.height);
-            k = Mth.clamp((float) Math.sqrt(area / (1920f * 1080f)) * 1.15f, 0.85f, 1.6f);
-        } else {
-            k = SCALE_OPTIONS[Mth.clamp(cfg.uiScaleIndex, 0, SCALE_OPTIONS.length - 1)] / 100f;
+    private List<MenuCard> visibleCards() {
+        if (search.isEmpty()) {
+            return tabs.get(current).cards();
         }
-        int maxW = Math.max(200, this.width - 16);
-        int maxH = Math.max(150, this.height - 16);
-        baseW = Math.min(Math.max(Math.round(BASE_W * k), Math.min(MIN_BASE_W, maxW)), maxW);
-        baseH = Math.min(Math.max(Math.round(BASE_H * k), Math.min(MIN_BASE_H, maxH)), maxH);
-        compact = baseW < COMPACT_BELOW || baseH < 300;
-        sidebarW = compact ? 54 : UiTheme.SIDEBAR_W;
+        String q = lower(search.trim());
+        List<MenuCard> result = new ArrayList<>();
+        for (Tab tab : tabs) {
+            for (MenuCard card : tab.cards()) {
+                if (card.matches(q)) {
+                    result.add(card);
+                }
+            }
+        }
+        return result;
+    }
 
-        panelW = baseW;
-        panelH = baseH;
-        panelX = (this.width - panelW) / 2;
-        panelY = (this.height - panelH) / 2;
+    // ═════════════════════════════════════════════════════════════════════
+    //  Геометрия: панель в своих единицах → экран
+    // ═════════════════════════════════════════════════════════════════════
+
+    private float targetScale() {
+        float preset = cfg.uiScaleIndex <= 0 ? 1f
+                : SCALE_OPTIONS[Mth.clamp(cfg.uiScaleIndex, 0, SCALE_OPTIONS.length - 1)] / 100f;
+        float fit = Math.min((this.width - 12f) / W, (this.height - 12f) / H);
+        return Math.max(0.4f, Math.min(preset, fit));
     }
 
     private static float easeOut(float t) {
-        return 1f - (1f - t) * (1f - t);
+        float u = 1f - t;
+        return 1f - u * u * u;
     }
 
-    private double ux(double screenX) {
-        return screenX - panelX;
+    private void layout() {
+        float e = easeOut(Mth.clamp(openT, 0f, 1f));
+        scale = targetScale() * (0.96f + 0.04f * e);
+        originX = this.width / 2f - W * scale / 2f;
+        originY = this.height / 2f - H * scale / 2f + (1f - e) * 6f;
     }
 
-    private double uy(double screenY) {
-        return screenY - panelY;
+    private double lx(double sx) {
+        return (sx - originX) / scale;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    private double ly(double sy) {
+        return (sy - originY) / scale;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     //  Отрисовка
-    // ─────────────────────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractBackground(graphics, mouseX, mouseY, a);
-        // на больших разрешениях blur стоит дорого — режим «Авто» его выключает
         if (cfg.blurBackground && ElytrixQuality.blur() && this.minecraft != null
                 && this.minecraft.options.getMenuBackgroundBlurriness() < 1.0F) {
             graphics.blurBeforeThisStratum();
         }
-        float f = easeOut(Mth.clamp(panelT, 0f, 1f));
-        graphics.fill(0, 0, this.width, this.height, UiTheme.withAlpha(UiTheme.SCRIM, f));
+        float e = easeOut(Mth.clamp(openT, 0f, 1f));
+        graphics.fill(0, 0, this.width, this.height, UiTheme.withAlpha(0x66000000, e));
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        layoutPanel();
-        ElytrixQuality.updateFrom(this.minecraft, cfg);
         long now = Util.getMillis();
-        float dt = frameDelta(now);
-        float f = easeOut(Mth.clamp(panelT, 0f, 1f));
-        if (f <= 0.01f) {
-            return;
+        float dt = Math.max(0.0005f, Math.min(0.1f, (now - lastFrame) / 1000f));
+        lastFrame = now;
+        ElytrixQuality.updateFrom(this.minecraft, cfg);
+        UiDraw.resetScissor();
+
+        // открытие ~140 мс, закрытие ~100 мс
+        if (closing) {
+            openT -= UiWidget.ANIMATIONS ? dt / 0.10f : 1f;
+            if (openT <= 0f) {
+                openT = 0f;
+                finishClose();
+                return;
+            }
+        } else {
+            openT = Math.min(1f, openT + (UiWidget.ANIMATIONS ? dt / 0.14f : 1f));
         }
-        float shake = (1f - f) * -6f;
-        var font = this.font;
+        MenuKit.alpha = easeOut(Mth.clamp(openT, 0f, 1f));
+        layout();
 
-        // ── содержимое рисуется в «базовых» единицах относительно угла панели
+        double mx = lx(mouseX);
+        double my = ly(mouseY);
+        Font font = this.font;
+
         graphics.pose().pushMatrix();
-        graphics.pose().translate(panelX, panelY + shake);
+        graphics.pose().translate(originX, originY);
+        graphics.pose().scale(scale, scale);
 
-        drawPanel(graphics, font, mouseX, mouseY, dt, f);
-        drawSidebar(graphics, font, mouseX, mouseY, dt, f);
-        drawHeader(graphics, font, mouseX, mouseY, f);
-        drawContent(graphics, font, mouseX, mouseY, dt, f);
+        drawFrame(graphics);
+        drawSidebar(graphics, font, mx, my, dt);
+        drawContent(graphics, font, mx, my, dt);
 
         graphics.pose().popMatrix();
+        MenuKit.alpha = 1f;
+    }
 
-        // ── подсказка над панелью (в экранных координатах, чтобы не масштабировалась)
-        if (mouseY > panelY + UiTheme.HEADER_H && mouseY < panelY + panelH) {
-            String tip = hoveredTooltip(mouseX, mouseY);
-            if (tip != null) {
-                int tw = UiDraw.width(font, tip) + 10;
-                int tx = Mth.clamp(mouseX + 10, 2, this.width - tw - 2);
-                int ty = mouseY + 12;
-                UiDraw.roundRect(graphics, tx, ty, tw, 16, UiTheme.R_SM, UiTheme.withAlpha(UiTheme.POPUP, 0.96f));
-                UiDraw.text(graphics, font, tip, tx + 5, ty + 4, UiTheme.TEXT_SOFT);
+    private void drawFrame(GuiGraphicsExtractor g) {
+        float op = Mth.clamp(cfg.panelOpacity / 100f, 0.6f, 1f);
+        shadow(g, 0, 0, W, H, 8, 16, 0x8C000000);
+        if (ElytrixQuality.glow()) {
+            shadow(g, 0, 0, W, H, 8, 10, UiTheme.withAlpha(accent, 0.12f));
+        }
+        fill(g, 0, 0, BAR, H, 8, 0, 0, 8, UiTheme.withAlpha(sidebar(), op));
+        fill(g, BAR, 0, W - BAR, H, 0, 8, 8, 0, UiTheme.withAlpha(content(), op));
+        if (!UiTheme.isLight()) {
+            g.blit(RenderPipelines.GUI_TEXTURED, MENU_BG, (int) BAR, 0, 0f, 0f, (int) (W - BAR), (int) H,
+                    1050, 1050, 1050, 1050, a(0xFFFFFFFF, op));
+        }
+        UiVector.rect(g, BAR, 0, 0.5f, H, a(divider()));
+        outline(g, 0, 0, W, H, 8, 0.6f, UiTheme.withAlpha(cardEdge(), 0.9f));
+    }
+
+    // ── сайдбар ─────────────────────────────────────────────────────────
+
+    private float tabY(int i) {
+        return 56 + i * 20 + (i >= SPLIT_AT ? 10 : 0);
+    }
+
+    private void drawSidebar(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
+        // логотип
+        UiDraw.icon(g, LOGO, 12, 10, 14, 14, 256, 256, a(0xFFFFFFFF));
+        text(g, font, "elytrix", 31, ty(TITLE, 17), text(), TITLE);
+        disc(g, 31 + width(font, "elytrix", TITLE) + 3, 19.5f, 1.4f, accent);
+
+        // поиск
+        searchT = approach(searchT, searching ? 1f : 0f, 16f, dt);
+        float sx = 7.5f;
+        float sy = 31;
+        float sw = BAR - 15;
+        float sh = 17;
+        fill(g, sx, sy, sw, sh, 5, field());
+        outline(g, sx, sy, sw, sh, 5, 0.7f, UiTheme.mix(cardEdge(), accent, searchT));
+        UiIcon.SEARCH.draw(g, (int) sx + 5, (int) (sy + sh / 2f - 4), 8, a(UiTheme.mix(dim(), accent, searchT)));
+        UiDraw.scissor(g, (int) sx + 15, (int) sy, (int) (sx + sw - 4), (int) (sy + sh));
+        float tcy = sy + sh / 2f;
+        if (search.isEmpty() && !searching) {
+            text(g, font, "Поиск", sx + 17, ty(SMALL, tcy), dim(), SMALL);
+        } else {
+            String shown = search;
+            while (!shown.isEmpty() && width(font, shown, SMALL) > sw - 24) {
+                shown = shown.substring(1);
+            }
+            text(g, font, shown, sx + 17, ty(SMALL, tcy), text(), SMALL);
+            if (searching && (Util.getMillis() / 530L) % 2L == 0L) {
+                fill(g, sx + 17 + width(font, shown, SMALL) + 0.5f, tcy - 3, 0.8f, 6, 0, accent);
             }
         }
-    }
+        UiDraw.unscissor(g);
 
-    private void drawPanel(GuiGraphicsExtractor graphics, Font font,
-                           int mouseX, int mouseY, float dt, float f) {
-        float fo = f * Mth.clamp(cfg.panelOpacity / 100f, 0.35f, 1f);
-        UiDraw.shadow(graphics, 0, 0, baseW, baseH, UiTheme.R_LG, 6, UiTheme.withAlpha(UiTheme.SHADOW, f));
-        UiDraw.roundRectBordered(graphics, 0, 0, baseW, baseH, UiTheme.R_LG,
-                UiTheme.withAlpha(UiTheme.PANEL, fo), UiTheme.withAlpha(UiTheme.BORDER, fo));
-        // тонкая внутренняя подсветка сверху — «стекло», без цветной полосы
-        UiDraw.hLine(graphics, UiTheme.R_LG + 8, baseW - UiTheme.R_LG - 8, 1, 1,
-                UiTheme.withAlpha(0xFFFFFFFF, 0.06f * f));
-    }
-
-    // ── геометрия контента (одна на отрисовку и на ввод) ──
-
-    private int contentX() {
-        return sidebarW + 6;
-    }
-
-    private int contentY() {
-        return UiTheme.HEADER_H + 2;
-    }
-
-    private int contentW() {
-        return baseW - contentX() - 16 - SCROLLBAR_SPACE;
-    }
-
-    private int contentH() {
-        return baseH - contentY() - 12;
-    }
-
-    private int closeX() {
-        return baseW - CLOSE_SIZE - 14;
-    }
-
-    private int navItemH() {
-        return compact ? 28 : 30;
-    }
-
-    private int navStep() {
-        return compact ? 30 : 34;
-    }
-
-    private static final int NAV_FIRST_Y = 18;
-
-    private void drawSidebar(GuiGraphicsExtractor graphics, Font font,
-                             int mouseX, int mouseY, float dt, float f) {
-        int cardX = 7;
-        int cardY = 7;
-        int cardW = sidebarW - 7;
-        int cardH = baseH - 14;
-        UiDraw.roundRectBordered(graphics, cardX, cardY, cardW, cardH, UiTheme.R_LG,
-                UiTheme.withAlpha(UiTheme.SIDEBAR, f * 0.92f), UiTheme.withAlpha(UiTheme.BORDER_SOFT, f));
-
-        int navX = cardX + 6;
-        int navW = cardW - 12;
-        int itemH = navItemH();
-        int step = navStep();
-
-        float targetY = NAV_FIRST_Y + tab * step;
-        if (!indicatorInit) {
-            indicatorY = targetY;
-            indicatorInit = true;
-        }
-        indicatorY += (targetY - indicatorY) * (UiWidget.ANIMATIONS ? Math.min(1f, dt * 16f) : 1f);
-
-        // выбранный пункт — аккуратная «пилюля», как в списках Apple
-        UiDraw.roundRect(graphics, navX, Math.round(indicatorY), navW, itemH, UiTheme.R_MD,
-                UiTheme.withAlpha(UiTheme.accentSoft(accentColor, 0.18f), f));
-
-        double mx = ux(mouseX);
-        double my = uy(mouseY);
-        for (int i = 0; i < TAB_NAMES.length; i++) {
-            int iy = NAV_FIRST_Y + i * step;
-            boolean selected = i == tab;
-            boolean hover = mx >= navX && mx < navX + navW && my >= iy && my < iy + itemH;
-            if (hover && !selected) {
-                UiDraw.roundRect(graphics, navX, iy, navW, itemH, UiTheme.R_MD,
-                        UiTheme.withAlpha(UiTheme.ROW_HOVER, f));
+        // разделы
+        hline(g, 6, tabY(SPLIT_AT) - 6.5f, BAR - 12, divider());
+        for (int i = 0; i < tabs.size(); i++) {
+            Tab tab = tabs.get(i);
+            float y = tabY(i);
+            boolean active = i == current && search.isEmpty();
+            boolean hv = inside(mx, my, 5, y, BAR - 10, 15);
+            tabAnim[i] = approach(tabAnim[i], active ? 1f : 0f, 14f, dt);
+            tabHover[i] = approach(tabHover[i], hv ? 1f : 0f, 16f, dt);
+            float t = tabAnim[i];
+            if (tabHover[i] > 0.01f && t < 0.99f) {
+                fill(g, 5, y, BAR - 10, 15, 4, UiTheme.withAlpha(text(), 0.05f * tabHover[i] * (1f - t)));
             }
-            int iconColor = selected ? UiTheme.mix(accentColor, 0xFFFFFFFF, 0.35f)
-                    : (hover ? UiTheme.TEXT : UiTheme.TEXT_DIM);
-            if (compact) {
-                TAB_ICONS[i].drawCentered(graphics, navX + navW / 2, iy + itemH / 2, 16,
-                        UiTheme.withAlpha(iconColor, f));
-            } else {
-                TAB_ICONS[i].draw(graphics, navX + 11, iy + (itemH - 16) / 2, 16, UiTheme.withAlpha(iconColor, f));
-                UiDraw.text(graphics, font, UiDraw.trim(font, TAB_NAMES[i], navW - 44), navX + 35,
-                        iy + (itemH - 8) / 2, UiTheme.withAlpha(selected ? UiTheme.TEXT : UiTheme.TEXT_SOFT, f));
-            }
-        }
-
-        if (!compact) {
-            int footY = cardY + cardH - 36;
-            UiDraw.hLine(graphics, navX, navX + navW, footY - 8, 1, UiTheme.withAlpha(UiTheme.DIVIDER, f));
-            UiDraw.textSpaced(graphics, font, "ELYTRIX", navX + 2, footY, 3,
-                    UiTheme.withAlpha(UiTheme.TEXT_DIM, f), false, UiText.MONO);
-            UiDraw.text(graphics, font, "правый Ctrl · Esc", navX + 2, footY + 15,
-                    UiTheme.withAlpha(UiTheme.TEXT_DIM, f));
-        }
-    }
-
-    private void drawHeader(GuiGraphicsExtractor graphics, Font font,
-                            int mouseX, int mouseY, float f) {
-        int hx = sidebarW + 6;
-        // заголовок — своим крупным шрифтом 1:1 (без масштабирования матрицей)
-        UiDraw.text(graphics, font, TAB_NAMES[tab], hx + 14, 15, UiTheme.withAlpha(UiTheme.TEXT, f), UiText.TITLE);
-        UiDraw.text(graphics, font, TAB_SUBS[tab], hx + 15, 40, UiTheme.withAlpha(UiTheme.TEXT_DIM, f),
-                UiText.MONO);
-
-        int cx = closeX();
-        double mx = ux(mouseX);
-        double my = uy(mouseY);
-        boolean hover = mx >= cx && mx < cx + CLOSE_SIZE && my >= CLOSE_Y && my < CLOSE_Y + CLOSE_SIZE;
-        UiDraw.roundRectBordered(graphics, cx, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE, UiTheme.R_SM,
-                UiTheme.withAlpha(hover ? UiTheme.ROW_HOVER : UiTheme.ROW, f),
-                UiTheme.withAlpha(UiTheme.BORDER_SOFT, f));
-        UiIcon.CLOSE.drawCentered(graphics, cx + CLOSE_SIZE / 2, CLOSE_Y + CLOSE_SIZE / 2, 12,
-                UiTheme.withAlpha(hover ? UiTheme.TEXT : UiTheme.TEXT_DIM, f));
-
-        UiDraw.hLine(graphics, hx + 8, baseW - 12, UiTheme.HEADER_H - 1, 1, UiTheme.withAlpha(UiTheme.DIVIDER, f));
-    }
-
-    private void drawContent(GuiGraphicsExtractor graphics, Font font,
-                             int mouseX, int mouseY, float dt, float f) {
-        int contentX = contentX();
-        int contentY = contentY();
-        int contentW = contentW();
-        int contentH = contentH();
-        int scrollbarSpace = SCROLLBAR_SPACE;
-
-        List<UiSection> sections = tabs.get(tab);
-        int total = 0;
-        for (UiSection sect : sections) {
-            total += sect.contentHeight() + 10;
-        }
-        maxScroll = Math.max(0, total - contentH);
-
-        float t = UiWidget.ANIMATIONS ? easeOut(Mth.clamp(tabT, 0f, 1f)) : 1f;
-        int slide = Math.round((1f - t) * 12f);
-
-        UiDraw.scissor(graphics, contentX - 2, contentY, contentX + contentW + scrollbarSpace, contentY + contentH);
-
-        int y = (int) Math.round(contentY - scroll) + slide;
-        for (UiSection sect : sections) {
-            sect.accent = accentColor;
-            sect.layoutAt(contentX, y, contentW);
-            sect.render(graphics, (int) ux(mouseX), (int) uy(mouseY), dt);
-            y += sect.contentHeight() + 10;
-        }
-        for (UiSection sect : sections) {
-            for (UiWidget wd : sect.children()) {
-                if (wd.hasPopup()) {
-                    wd.popupLimitTop = contentY;
-                    wd.popupLimitBottom = contentY + contentH;
-                    wd.renderPopup(graphics, (int) ux(mouseX), (int) uy(mouseY), dt);
+            if (t > 0.01f) {
+                if (ElytrixQuality.glow()) {
+                    shadow(g, 5, y, BAR - 10, 15, 4, 5, UiTheme.withAlpha(accent, 0.22f * t));
                 }
+                hgrad(g, 5, y, BAR - 10, 15, 4, UiTheme.withAlpha(accent, 0.62f * t),
+                        UiTheme.withAlpha(accent2(), 0.62f * t));
             }
+            int col = UiTheme.mix(UiTheme.mix(dim(), soft(), tabHover[i]), 0xFFFFFFFF, t);
+            tab.icon().draw(g, 10, (int) (y + 3.5f), 8, a(col));
+            text(g, font, tab.name(), 22, ty(BODY, y + 7.5f), col, BODY);
         }
-        UiDraw.unscissor(graphics);
 
-        // тонкий «оверлейный» скроллбар у правого края — карточки он не перекрывает
-        if (maxScroll > 1) {
-            int barX = contentX + contentW + 6;
-            int barTop = contentY + 4;
-            int barH = contentH - 8;
-            int thumbH = Math.max(26, (int) (barH * (contentH / (double) (contentH + maxScroll))));
-            int thumbY = barTop + (int) ((barH - thumbH) * (scroll / maxScroll));
-            UiDraw.roundRect(graphics, barX, thumbY, 3, thumbH, 2, UiTheme.withAlpha(accentColor, 0.8f * f));
+        drawProfile(g, font);
+    }
+
+    private void drawProfile(GuiGraphicsExtractor g, Font font) {
+        float top = H - 35;
+        hline(g, 6, top, BAR - 12, divider());
+        float fx = 6;
+        float fy = H - 29;
+        fill(g, fx, fy, 23, 23, 5, field());
+        var player = this.minecraft.player;
+        String name = this.minecraft.getUser().getName();
+        if (player != null) {
+            PlayerFaceExtractor.extractRenderState(g, player.getSkin(), (int) fx + 2, (int) fy + 2, 19, a(0xFFFFFFFF));
+        } else {
+            hgrad(g, fx + 2, fy + 2, 19, 19, 4, accent, accent2());
+            String letter = name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+            textCenter(g, font, letter, fx + 11.5f, ty(BODY, fy + 11.5f), 0xFFFFFFFF, BODY);
+        }
+        boolean online = this.minecraft.level != null;
+        disc(g, fx + 21, fy + 21, 3f, sidebar());
+        disc(g, fx + 21, fy + 21, 2f, online ? UiTheme.OK : dim());
+
+        text(g, font, trim(font, name, BODY, BAR - 40), 34, ty(BODY, fy + 7), text(), BODY);
+        text(g, font, "v" + ElytrixLoader.version(), 34, ty(MONO, fy + 17), dim(), MONO);
+    }
+
+    // ── содержимое ─────────────────────────────────────────────────────
+
+    private void drawContent(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
+        int view = view();
+        if (view == VIEW_CONSOLE) {
+            console.layout(CX, 10, CW, H - 20);
+            console.render(g, font, mx, my, dt);
+            return;
+        }
+        if (view == VIEW_THEMES) {
+            themes.layout(CX, 10, CW);
+            themes.render(g, font, mx, my, dt);
+            return;
+        }
+
+        scroll = approach(scroll, scrollTarget, 16f, dt);
+        List<MenuCard> cards = visibleCards();
+
+        float top = 10;
+        if (!search.isEmpty()) {
+            text(g, font, cards.isEmpty() ? "Ничего не найдено" : "Найдено: " + cards.size(),
+                    CX, ty(SMALL, top + 5), dim(), SMALL);
+            top += 16;
+        }
+
+        // «кирпич»: каждая карточка — в более короткую колонку
+        float[] colY = {top - scroll, top - scroll};
+        float[] colX = {CX, CX + COL_W + GAP};
+        for (MenuCard card : cards) {
+            int c = colY[0] <= colY[1] ? 0 : 1;
+            float h = card.layout(font, colX[c], colY[c], COL_W);
+            colY[c] += h + 8;
+        }
+        float total = Math.max(colY[0], colY[1]) + scroll + 2;
+        maxScroll = Math.max(0f, total - H);
+        scrollTarget = Mth.clamp(scrollTarget, 0f, maxScroll);
+
+        UiDraw.scissor(g, (int) BAR + 1, 1, (int) W - 1, (int) H - 1);
+        for (MenuCard card : cards) {
+            card.render(g, font, mx, my, dt);
+        }
+        UiDraw.unscissor(g);
+
+        if (maxScroll > 0.5f) {
+            float trackH = H - 20;
+            float thumbH = Math.max(20, trackH * H / (H + maxScroll));
+            float t = scroll / maxScroll;
+            fill(g, W - 5, 10 + (trackH - thumbH) * t, 2, thumbH, 1, UiTheme.withAlpha(text(), 0.16f));
         }
     }
 
-    private String hoveredTooltip(int mouseX, int mouseY) {
-        int mx = (int) ux(mouseX);
-        int my = (int) uy(mouseY);
-        for (UiSection s : tabs.get(tab)) {
-            for (UiWidget w : s.children()) {
-                if (w.tooltip != null && w.contains(mx, my)) {
-                    return w.tooltip;
-                }
-            }
-        }
-        return null;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════
     //  Ввод
-    // ─────────────────────────────────────────────────────────────────────
+    // ═════════════════════════════════════════════════════════════════════
 
-    private boolean inPanel(double mx, double my) {
-        return mx >= panelX && mx < panelX + panelW && my >= panelY && my < panelY + panelH;
-    }
-
-    private boolean inContent(double mx, double my) {
-        double x = ux(mx);
-        double y = uy(my);
-        return x >= contentX() - 4 && x < contentX() + contentW() + SCROLLBAR_SPACE
-                && y >= contentY() && y < contentY() + contentH();
+    private boolean anyCapturing() {
+        if (searching || console.capturing()) {
+            return true;
+        }
+        for (MenuCard card : visibleCards()) {
+            if (card.capturing()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        layoutPanel();
-        double mx = event.x();
-        double my = event.y();
+        layout();
+        double mx = lx(event.x());
+        double my = ly(event.y());
         int button = event.button();
-        double lx = ux(mx);
-        double ly = uy(my);
 
-        // открытые выпадающие списки перехватывают клик первыми
-        for (UiSection s : tabs.get(tab)) {
-            for (UiWidget w : s.children()) {
-                if (w.hasPopup() && w.mouseClicked(lx, ly, button)) {
-                    return true;
-                }
+        if (!inside(mx, my, 0, 0, W, H)) {
+            searching = false;
+            console.blur();
+            if (cfg.closeOnOutsideClick) {
+                onClose();
             }
-        }
-
-        // кнопка закрытия
-        if (lx >= closeX() && lx < closeX() + CLOSE_SIZE && ly >= CLOSE_Y && ly < CLOSE_Y + CLOSE_SIZE) {
-            onClose();
             return true;
         }
 
-        // сайдбар
-        int cardX = 7;
-        int cardW = sidebarW - 7;
-        int itemH = navItemH();
-        int step = navStep();
-        for (int i = 0; i < TAB_NAMES.length; i++) {
-            int iy = NAV_FIRST_Y + i * step;
-            if (lx >= cardX + 5 && lx < cardX + cardW - 5 && ly >= iy && ly < iy + itemH) {
-                if (i != tab) {
-                    prevTab = tab;
-                    tab = i;
-                    scroll = 0;
-                    scrollTarget = 0;
-                    replayCurrent();
-                }
+        // поиск
+        boolean inSearch = inside(mx, my, 7.5f, 31, BAR - 15, 17);
+        searching = inSearch && button == 0 || (inSearch && searching);
+        if (inSearch) {
+            if (button == 1) {
+                search = "";
+                replay();
+            }
+            return true;
+        }
+
+        // разделы
+        for (int i = 0; i < tabs.size(); i++) {
+            if (inside(mx, my, 5, tabY(i), BAR - 10, 15)) {
+                select(i);
                 return true;
             }
         }
 
-        // содержимое
-        if (inContent(mx, my)) {
-            for (UiSection s : tabs.get(tab)) {
-                for (UiWidget w : s.children()) {
-                    if (w.mouseClicked(lx, ly, button)) {
-                        return true;
-                    }
-                }
-            }
+        int view = view();
+        if (view == VIEW_CONSOLE) {
+            console.mouseClicked(mx, my, button);
             return true;
         }
-
-        if (!inPanel(mx, my) && cfg.closeOnOutsideClick) {
-            onClose();
+        if (view == VIEW_THEMES) {
+            themes.mouseClicked(mx, my, button);
+            return true;
+        }
+        if (mx >= BAR) {
+            for (MenuCard card : visibleCards()) {
+                card.mouseClicked(mx, my, button);
+            }
         }
         return true;
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        draggingScrollbar = false;
-        double lx = ux(event.x());
-        double ly = uy(event.y());
-        for (UiSection s : tabs.get(tab)) {
-            for (UiWidget w : s.children()) {
-                if (w.mouseReleased(lx, ly, event.button())) {
-                    return true;
-                }
-            }
+        double mx = lx(event.x());
+        double my = ly(event.y());
+        for (MenuCard card : visibleCards()) {
+            card.mouseReleased(mx, my, event.button());
         }
-        return false;
+        return true;
     }
 
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-        if (draggingScrollbar) {
-            scrollToMouse(event.y());
-            return true;
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        double mx = lx(mouseX);
+        double my = ly(mouseY);
+        if (view() == VIEW_CONSOLE) {
+            return console.mouseScrolled(mx, my, scrollY);
         }
-        double lx = ux(event.x());
-        double ly = uy(event.y());
-        for (UiSection s : tabs.get(tab)) {
-            for (UiWidget w : s.children()) {
-                if (w.mouseDragged(lx, ly, event.button())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private void scrollToMouse(double mouseY) {
-        double contentY = contentY();
-        double contentH = contentH();
-        double t = (uy(mouseY) - contentY - 6) / Math.max(1.0, contentH - 12);
-        scrollTarget = clamp(t, 0, 1) * maxScroll;
-        scroll = scrollTarget;
-    }
-
-    @Override
-    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-        if (inContent(mx, my)) {
-            scrollTarget = clamp(scrollTarget - scrollY * 28, 0, maxScroll);
+        if (inside(mx, my, BAR, 0, W - BAR, H)) {
+            scrollTarget = Mth.clamp(scrollTarget - (float) scrollY * 24f, 0f, maxScroll);
             return true;
         }
         return false;
@@ -769,21 +561,60 @@ public class ElytrixScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_RIGHT_CONTROL) {
+        int key = event.key();
+        if (searching) {
+            if (event.isEscape() || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+                searching = false;
+            } else if (key == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
+                search = event.hasControlDown() ? "" : search.substring(0, search.length() - 1);
+                scrollTarget = 0;
+                replay();
+            } else if (event.isPaste()) {
+                String clip = this.minecraft.keyboardHandler.getClipboard();
+                if (clip != null) {
+                    search = (search + clip.replaceAll("[\\r\\n\\t]", "")).trim();
+                    replay();
+                }
+            }
+            return true;
+        }
+        if (view() == VIEW_CONSOLE && console.keyPressed(event)) {
+            return true;
+        }
+        for (MenuCard card : visibleCards()) {
+            if (card.keyPressed(event)) {
+                return true;
+            }
+        }
+        if (key == GLFW.GLFW_KEY_RIGHT_CONTROL || event.isEscape()) {
             onClose();
             return true;
         }
-        for (UiSection s : tabs.get(tab)) {
-            for (UiWidget w : s.children()) {
-                if (w.keyPressed(event.key(), event.scancode(), event.modifiers())) {
-                    return true;
-                }
-            }
+        if (event.hasControlDown() && key == GLFW.GLFW_KEY_F) {
+            searching = true;
+            return true;
         }
         return super.keyPressed(event);
     }
 
-    private static double clamp(double v, double min, double max) {
-        return v < min ? min : (v > max ? max : v);
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (searching) {
+            if (event.isAllowedChatCharacter() && search.length() < 40) {
+                search += event.codepointAsString();
+                scrollTarget = 0;
+                replay();
+            }
+            return true;
+        }
+        if (view() == VIEW_CONSOLE && console.charTyped(event)) {
+            return true;
+        }
+        for (MenuCard card : visibleCards()) {
+            if (card.charTyped(event)) {
+                return true;
+            }
+        }
+        return super.charTyped(event);
     }
 }

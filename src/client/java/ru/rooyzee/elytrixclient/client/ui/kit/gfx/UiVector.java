@@ -50,7 +50,10 @@ public final class UiVector {
     /** Обрезка: делает то же, что {@code graphics.enableScissor}, но ещё и запоминает прямоугольник для форм. */
     public static void scissor(GuiGraphicsExtractor g, int x0, int y0, int x1, int y1) {
         g.enableScissor(x0, y0, x1, y1);
-        ScreenRectangle rect = new ScreenRectangle(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+        // как в ванили: прямоугольник обрезки хранится в экранных координатах,
+        // т.е. уже с учётом текущей матрицы (translate/scale панели)
+        ScreenRectangle rect = new ScreenRectangle(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0))
+                .transformAxisAligned(g.pose());
         SCISSOR.push(clip(SCISSOR.peek(), rect));
     }
 
