@@ -3,6 +3,8 @@ package ru.rooyzee.elytrixclient.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import org.lwjgl.glfw.GLFW;
@@ -10,6 +12,7 @@ import ru.rooyzee.elytrixclient.client.botmark.BotMarkRunner;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.soulfire.SoulFireController;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixScreen;
+import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
 import ru.rooyzee.elytrixclient.client.ui.WindowIcon;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
@@ -39,6 +42,13 @@ public class ElytrixclientClient implements ClientModInitializer {
         UiTheme.applyPreset(CONFIG.themeIndex);
         UiWidget.ANIMATIONS = CONFIG.animations;
 
+        // Создаём папку .minecraft/elytrix/ для музыки, прокси и т.д.
+        try {
+            java.nio.file.Files.createDirectories(
+                    net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("elytrix"));
+        } catch (Exception ignored) {
+        }
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             WindowIcon.tick(client);
             ru.rooyzee.elytrixclient.client.music.CustomMusic.tick(client);
@@ -59,5 +69,15 @@ public class ElytrixclientClient implements ClientModInitializer {
         });
 
         LOG.add("[Elytrix] Мод загружен. Панель — правый Ctrl.");
+
+        // Динамический островок музыки — рисуется на HUD в игре (когда нет экрана)
+        HudRenderCallback.EVENT.register((graphics, renderTickCounter) -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc != null && mc.gui != null && mc.gui.screen() == null) {
+                int mx = (int) (mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / mc.getWindow().getWidth());
+                int my = (int) (mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / mc.getWindow().getHeight());
+                MusicIsland.render(graphics, graphics.guiWidth(), graphics.guiHeight(), mx, my);
+            }
+        });
     }
 }

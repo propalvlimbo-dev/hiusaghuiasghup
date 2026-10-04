@@ -25,21 +25,15 @@ public final class ElytrixBrand {
     private ElytrixBrand() {
     }
 
-    /** Рисуется там же, где ванильный логотип: по центру сверху. */
+    /** Рисуется по центру экрана сверху. */
     public static void draw(GuiGraphicsExtractor g, int screenWidth, float alpha) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) {
             return;
         }
-        Font font = mc.font;
-        int accent = UiTheme.accent(ElytrixclientClient.CONFIG.accentIndex);
-        int cx = screenWidth / 2;
-
-        // только знак клиента: без названия, версии и подписей, без «ореола»-плашки
         int mark = ElytrixMenuButtons.LOGO;
-        int markX = ElytrixMenuButtons.left();
-        // ближе к кнопкам: кнопки меню начинаются с height/4 + 48
-        // над столбцом кнопок слева (см. ElytrixMenuButtons.layout)
+        // центрируем по горизонтали на экране
+        int markX = (screenWidth - mark) / 2;
         int markY = Math.max(8, ElytrixMenuButtons.logoY());
         int k = UiDraw.shapeScale();
         UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), markX, markY, mark, mark,

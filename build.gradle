@@ -34,6 +34,10 @@ dependencies {
     // Строки `mappings` здесь быть НЕ должно: в 26.x игра не обфусцирована.
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // MP3 декодирование (javax.sound.sampled SPI) — для .mp3 файлов музыки
+    implementation 'com.googlecode.soundlibs:mp3spi:1.9.5.4'
+    include 'com.googlecode.soundlibs:mp3spi:1.9.5.4'
 }
 
 processResources {

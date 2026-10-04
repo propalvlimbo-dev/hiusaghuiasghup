@@ -136,13 +136,11 @@ public final class ElytrixMenuButtons {
             s.danger = "menu.quit".equals(k);
             y += ITEM_H + GAP;
         }
-        int ix = left + 4;
-        int iy = y - GAP + 12;
-        for (int i = 0; i < icons.size(); i++) {
-            AbstractButton b = icons.get(i);
-            b.setPosition(ix + i * 26, iy);
-            State s = STATES.computeIfAbsent(b, x -> new State());
-            s.index = items.size() + i;
+        // Маленькие иконки (язык, доступность и т.д.) — скрыты по запросу пользователя
+        for (AbstractButton b : icons) {
+            b.setPosition(-9999, -9999);
+            b.visible = false;
+            b.active = false;
         }
         openedAt = Util.getMillis();
     }

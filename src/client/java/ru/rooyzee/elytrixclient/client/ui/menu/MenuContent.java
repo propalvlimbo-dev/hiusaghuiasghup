@@ -224,7 +224,7 @@ public final class MenuContent {
                 .add(new MenuRow.Button("Открыть папку с музыкой", MenuRow.Button.Kind.SECONDARY, CustomMusic::openFolder))
                 .add(new MenuRow.Button("Следующий трек", MenuRow.Button.Kind.SECONDARY, CustomMusic::next)
                         .when(() -> cfg.customMusic && CustomMusic.trackCount() > 0))
-                .add(new MenuRow.Info("Формат", () -> ".ogg", 0)));
+                .add(new MenuRow.Info("Формат", () -> ".ogg / .mp3", 0)));
 
         list.add(new MenuCard("Анимации")
                 .add(toggle("Плавные анимации", () -> cfg.animations, v -> {

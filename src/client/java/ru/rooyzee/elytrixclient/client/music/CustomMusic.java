@@ -11,7 +11,11 @@ import org.lwjgl.system.MemoryUtil;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.nio.file.Files;
@@ -23,12 +27,11 @@ import java.util.Locale;
 import java.util.stream.Stream;
 
 /**
- * Своя музыка вместо ванильной: треки {@code .ogg} из папки
- * {@code config/elytrixclient/music}. Играет по кругу в случайном порядке.
+ * Своя музыка вместо ванильной: треки {@code .ogg} и {@code .mp3} из папки
+ * {@code .minecraft/elytrix/music}. Играет по кругу в случайном порядке.
  *
- * <p>Воспроизведение — собственный источник OpenAL в том же контексте, что и у
- * звукового движка игры; файл декодируется потоково (stb_vorbis из LWJGL, он уже
- * есть в игре), поэтому даже длинные треки не занимают память целиком.
+ * <p>OGG декодируется потоково через stb_vorbis (LWJGL).
+ * MP3 декодируется через javax.sound.sampled (требует mp3spi в classpath).
  * Громкость — ползунок «Музыка» в настройках звука игры × громкость в панели.
  * Пока играет своя музыка, ванильная глушится ({@code MusicManagerMixin}).
  */
@@ -46,8 +49,9 @@ public final class CustomMusic {
     private static long nextStartAt;
     private static volatile String nowPlaying = "";
 
+    /** Папка: .minecraft/elytrix/music */
     public static Path folder() {
-        return FabricLoader.getInstance().getConfigDir().resolve("elytrixclient").resolve("music");
+        return FabricLoader.getInstance().getGameDir().resolve("elytrix").resolve("music");
     }
 
     /** Своя музыка включена и в папке есть треки — ванильную не играем. */
@@ -98,9 +102,12 @@ public final class CustomMusic {
         Path dir = folder();
         if (Files.isDirectory(dir)) {
             try (Stream<Path> files = Files.list(dir)) {
-                files.filter(f -> f.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".ogg"))
-                        .sorted()
-                        .forEach(found::add);
+                files.filter(f -> {
+                    String n = f.getFileName().toString().toLowerCase(Locale.ROOT);
+                    return n.endsWith(".ogg") || n.endsWith(".mp3");
+                })
+                .sorted()
+                .forEach(found::add);
             } catch (IOException ignored) {
                 // папка недоступна — просто нет треков
             }
@@ -149,7 +156,9 @@ public final class CustomMusic {
         Player np = new Player(track, volume(mc, cfg));
         player = np;
         String name = track.getFileName().toString();
-        nowPlaying = name.substring(0, name.length() - 4);
+        // убираем расширение (.ogg или .mp3)
+        int dot = name.lastIndexOf('.');
+        nowPlaying = dot > 0 ? name.substring(0, dot) : name;
         np.start();
     }
 
@@ -177,6 +186,16 @@ public final class CustomMusic {
 
         @Override
         public void run() {
+            String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+            if (name.endsWith(".ogg")) {
+                runOgg();
+            } else {
+                runPcm();
+            }
+        }
+
+        // ── OGG через STBVorbis (потоково) ─────────────────────────────
+        private void runOgg() {
             long handle = 0;
             int source = 0;
             int[] buffers = new int[BUFFERS];
@@ -212,7 +231,7 @@ public final class CustomMusic {
 
                 boolean eof = false;
                 for (int b : buffers) {
-                    if (!fill(handle, channels, rate, format, b, pcm)) {
+                    if (!fillOgg(handle, channels, rate, format, b, pcm)) {
                         eof = true;
                         break;
                     }
@@ -222,14 +241,13 @@ public final class CustomMusic {
 
                 float gain = 0f;
                 while (!halted) {
-                    // плавное появление и смена громкости без щелчков
                     gain += (volume - gain) * 0.2f;
                     AL10.alSourcef(source, AL10.AL_GAIN, gain);
 
                     int processed = AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED);
                     while (processed-- > 0 && !eof) {
                         int b = AL10.alSourceUnqueueBuffers(source);
-                        if (fill(handle, channels, rate, format, b, pcm)) {
+                        if (fillOgg(handle, channels, rate, format, b, pcm)) {
                             AL10.alSourceQueueBuffers(source, b);
                         } else {
                             eof = true;
@@ -239,14 +257,13 @@ public final class CustomMusic {
                     if (state != AL10.AL_PLAYING) {
                         int queued = AL10.alGetSourcei(source, AL10.AL_BUFFERS_QUEUED);
                         if (eof && queued - AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED) <= 0) {
-                            break;                       // трек доигран
+                            break;
                         }
-                        AL10.alSourcePlay(source);       // недогруз буфера — продолжаем
+                        AL10.alSourcePlay(source);
                     }
                     Thread.sleep(40L);
                 }
                 if (halted) {
-                    // короткое затухание при остановке/переключении
                     for (int i = 0; i < 8; i++) {
                         gain *= 0.6f;
                         AL10.alSourcef(source, AL10.AL_GAIN, gain);
@@ -254,7 +271,7 @@ public final class CustomMusic {
                     }
                 }
             } catch (Throwable t) {
-                ElytrixclientClient.LOG.add("[Elytrix] Музыка: " + t);
+                ElytrixclientClient.LOG.add("[Elytrix] Музыка (ogg): " + t);
             } finally {
                 try {
                     if (source != 0) {
@@ -264,7 +281,6 @@ public final class CustomMusic {
                         AL10.alDeleteBuffers(buffers);
                     }
                 } catch (Throwable ignored) {
-                    // контекст мог быть пересоздан игрой
                 }
                 if (handle != 0) {
                     STBVorbis.stb_vorbis_close(handle);
@@ -275,7 +291,7 @@ public final class CustomMusic {
             }
         }
 
-        private static boolean fill(long handle, int channels, int rate, int format, int buffer, ShortBuffer pcm) {
+        private static boolean fillOgg(long handle, int channels, int rate, int format, int buffer, ShortBuffer pcm) {
             pcm.clear();
             int frames = STBVorbis.stb_vorbis_get_samples_short_interleaved(handle, channels, pcm);
             if (frames <= 0) {
@@ -283,6 +299,119 @@ public final class CustomMusic {
             }
             pcm.limit(frames * channels);
             AL10.alBufferData(buffer, format, pcm, rate);
+            return true;
+        }
+
+        // ── MP3/другие форматы через javax.sound.sampled → OpenAL ──────
+        private void runPcm() {
+            int source = 0;
+            int[] buffers = new int[BUFFERS];
+            AudioInputStream ais = null;
+            try {
+                ais = AudioSystem.getAudioInputStream(file.toFile());
+                AudioFormat fmt = ais.getFormat();
+
+                // конвертируем в PCM signed 16-bit little-endian если нужно
+                if (fmt.getEncoding() != AudioFormat.Encoding.PCM_SIGNED
+                        || fmt.getSampleSizeInBits() != 16) {
+                    AudioFormat target = new AudioFormat(
+                            AudioFormat.Encoding.PCM_SIGNED,
+                            fmt.getSampleRate(), 16, fmt.getChannels(),
+                            fmt.getChannels() * 2, fmt.getSampleRate(), false);
+                    ais = AudioSystem.getAudioInputStream(target, ais);
+                    fmt = target;
+                }
+
+                int channels = fmt.getChannels();
+                int rate = (int) fmt.getSampleRate();
+                int alFormat = channels == 1 ? AL10.AL_FORMAT_MONO16 : AL10.AL_FORMAT_STEREO16;
+                int frameBytes = channels * 2;
+
+                source = AL10.alGenSources();
+                AL10.alGenBuffers(buffers);
+                AL10.alSourcei(source, AL10.AL_SOURCE_RELATIVE, AL10.AL_TRUE);
+                AL10.alSource3f(source, AL10.AL_POSITION, 0f, 0f, 0f);
+                AL10.alSourcef(source, AL10.AL_ROLLOFF_FACTOR, 0f);
+                AL10.alSourcef(source, AL10.AL_GAIN, 0f);
+
+                byte[] chunk = new byte[CHUNK_FRAMES * frameBytes];
+                boolean eof = false;
+
+                for (int b : buffers) {
+                    if (!fillPcm(ais, chunk, b, alFormat, rate)) {
+                        eof = true;
+                        break;
+                    }
+                    AL10.alSourceQueueBuffers(source, b);
+                }
+                AL10.alSourcePlay(source);
+
+                float gain = 0f;
+                while (!halted) {
+                    gain += (volume - gain) * 0.2f;
+                    AL10.alSourcef(source, AL10.AL_GAIN, gain);
+
+                    int processed = AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED);
+                    while (processed-- > 0 && !eof) {
+                        int b = AL10.alSourceUnqueueBuffers(source);
+                        if (fillPcm(ais, chunk, b, alFormat, rate)) {
+                            AL10.alSourceQueueBuffers(source, b);
+                        } else {
+                            eof = true;
+                        }
+                    }
+                    int state = AL10.alGetSourcei(source, AL10.AL_SOURCE_STATE);
+                    if (state != AL10.AL_PLAYING) {
+                        int queued = AL10.alGetSourcei(source, AL10.AL_BUFFERS_QUEUED);
+                        if (eof && queued - AL10.alGetSourcei(source, AL10.AL_BUFFERS_PROCESSED) <= 0) {
+                            break;
+                        }
+                        AL10.alSourcePlay(source);
+                    }
+                    Thread.sleep(40L);
+                }
+                if (halted) {
+                    for (int i = 0; i < 8; i++) {
+                        gain *= 0.6f;
+                        AL10.alSourcef(source, AL10.AL_GAIN, gain);
+                        Thread.sleep(20L);
+                    }
+                }
+            } catch (Throwable t) {
+                ElytrixclientClient.LOG.add("[Elytrix] Музыка (mp3): " + t);
+            } finally {
+                try {
+                    if (source != 0) {
+                        AL10.alSourceStop(source);
+                        AL10.alSourcei(source, AL10.AL_BUFFER, 0);
+                        AL10.alDeleteSources(source);
+                        AL10.alDeleteBuffers(buffers);
+                    }
+                } catch (Throwable ignored) {
+                }
+                try {
+                    if (ais != null) ais.close();
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
+        private static boolean fillPcm(AudioInputStream ais, byte[] chunk, int buffer, int alFormat, int rate) {
+            int total = 0;
+            while (total < chunk.length) {
+                int r = ais.read(chunk, total, chunk.length - total);
+                if (r <= 0) break;
+                total += r;
+            }
+            if (total <= 0) return false;
+            ByteBuffer bb = MemoryUtil.memAlloc(total);
+            try {
+                bb.put(chunk, 0, total);
+                bb.flip();
+                AL10.alBufferData(buffer, alFormat, bb, rate);
+            } finally {
+                MemoryUtil.memFree(bb);
+            }
             return true;
         }
     }
