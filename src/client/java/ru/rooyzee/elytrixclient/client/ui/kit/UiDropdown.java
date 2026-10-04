@@ -17,10 +17,6 @@ public class UiDropdown extends UiWidget {
     private int index;
     private boolean open;
 
-    /** Границы, за которые попап не должен вылезать (проставляет экран). */
-    public int popupLimitTop = 0;
-    public int popupLimitBottom = Integer.MAX_VALUE;
-
     public UiDropdown(String label, List<String> options, int index, Consumer<Integer> onChange) {
         super(UiTheme.ROW_H);
         this.label = label;

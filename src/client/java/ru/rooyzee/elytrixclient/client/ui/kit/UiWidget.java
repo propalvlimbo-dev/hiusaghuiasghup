@@ -18,6 +18,9 @@ public abstract class UiWidget {
     public boolean visible = true;
     /** Подсказка при наведении (может быть null). */
     public String tooltip;
+    /** Границы, за которые не должен вылезать всплывающий список (задаёт экран). */
+    public int popupLimitTop = 0;
+    public int popupLimitBottom = Integer.MAX_VALUE;
     /** Акцент текущей темы — проставляется экраном перед отрисовкой. */
     public int accent = UiTheme.ACCENTS[0];
 
