@@ -81,6 +81,18 @@ dependencies {
 
 (`./gradlew` в PowerShell не работает — это bash-скрипт. Нужен `.\gradlew.bat`.)
 
+### Запустить Minecraft из IDEA за 2 клика
+
+1. **Gradle JVM = 25** (иначе сборка падает с `requires at least JVM runtime version 25`):
+   `File → Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JVM` → выбрать/скачать **Temurin 25**
+   (там же `File → Project Structure → SDK: 25`).
+2. В панели **Gradle** справа: `Tasks → fabric → runClient` — двойной клик, Minecraft стартует сам.
+3. Либо выбери в списке конфигураций сверху готовый **Minecraft Client (runClient)** (лежит в `.run/`) и нажми ▶ (**Shift+F10**).
+
+Первый запуск качает библиотеки и ассеты (1–3 минуты), следующие — секунды.
+Игра открывается с уже загруженным модом: **панель — правый Ctrl**, в главном меню кнопка *Elytrix Client*.
+Если после запуска ничего не видно — смотри окно `runClient` в IDEA: там лог мода, строки `[Elytrix]`. Во время запуска не запускай `runClient` второй раз (папка `run/` занята) — если зависло: `.\gradlew.bat --stop`.
+
 ---
 
 ## 3. Что уже написано
