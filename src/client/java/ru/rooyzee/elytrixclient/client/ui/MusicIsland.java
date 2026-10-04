@@ -12,64 +12,51 @@ import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
 
-/**
- * «Динамический островок» — компактная плашка вверху экрана.
- * Клик обрабатывается ВНУТРИ render() — никаких внешних обработчиков.
- */
 public final class MusicIsland {
     private MusicIsland() {}
 
-    private static final float H = 20, H_EXP = 46, R = 10;
-    private static final float W_EMPTY = 48, W_PLAY = 150, W_EXP = 200;
-    private static final float BTN_W = 28, BTN_H = 16, BTN_GAP = 4;
+    private static final float IH = 20, IH_EXP = 46, IR = 10;
+    private static final float IW_EMPTY = 48, IW_PLAY = 150, IW_EXP = 200;
+    private static final float BW = 28, BH = 16, BGAP = 4;
 
     private static float openT, expandT, hoverT;
     private static long lastFrame;
     private static final float[] eq = new float[4];
     private static float eqPhase;
-    private static boolean expanded;
-    private static boolean wasPressed;
+    private static boolean expanded, wasPressed;
     private static float sX, sY, sW, sH;
     private static final float[][] btnR = new float[5][4];
 
     public static void render(GuiGraphicsExtractor g, int sw, int sh, int mx, int my) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
-
         ElytrixConfig cfg = ElytrixclientClient.CONFIG;
         boolean wantOpen = cfg != null && cfg.customMusic && CustomMusic.trackCount() > 0;
-
         long now = Util.getMillis();
         float dt = lastFrame == 0 ? 0.016f : Math.min(0.1f, (now - lastFrame) / 1000f);
         lastFrame = now;
-
         openT += ((wantOpen ? 1f : 0f) - openT) * (1f - (float) Math.exp(-6f * dt));
         if (openT < 0.005f && !wantOpen) { openT = 0f; sW = 0; return; }
         if (!wantOpen) expanded = false;
         expandT += ((expanded ? 1f : 0f) - expandT) * (1f - (float) Math.exp(-12f * dt));
-
         int accent = UiTheme.accent(cfg != null ? cfg.accentIndex : 0);
 
-        float curH = H + (H_EXP - H) * easeOut(expandT);
-        float wantW = expanded ? W_EXP : (openT > 0.5f ? W_PLAY : W_EMPTY);
-        float curW = W_EMPTY + (wantW - W_EMPTY) * easeOut(Math.min(1f, openT * 2f));
+        float curH = IH + (IH_EXP - IH) * easeOut(expandT);
+        float wantW = expanded ? IW_EXP : (openT > 0.5f ? IW_PLAY : IW_EMPTY);
+        float curW = IW_EMPTY + (wantW - IW_EMPTY) * easeOut(Math.min(1f, openT * 2f));
         float cx = sw / 2f - curW / 2f;
         float cy = 6;
-        float rad = R + 2f * expandT;
-
+        float rad = IR + 2f * expandT;
         sX = cx; sY = cy; sW = curW; sH = curH;
-
         boolean over = mx >= cx && mx <= cx + curW && my >= cy && my <= cy + curH;
         hoverT += ((over ? 1f : 0f) - hoverT) * (1f - (float) Math.exp(-14f * dt));
 
-        // ── КЛИК: обрабатываем прямо здесь ─────────────────────────────
         boolean pressed = mc.mouseHandler.isLeftPressed();
         boolean clicked = pressed && !wasPressed;
         wasPressed = pressed;
-
         if (clicked) {
             if (expanded) {
-                // проверяем кнопки for (int i = 0; i < btnR.length; i++) {
+                for (int i = 0; i < btnR.length; i++) {
                     float[] r = btnR[i];
                     if (r[2] > 0 && mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3]) {
                         switch (i) {
@@ -79,7 +66,7 @@ public final class MusicIsland {
                             case 3 -> CustomMusic.volumeDown();
                             case 4 -> CustomMusic.volumeUp();
                         }
-                        // не переключаем expanded clicked = false;
+                        clicked = false;
                     }
                 }
             }
@@ -89,28 +76,23 @@ public final class MusicIsland {
             }
         }
 
-        // ── рисование ──────────────────────────────────────────────────
+        Font font = mc.font;
         UiVector.shadow(g, cx, cy, curW, curH, rad, 4f + 2f * hoverT, 0x30000000, 5);
         int bg = UiTheme.mix(0xFF0A0A0A, UiTheme.withAlpha(accent, 0.1f), hoverT * 0.2f);
         UiVector.roundRect(g, cx, cy, curW, curH, rad, bg);
-        UiVector.outline(g, cx, cy, curW, curH, rad, 0.5f,
-                UiTheme.withAlpha(accent, 0.08f + 0.1f * hoverT));
+        UiVector.outline(g, cx, cy, curW, curH, rad, 0.5f, UiTheme.withAlpha(accent, 0.08f + 0.1f * hoverT));
 
-        Font font = mc.font;
-        float row1Y = cy + (expanded ? 4 : (H - 12) / 2f);
-        float iconSz = 11;
+        float row1Y = cy + (expanded ? 4 : (IH - 12) / 2f);
         float iconX = cx + 5;
-        UiVector.roundRect(g, iconX - 1, row1Y - 1, iconSz + 2, iconSz + 2,
-                (iconSz + 2) / 2f, UiTheme.withAlpha(accent, 0.2f));
-        UiIcon.MUSIC.draw(g, (int) iconX, (int) row1Y, (int) iconSz,
-                UiTheme.withAlpha(0xFFFFFFFF, 0.9f));
+        UiVector.roundRect(g, iconX - 1, row1Y - 1, 13, 13, 6, UiTheme.withAlpha(accent, 0.2f));
+        UiIcon.MUSIC.draw(g, (int) iconX, (int) row1Y, 11, UiTheme.withAlpha(0xFFFFFFFF, 0.9f));
 
         if (openT > 0.2f) {
             float ta = Math.min(1f, (openT - 0.2f) / 0.3f);
             String track = CustomMusic.nowPlaying();
-            if (track == null || track.equals("—")) track = "...";
-            String shown = trim(font, track, curW - iconSz - (expanded ? 14 : 28));
-            UiText.draw(g, font, shown, Math.round(cx + iconSz + 9), Math.round(row1Y + 2),
+            if (track == null || track.equals("\u2014")) track = "...";
+            String shown = trim(font, track, curW - 15 - (expanded ? 14 : 28));
+            UiText.draw(g, font, shown, Math.round(cx + 20), Math.round(row1Y + 2),
                     UiTheme.withAlpha(0xFFFFFFFF, ta * 0.9f), UiText.FACE, false);
         }
 
@@ -118,39 +100,37 @@ public final class MusicIsland {
             updateEq(dt);
             int eqCol = UiTheme.withAlpha(accent, Math.min(1f, (openT - 0.3f) / 0.3f) * (0.6f + 0.3f * hoverT));
             float eqX = cx + curW - 17;
-            float eqY = cy + H / 2f;
+            float eqY = cy + IH / 2f;
             for (int i = 0; i < eq.length; i++) {
                 float bh = 3 + eq[i] * 8;
                 UiVector.roundRect(g, eqX + i * 3.5f, eqY - bh / 2f, 2, bh, 1f, eqCol);
             }
         }
 
-        // контролы if (expandT > 0.05f) {
-            float alpha2 = expandT;
-            float by = cy + H + 3;
-            float totalW = BTN_W * 5 + BTN_GAP * 4;
-            float bx = cx + (curW - totalW) / 2f;
-            String[] labels = {"⏮", CustomMusic.isPlaying() ? "⏸" : "▶", "⏭", "🔉", "🔊"};
+        if (expandT > 0.05f) {
+            float a2 = expandT;
+            float by = cy + IH + 3;
+            float tw = BW * 5 + BGAP * 4;
+            float bx = cx + (curW - tw) / 2f;
+            String[] lbl = {"\u23EE", CustomMusic.isPlaying() ? "\u23F8" : "\u25B6", "\u23ED", "\uD83D\uDD09", "\uD83D\uDD0A"};
             for (int i = 0; i < 5; i++) {
-                float x = bx + i * (BTN_W + BTN_GAP);
-                btnR[i] = new float[]{x, by, BTN_W, BTN_H};
-                boolean hv = over(x, by, BTN_W, BTN_H, mx, my);
-                drawBtn(g, font, x, by, BTN_W, BTN_H, labels[i], accent, alpha2, hv);
+                float x = bx + i * (BW + BGAP);
+                btnR[i] = new float[]{x, by, BW, BH};
+                boolean hv = over(x, by, BW, BH, mx, my);
+                drawBtn(g, font, x, by, BW, BH, lbl[i], accent, a2, hv);
             }
         } else {
             for (float[] r : btnR) r[0] = r[1] = r[2] = r[3] = 0;
         }
     }
 
-    /** Оставлен для совместимости, но больше не нужен. */
     public static void onClick(int mx, int my) {}
 
     private static void drawBtn(GuiGraphicsExtractor g, Font font, float x, float y,
-                                 float w, float h, String label, int accent, float alpha, boolean hover) {
+            float w, float h, String label, int accent, float alpha, boolean hover) {
         int fill = UiTheme.mix(0xFF1A1A1A, UiTheme.withAlpha(accent, 0.25f), hover ? 1f : 0f);
         UiVector.roundRect(g, x, y, w, h, 4, UiTheme.withAlpha(fill, alpha * 0.9f));
-        UiVector.outline(g, x, y, w, h, 4, 0.4f,
-                UiTheme.withAlpha(0x33FFFFFF, alpha * (hover ? 0.6f : 0.3f)));
+        UiVector.outline(g, x, y, w, h, 4, 0.4f, UiTheme.withAlpha(0x33FFFFFF, alpha * (hover ? 0.6f : 0.3f)));
         int col = UiTheme.withAlpha(0xFFFFFFFF, alpha * (hover ? 1f : 0.6f));
         float tw = font.width(label);
         g.text(font, label, Math.round(x + w / 2f - tw / 2f), Math.round(y + h / 2f - 4), col, false);
@@ -172,7 +152,7 @@ public final class MusicIsland {
         if (text == null) return "";
         if (font.width(text) <= maxW) return text;
         int end = text.length();
-        while (end > 0 && font.width(text.substring(0, end) + "…") > maxW) end--;
-        return end > 0 ? text.substring(0, end) + "…" : "…";
+        while (end > 0 && font.width(text.substring(0, end) + "\u2026") > maxW) end--;
+        return end > 0 ? text.substring(0, end) + "\u2026" : "\u2026";
     }
 }
