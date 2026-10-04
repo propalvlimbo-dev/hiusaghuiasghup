@@ -11,7 +11,6 @@ import ru.rooyzee.elytrixclient.Elytrixclient;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -113,9 +112,8 @@ public final class WindowIcon {
                     continue;
                 }
                 try (NativeImage image = NativeImage.read(in)) {
-                    IntBuffer source = image.getPixelsABGR();
-                    int[] copy = new int[source.remaining()];
-                    source.get(copy);
+                    // в 26.2 это int[] в порядке ABGR — ровно то, что ждёт GLFW
+                    int[] copy = image.getPixelsABGR();
                     images.add(copy);
                     sizes.add(image.getWidth());
                 }

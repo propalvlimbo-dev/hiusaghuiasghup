@@ -511,7 +511,7 @@ public class ElytrixScreen extends Screen {
         // scissor применяется в текущей позе — координаты тоже в «базовых» единицах
         graphics.enableScissor(contentX, contentY, contentX + contentW + SCROLLBAR_W + 6, contentY + contentH);
 
-        int y = Math.round(contentY + 4 - scroll);
+        int y = (int) Math.round(contentY + 4 - scroll);
         for (UiSection sect : sections) {
             sect.accent = accentColor;
             sect.layoutAt(contentX + 6 + slide, y, contentW - 12);
