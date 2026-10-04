@@ -10,6 +10,8 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
+import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
+
 /**
  * Примитивы отрисовки кастомного GUI: скруглённые прямоугольники и градиенты,
  * мягкая тень, круги/линии (для иконок), текст и прогресс-бар.
@@ -24,6 +26,16 @@ import net.minecraft.resources.Identifier;
 public final class UiDraw {
     /** Рисовать ли «свечения» (glow) — выключается режимом качества на больших разрешениях. */
     public static boolean GLOW = true;
+
+    /**
+     * Векторный рендер форм ({@link UiVector}) вместо спрайтов.
+     *
+     * <p>Спрайты давали мягкий край, только если рисовались ровно 1:1 в пиксель экрана; при
+     * любом дробном размере панели или масштабе они «квадратились». Векторные формы считаются
+     * геометрией и сглаживаются всегда, поэтому включены по умолчанию. Флаг оставлен как
+     * аварийный переключатель: {@code false} — вернуться на старую отрисовку спрайтами.
+     */
+    public static boolean VECTOR = true;
 
     // ─────────────────────────────────────────────────────────────────────
     //  Спрайты форм (сгенерированы scripts/make-ui-shapes.py)
@@ -134,6 +146,10 @@ public final class UiDraw {
             return;
         }
         int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        if (VECTOR) {
+            UiVector.roundRect(g, x, y, w, h, r, color);
+            return;
+        }
         if (r < 2) {
             g.fill(x, y, x + w, y + h, color);
             return;
@@ -163,6 +179,10 @@ public final class UiDraw {
             return;
         }
         int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        if (VECTOR) {
+            UiVector.roundRectGradient(g, x, y, w, h, r, top, bottom);
+            return;
+        }
         for (int i = 0; i < h; i++) {
             float t = h <= 1 ? 0f : (float) i / (h - 1);
             int color = UiTheme.mix(top, bottom, t);
@@ -193,6 +213,11 @@ public final class UiDraw {
 
     /** Рамка скруглённого прямоугольника толщиной 1: внешний контур цветом рамки + заливка внутри. */
     public static void roundRectBordered(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int fill, int border) {
+        if (VECTOR) {
+            UiVector.roundRect(g, x, y, w, h, radius, fill);
+            UiVector.outline(g, x, y, w, h, radius, 1f, border);
+            return;
+        }
         roundRect(g, x, y, w, h, radius, border);
         roundRect(g, x + 1, y + 1, w - 2, h - 2, Math.max(0, radius - 1), fill);
     }
@@ -200,6 +225,11 @@ public final class UiDraw {
     /** Вертикальная тень-«облако» вокруг панели (несколько полупрозрачных слоёв). */
     public static void shadow(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int layers, int color) {
         if (color == 0) {
+            return;
+        }
+        if (VECTOR) {
+            float spread = Math.max(4f, 2f + layers * 3f);
+            UiVector.shadow(g, x, y + 2, w, h, radius, spread, color, Math.max(3, Math.min(layers, 8)));
             return;
         }
         // один размытый спрайт вместо стопки жёстких прямоугольников
@@ -211,6 +241,10 @@ public final class UiDraw {
     /** Горизонтальный градиент — рисуем полосками (в 26.2 есть только вертикальный fillGradient). */
     public static void hGradient(GuiGraphicsExtractor g, int x, int y, int w, int h, int left, int right, int steps) {
         if (w <= 0 || h <= 0) {
+            return;
+        }
+        if (VECTOR) {
+            UiVector.roundRectBilinear(g, x, y, w, h, 0f, 0f, 0f, 0f, left, right, right, left);
             return;
         }
         int n = Math.max(1, Math.min(steps, w));
@@ -247,6 +281,10 @@ public final class UiDraw {
 
     /** Отрезок произвольной длины: раскладываем на квадраты вдоль линии (шаг = толщина). */
     public static void line(GuiGraphicsExtractor g, float x0, float y0, float x1, float y1, float thickness, int color) {
+        if (VECTOR) {
+            UiVector.line(g, x0, y0, x1, y1, Math.max(0.5f, thickness), color);
+            return;
+        }
         float dx = x1 - x0;
         float dy = y1 - y0;
         int size = Math.max(1, Math.round(thickness));
@@ -264,6 +302,10 @@ public final class UiDraw {
         if (r <= 0 || color == 0) {
             return;
         }
+        if (VECTOR) {
+            UiVector.roundRect(g, cx - r, cy - r, r * 2f, r * 2f, r, color);
+            return;
+        }
         int d = Math.max(2, Math.round(r * 2f));
         if (d < 4) {
             g.fill(Math.round(cx - r), Math.round(cy - r), Math.round(cx - r) + d, Math.round(cy - r) + d, color);
@@ -278,6 +320,10 @@ public final class UiDraw {
     /** Кольцо (контур круга) — не требует знания цвета фона под ним. */
     public static void ring(GuiGraphicsExtractor g, float cx, float cy, float r, float thickness, int color) {
         if (r <= 0) {
+            return;
+        }
+        if (VECTOR) {
+            UiVector.outline(g, cx - r, cy - r, r * 2f, r * 2f, r, thickness, color);
             return;
         }
         float inner = Math.max(0f, r - thickness);
@@ -306,6 +352,10 @@ public final class UiDraw {
 
     /** Треугольник «play» вершиной вправо. */
     public static void playTriangle(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+        if (VECTOR) {
+            UiVector.triangle(g, x, y, x + w, y + h / 2f, x, y + h, color);
+            return;
+        }
         int half = h / 2;
         for (int i = 0; i <= half; i++) {
             int len = Math.round((float) w * (half - i) / half);
@@ -437,6 +487,13 @@ public final class UiDraw {
         int r = h / 2;
         roundRect(g, x, y, w, h, Math.max(1, r), UiTheme.TRACK);
         int fillW = Math.round(w * v);
+        if (VECTOR && fillW >= 1) {
+            UiDraw.roundRect(g, x, y, fillW, h, Math.max(1, r), UiTheme.mix(UiTheme.mix(accent, 0xFFFFFFFF, 0.35f), accent, 0.35f));
+            if (h >= 4) {
+                roundRect(g, x, y, fillW, Math.max(1, h / 2), Math.max(1, r), UiTheme.withAlpha(0xFFFFFFFF, 0.18f));
+            }
+            return;
+        }
         if (fillW >= 2) {
             int light = UiTheme.mix(accent, 0xFFFFFFFF, 0.35f);
             int fillColor = UiTheme.mix(light, accent, 0.35f);
@@ -471,11 +528,98 @@ public final class UiDraw {
         if (!GLOW || strength <= 0.02f) {
             return;
         }
+        if (VECTOR) {
+            float spread = Math.max(3f, 9f * strength);
+            UiVector.shadow(g, x, y, w, h, radius, spread,
+                    withAlpha(accent, Math.min(0.5f, 0.22f * strength)), 6);
+            return;
+        }
         // мягкое свечение — размытый спрайт акцентного цвета
         int spread = Math.max(3, Math.round(9 * strength));
         int col = withAlpha(accent, Math.min(0.5f, 0.22f * strength));
         nineSlice(g, shapeTexture("shadow"), SHADOW_TEX, SHADOW_NINE,
                 x - spread, y - spread, w + 2 * spread, h + 2 * spread, col);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Обрезка (нужна векторным формам: они не знают про ванильный scissor-стек)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Включить обрезку: то же, что {@code graphics.enableScissor}, плюс запоминание прямоугольника. */
+    public static void scissor(GuiGraphicsExtractor g, int x0, int y0, int x1, int y1) {
+        UiVector.scissor(g, x0, y0, x1, y1);
+    }
+
+    /** Снять обрезку (парно {@link #scissor}). */
+    public static void unscissor(GuiGraphicsExtractor g) {
+        UiVector.unscissor(g);
+    }
+
+    /** Сбросить зеркало обрезки — вызывать в начале кадра, если что-то осталось незакрытым. */
+    public static void resetScissor() {
+        UiVector.resetScissor();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Формы с дробными координатами (для анимаций: без «прилипания» к пикселю)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Скруглённый прямоугольник с float-координатами. */
+    public static void roundRectF(GuiGraphicsExtractor g, float x, float y, float w, float h,
+                                  float radius, int color) {
+        if (VECTOR) {
+            UiVector.roundRect(g, x, y, w, h, radius, color);
+        } else {
+            roundRect(g, Math.round(x), Math.round(y), Math.round(w), Math.round(h), Math.round(radius), color);
+        }
+    }
+
+    /** Скруглённый прямоугольник с вертикальным градиентом и float-координатами. */
+    public static void roundRectGradientF(GuiGraphicsExtractor g, float x, float y, float w, float h,
+                                          float radius, int top, int bottom) {
+        if (VECTOR) {
+            UiVector.roundRectGradient(g, x, y, w, h, radius, top, bottom);
+        } else {
+            roundRectGradient(g, Math.round(x), Math.round(y), Math.round(w), Math.round(h),
+                    Math.round(radius), top, bottom);
+        }
+    }
+
+    /** Рамка скруглённого прямоугольника (float). */
+    public static void outlineF(GuiGraphicsExtractor g, float x, float y, float w, float h,
+                                float radius, float thickness, int color) {
+        if (VECTOR) {
+            UiVector.outline(g, x, y, w, h, radius, thickness, color);
+        }
+    }
+
+    /** Рамка с горизонтальным градиентом (float). */
+    public static void outlineGradientF(GuiGraphicsExtractor g, float x, float y, float w, float h,
+                                        float radius, float thickness, int left, int right) {
+        if (VECTOR) {
+            UiVector.outlineGradient(g, x, y, w, h, radius, thickness, left, right);
+        }
+    }
+
+    /** Тень/свечение с float-координатами. */
+    public static void shadowF(GuiGraphicsExtractor g, float x, float y, float w, float h,
+                               float radius, float spread, int color, int layers) {
+        if (VECTOR) {
+            UiVector.shadow(g, x, y, w, h, radius, spread, color, layers);
+        } else {
+            shadow(g, Math.round(x), Math.round(y), Math.round(w), Math.round(h),
+                    Math.round(radius), Math.round(spread / 3f), color);
+        }
+    }
+
+    /** Круг (float) — используется для точек-индикаторов. */
+    public static void discF(GuiGraphicsExtractor g, float cx, float cy, float r, int color) {
+        disc(g, cx, cy, r, color);
+    }
+
+    /** Смешать два цвета (дубль {@link UiTheme#mix} для удобства вызовов из gfx-кода). */
+    public static int mix(int a, int b, float t) {
+        return UiVector.mix(a, b, t);
     }
 
     private static int withAlpha(int color, float a) {

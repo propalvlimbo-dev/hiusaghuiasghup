@@ -204,8 +204,7 @@ public final class UiVector {
         for (int i = n; i >= 1; i--) {
             float t = (float) i / n;
             float grow = spread * t;
-            float fall = 1f - t;
-            float alpha = base * (0.18f + 0.82f * fall * fall) / n;
+            float alpha = base * (1f - t * t) * 1.6f / n;
             int col = (Math.round(255f * Math.min(1f, alpha)) << 24) | rgb;
             roundRect(g, x - grow, y - grow, w + 2 * grow, h + 2 * grow, radius + grow, col);
         }

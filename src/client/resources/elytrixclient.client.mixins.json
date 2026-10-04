@@ -4,6 +4,7 @@
   "package": "ru.rooyzee.elytrixclient.mixin.client",
   "compatibilityLevel": "JAVA_25",
   "client": [
+    "GuiGraphicsExtractorAccessor",
     "LoadingOverlayMixin",
     "ScreenMixin",
     "TitleScreenMixin"

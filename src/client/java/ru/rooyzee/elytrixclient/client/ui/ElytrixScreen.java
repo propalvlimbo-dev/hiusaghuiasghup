@@ -597,7 +597,7 @@ public class ElytrixScreen extends Screen {
         float t = UiWidget.ANIMATIONS ? easeOut(Mth.clamp(tabT, 0f, 1f)) : 1f;
         int slide = Math.round((1f - t) * 12f);
 
-        graphics.enableScissor(contentX - 2, contentY, contentX + contentW + scrollbarSpace, contentY + contentH);
+        UiDraw.scissor(graphics, contentX - 2, contentY, contentX + contentW + scrollbarSpace, contentY + contentH);
 
         int y = (int) Math.round(contentY - scroll) + slide;
         for (UiSection sect : sections) {
@@ -615,7 +615,7 @@ public class ElytrixScreen extends Screen {
                 }
             }
         }
-        graphics.disableScissor();
+        UiDraw.unscissor(graphics);
 
         // тонкий «оверлейный» скроллбар у правого края — карточки он не перекрывает
         if (maxScroll > 1) {
