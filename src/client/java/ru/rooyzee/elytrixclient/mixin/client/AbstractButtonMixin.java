@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixMenuButtons;
 
 /**
- * Кнопки главного меню — в стиле клиента ({@link ElytrixMenuButtons}).
+ * Кнопки главного меню — в стиле клиента.
  * SpriteIconButton (язык, доступность и т.д.) — полностью пропускаются.
  */
 @Mixin(AbstractButton.class)
@@ -28,7 +28,6 @@ public abstract class AbstractButtonMixin {
             return;
         }
         AbstractButton self = (AbstractButton) (Object) this;
-        // Полностью пропусаем маленькие иконки (язык, доступность и т.д.)
         if (self instanceof SpriteIconButton) {
             elytrix$graphics = null;
             ci.cancel();
@@ -51,7 +50,7 @@ public abstract class AbstractButtonMixin {
             return;
         }
         AbstractButton self = (AbstractButton) (Object) this;
-        // Пропусаем подпись для иконок if (self instanceof SpriteIconButton) {
+        if (self instanceof SpriteIconButton) {
             ci.cancel();
             return;
         }
