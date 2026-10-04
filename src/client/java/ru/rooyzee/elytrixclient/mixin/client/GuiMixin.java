@@ -32,7 +32,7 @@ public abstract class GuiMixin {
 
     private static void renderIsland(GuiGraphicsExtractor g) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.screen != null) return;
+        if (mc == null || mc.screen() != null) return;
         int sw = g.guiWidth();
         int sh = g.guiHeight();
         // mouseHandler.xypos() в оконных координатах, нужен масштаб в GUI
