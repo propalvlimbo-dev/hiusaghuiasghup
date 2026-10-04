@@ -14,37 +14,24 @@ import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
 
 /**
  * «Динамический островок» — компактная плашка вверху экрана.
- * Клик по островку раскрывает контролы (плей/пауза, переключение, громкость).
+ * Клик обрабатывается ВНУТРИ render() — никаких внешних обработчиков.
  */
 public final class MusicIsland {
-    private MusicIsland() {
-    }
+    private MusicIsland() {}
 
-    // ── размеры ────────────────────────────────────────────────────────
-    private static final float H = 20;
-    private static final float H_EXP = 46;
-    private static final float R = 10;
-    private static final float W_EMPTY = 48;
-    private static final float W_PLAY = 150;
-    private static final float W_EXP = 200;
-    private static final float BTN_W = 28;
-    private static final float BTN_H = 16;
-    private static final float BTN_GAP = 4;
+    private static final float H = 20, H_EXP = 46, R = 10;
+    private static final float W_EMPTY = 48, W_PLAY = 150, W_EXP = 200;
+    private static final float BTN_W = 28, BTN_H = 16, BTN_GAP = 4;
 
-    // ── состояние ──────────────────────────────────────────────────────
     private static float openT, expandT, hoverT;
     private static long lastFrame;
     private static final float[] eq = new float[4];
     private static float eqPhase;
     private static boolean expanded;
-
-    // сохранённая позиция для onClick
+    private static boolean wasPressed;
     private static float sX, sY, sW, sH;
-    private static float[][] btnRects = new float[5][4]; // x,y,w,h для 5 кнопок
+    private static final float[][] btnR = new float[5][4];
 
-    /**
-     * Рендер — вызывается каждый кадр из ScreenMixin / LoadingOverlayMixin.
-     */
     public static void render(GuiGraphicsExtractor g, int sw, int sh, int mx, int my) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
@@ -63,19 +50,44 @@ public final class MusicIsland {
 
         int accent = UiTheme.accent(cfg != null ? cfg.accentIndex : 0);
 
-        // ── геометрия ──────────────────────────────────────────────────
         float curH = H + (H_EXP - H) * easeOut(expandT);
         float wantW = expanded ? W_EXP : (openT > 0.5f ? W_PLAY : W_EMPTY);
         float curW = W_EMPTY + (wantW - W_EMPTY) * easeOut(Math.min(1f, openT * 2f));
         float cx = sw / 2f - curW / 2f;
         float cy = 6;
-        float rad = R + (2f) * expandT;
+        float rad = R + 2f * expandT;
 
-        // сохраняем для onClick
         sX = cx; sY = cy; sW = curW; sH = curH;
 
         boolean over = mx >= cx && mx <= cx + curW && my >= cy && my <= cy + curH;
         hoverT += ((over ? 1f : 0f) - hoverT) * (1f - (float) Math.exp(-14f * dt));
+
+        // ── КЛИК: обрабатываем прямо здесь ─────────────────────────────
+        boolean pressed = mc.mouseHandler.isLeftPressed();
+        boolean clicked = pressed && !wasPressed;
+        wasPressed = pressed;
+
+        if (clicked) {
+            if (expanded) {
+                // проверяем кнопки for (int i = 0; i < btnR.length; i++) {
+                    float[] r = btnR[i];
+                    if (r[2] > 0 && mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3]) {
+                        switch (i) {
+                            case 0 -> CustomMusic.prev();
+                            case 1 -> CustomMusic.togglePause();
+                            case 2 -> CustomMusic.next();
+                            case 3 -> CustomMusic.volumeDown();
+                            case 4 -> CustomMusic.volumeUp();
+                        }
+                        // не переключаем expanded clicked = false;
+                    }
+                }
+            }
+            if (clicked) {
+                if (over) expanded = !expanded;
+                else if (expanded) expanded = false;
+            }
+        }
 
         // ── рисование ──────────────────────────────────────────────────
         UiVector.shadow(g, cx, cy, curW, curH, rad, 4f + 2f * hoverT, 0x30000000, 5);
@@ -85,8 +97,6 @@ public final class MusicIsland {
                 UiTheme.withAlpha(accent, 0.08f + 0.1f * hoverT));
 
         Font font = mc.font;
-
-        // ── строка 1: иконка + название + эквалайзер ───────────────────
         float row1Y = cy + (expanded ? 4 : (H - 12) / 2f);
         float iconSz = 11;
         float iconX = cx + 5;
@@ -104,7 +114,6 @@ public final class MusicIsland {
                     UiTheme.withAlpha(0xFFFFFFFF, ta * 0.9f), UiText.FACE, false);
         }
 
-        // эквалайзер (свёрнутый режим)
         if (!expanded && openT > 0.3f) {
             updateEq(dt);
             int eqCol = UiTheme.withAlpha(accent, Math.min(1f, (openT - 0.3f) / 0.3f) * (0.6f + 0.3f * hoverT));
@@ -116,55 +125,25 @@ public final class MusicIsland {
             }
         }
 
-        // ── строка 2: контролы ─────────────────────────────────────────
-        if (expandT > 0.05f) {
+        // контролы if (expandT > 0.05f) {
             float alpha2 = expandT;
             float by = cy + H + 3;
             float totalW = BTN_W * 5 + BTN_GAP * 4;
             float bx = cx + (curW - totalW) / 2f;
-
             String[] labels = {"⏮", CustomMusic.isPlaying() ? "⏸" : "▶", "⏭", "🔉", "🔊"};
             for (int i = 0; i < 5; i++) {
                 float x = bx + i * (BTN_W + BTN_GAP);
-                btnRects[i] = new float[]{x, by, BTN_W, BTN_H};
+                btnR[i] = new float[]{x, by, BTN_W, BTN_H};
                 boolean hv = over(x, by, BTN_W, BTN_H, mx, my);
                 drawBtn(g, font, x, by, BTN_W, BTN_H, labels[i], accent, alpha2, hv);
             }
         } else {
-            for (float[] r : btnRects) r[0] = r[1] = r[2] = r[3] = 0;
+            for (float[] r : btnR) r[0] = r[1] = r[2] = r[3] = 0;
         }
     }
 
-    /**
-     * Обработка клика — вызывается из ScreenMixin.mouseClicked.
-     */
-    public static void onClick(int mx, int my) {
-        if (sW < 1f) return;
-        boolean over = mx >= sX && mx <= sX + sW && my >= sY && my <= sY + sH;
-
-        if (expanded) {
-            // проверяем кнопки
-            for (int i = 0; i < btnRects.length; i++) {
-                float[] r = btnRects[i];
-                if (r[2] > 0 && mx >= r[0] && mx <= r[0] + r[2] && my >= r[1] && my <= r[1] + r[3]) {
-                    switch (i) {
-                        case 0 -> CustomMusic.prev();
-                        case 1 -> CustomMusic.togglePause();
-                        case 2 -> CustomMusic.next();
-                        case 3 -> CustomMusic.volumeDown();
-                        case 4 -> CustomMusic.volumeUp();
-                    }
-                    return;
-                }
-            }
-        }
-
-        if (over) {
-            expanded = !expanded;
-        } else if (expanded) {
-            expanded = false;
-        }
-    }
+    /** Оставлен для совместимости, но больше не нужен. */
+    public static void onClick(int mx, int my) {}
 
     private static void drawBtn(GuiGraphicsExtractor g, Font font, float x, float y,
                                  float w, float h, String label, int accent, float alpha, boolean hover) {
@@ -186,11 +165,9 @@ public final class MusicIsland {
     }
 
     private static float easeOut(float t) { float u = 1f - t; return 1f - u * u * u; }
-
     private static boolean over(float x, float y, float w, float h, int mx, int my) {
         return mx >= x && mx <= x + w && my >= y && my <= y + h;
     }
-
     private static String trim(Font font, String text, float maxW) {
         if (text == null) return "";
         if (font.width(text) <= maxW) return text;

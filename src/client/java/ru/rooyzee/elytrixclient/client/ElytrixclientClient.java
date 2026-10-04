@@ -67,18 +67,5 @@ public class ElytrixclientClient implements ClientModInitializer {
         });
 
         LOG.add("[Elytrix] Мод загружен. Панель — правый Ctrl.");
-
-        // Глобальный трекинг кликов для островка музыки
-        final boolean[] islandWasPressed = {false};
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            boolean pressed = client.mouseHandler.isLeftPressed();
-            if (pressed && !islandWasPressed[0]) {
-                var win = client.getWindow();
-                int mx = (int) (client.mouseHandler.xpos() * win.getGuiScaledWidth() / win.getWidth());
-                int my = (int) (client.mouseHandler.ypos() * win.getGuiScaledHeight() / win.getHeight());
-                MusicIsland.onClick(mx, my);
-            }
-            islandWasPressed[0] = pressed;
-        });
     }
 }
