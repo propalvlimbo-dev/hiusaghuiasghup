@@ -187,6 +187,10 @@ public final class MusicIsland {
 
     private static float easeOut(float t) { float u = 1f - t; return 1f - u * u * u; }
 
+    private static boolean over(float x, float y, float w, float h, int mx, int my) {
+        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    }
+
     private static String trim(Font font, String text, float maxW) {
         if (text == null) return "";
         if (font.width(text) <= maxW) return text;
