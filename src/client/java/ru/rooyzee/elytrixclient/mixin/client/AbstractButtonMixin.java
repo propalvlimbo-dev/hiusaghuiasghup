@@ -28,7 +28,13 @@ public abstract class AbstractButtonMixin {
             elytrix$graphics = null;
             return;
         }
-        ElytrixMenuButtons.background(graphics, (AbstractButton) (Object) this);
+        AbstractButton self = (AbstractButton) (Object) this;
+        if (!self.visible) {
+            elytrix$graphics = null;
+            ci.cancel();
+            return;
+        }
+        ElytrixMenuButtons.background(graphics, self);
         elytrix$graphics = graphics;
         ci.cancel();
     }

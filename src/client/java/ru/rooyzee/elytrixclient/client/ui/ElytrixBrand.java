@@ -28,20 +28,9 @@ public final class ElytrixBrand {
     private ElytrixBrand() {
     }
 
-    /** Рисуется по центру экрана сверху. */
+    /** Логотип убран — не вписывается. */
     public static void draw(GuiGraphicsExtractor g, int screenWidth, float alpha) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc == null) {
-            return;
-        }
-        int base = ElytrixMenuButtons.LOGO;
-        int mark = Math.round(base * SCALE);
-        // центрируем по горизонтали на экране
-        int markX = (screenWidth - mark) / 2;
-        int markY = Math.max(6, ElytrixMenuButtons.logoY() - (mark - base) / 2);
-        int k = UiDraw.shapeScale();
-        UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), markX, markY, mark, mark,
-                LOGO_SIZE * k, LOGO_SIZE * k, UiTheme.withAlpha(0xFFFFFFFF, alpha));
+        // не рисуем логотип E
     }
 
     private static String version() {
