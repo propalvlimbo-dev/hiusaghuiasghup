@@ -15,22 +15,13 @@ import ru.rooyzee.elytrixclient.client.ui.ElytrixBrand;
 
 /**
  * Главное меню: убираем ванильный логотип «MINECRAFT» и сплэш, вместо логотипа рисуем
- * свою «шапку» клиента ({@link ElytrixBrand}), а внизу — свой бейдж версии
- * вместо строки «Minecraft 26.2».
+ * свою «шапку» клиента ({@link ElytrixBrand}). Никаких бейджей версии в углах экрана нет.
  *
  * <p>{@code require = 0}: если Mojang поменяет способ вызова — миксин просто ничего
  * не сделает (останется ваниль), игра не упадёт.
  */
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin {
-
-    @Inject(method = "extractRenderState", at = @At("TAIL"))
-    private void elytrix$versionChip(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
-        if (!ElytrixclientClient.CONFIG.hackerBackground) {
-            return;
-        }
-        ElytrixBrand.drawVersionChip(graphics, graphics.guiHeight(), 1.0F);
-    }
 
     @Redirect(method = "extractRenderState", require = 0,
             at = @At(value = "INVOKE",

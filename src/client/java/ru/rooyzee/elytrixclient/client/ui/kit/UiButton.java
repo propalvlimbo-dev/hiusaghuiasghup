@@ -113,7 +113,7 @@ public class UiButton extends UiWidget {
             UiDraw.textCenter(graphics, font, trim(font, label, inner), x + w / 2, ty, fadeIn(fg));
         } else {
             int iconSize = 16;
-            int textW = font.width(trim(font, label, inner - iconSize - 5));
+            int textW = UiDraw.width(font, trim(font, label, inner - iconSize - 5));
             int total = textW + iconSize + 5;
             int startX = x + (w - total) / 2;
             icon.draw(graphics, startX, y + oy + (h - iconSize) / 2, iconSize, fadeIn(fg));

@@ -48,14 +48,14 @@ public class UiSection extends UiWidget {
     }
 
     private int headerH() {
-        int hh = 9;
+        int hh = 12;
         if (title != null) {
-            hh += 12;
+            hh += 16;
         }
         if (subtitle != null) {
-            hh += 11;
+            hh += 13;
         }
-        return hh;
+        return hh + 4;
     }
 
     public int contentHeight() {
@@ -63,7 +63,7 @@ public class UiSection extends UiWidget {
         for (int i = 0; i < children.size(); i++) {
             hh += children.get(i).h + (i < children.size() - 1 ? 6 : 0);
         }
-        return hh + 9;
+        return hh + 13;
     }
 
     /** Раскладывает карточку и её строки. */
@@ -74,7 +74,7 @@ public class UiSection extends UiWidget {
         this.h = contentHeight();
         int cy = y + headerH();
         for (UiWidget c : children) {
-            c.place(x + 9, cy, w - 18);
+            c.place(x + 13, cy, w - 26);
             cy += c.h + 6;
         }
     }
@@ -82,33 +82,41 @@ public class UiSection extends UiWidget {
     @Override
     public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float dt) {
         tick(dt, false);
-        UiDraw.roundRectBordered(graphics, x, y, w, h, UiTheme.R_LG, fadeIn(UiTheme.CARD), fadeIn(UiTheme.DIVIDER));
+        UiDraw.roundRectBordered(graphics, x, y, w, h, UiTheme.R_LG, fadeIn(UiTheme.CARD),
+                fadeIn(UiTheme.BORDER_SOFT));
 
         var font = font();
-        int ty = y + 9;
-        int titleX = x + 11;
+        int ty = y + 13;
+        int titleX = x + 14;
         if (icon != null) {
-            int size = 16;
-            icon.draw(graphics, titleX, ty - 4, size, fadeIn(UiTheme.mix(accent, UiTheme.TEXT, 0.35f)));
-            titleX += size + 6;
+            icon.draw(graphics, titleX, ty - 4, 16, fadeIn(UiTheme.mix(accent, UiTheme.TEXT, 0.55f)));
+            titleX += 23;
         }
         if (title != null) {
-            UiDraw.textShadow(graphics, font, title, titleX, ty, fadeIn(UiTheme.TEXT));
+            UiDraw.text(graphics, font, title, titleX, ty, fadeIn(UiTheme.TEXT));
             if (badge != null) {
-                int bw = font.width(badge) + 12;
-                int bx = x + w - 11 - bw;
-                UiDraw.roundRect(graphics, bx, ty - 3, bw, 14, UiTheme.R_SM, fadeIn(UiTheme.accentSoft(accent, 0.22f)));
-                UiDraw.textCenter(graphics, font, badge, bx + bw / 2, ty, fadeIn(UiTheme.mix(accent, 0xFFFFFFFF, 0.30f)));
+                int bw = UiDraw.width(font, badge, UiText.MONO) + 14;
+                int bx = x + w - 14 - bw;
+                UiDraw.roundRect(graphics, bx, ty - 5, bw, 16, UiTheme.R_SM,
+                        fadeIn(UiTheme.accentSoft(accent, 0.22f)));
+                UiDraw.textCenter(graphics, font, badge, bx + bw / 2, ty,
+                        fadeIn(UiTheme.mix(accent, 0xFFFFFFFF, 0.40f)), UiText.MONO);
             }
-            ty += 12;
+            ty += 16;
         }
         if (subtitle != null) {
-            UiDraw.text(graphics, font, subtitle, x + 11, ty, fadeIn(UiTheme.TEXT_DIM));
+            UiDraw.text(graphics, font, subtitle, x + 14, ty, fadeIn(UiTheme.TEXT_DIM));
         }
 
-        for (UiWidget c : children) {
+        // хайрлайн между шапкой и строками + между строками (стиль списков Apple)
+        UiDraw.hLine(graphics, x + 14, x + w - 14, y + headerH() - 7, 1, fadeIn(UiTheme.DIVIDER));
+        for (int i = 0; i < children.size(); i++) {
+            UiWidget c = children.get(i);
             c.accent = accent;
             c.render(graphics, mouseX, mouseY, dt);
+            if (i < children.size() - 1) {
+                UiDraw.hLine(graphics, x + 14, x + w - 14, c.y + c.h + 3, 1, fadeIn(UiTheme.DIVIDER));
+            }
         }
     }
 }

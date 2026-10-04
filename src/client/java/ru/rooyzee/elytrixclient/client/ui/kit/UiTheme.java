@@ -14,9 +14,10 @@ public final class UiTheme {
     }
 
     // ── темы ─────────────────────────────────────────────────────────────
-    public static final String[] PRESET_NAMES = {"Бело-розовая", "Тёмная"};
-    private static final int PRESET_LIGHT = 0;
-    private static final int PRESET_DARK = 1;
+    /** 0 — «графит» (тёмная, стиль Apple + хакерская тема), 1 — светлая «бумага». */
+    public static final String[] PRESET_NAMES = {"Графит", "Светлая"};
+    private static final int PRESET_GRAPHITE = 0;
+    private static final int PRESET_LIGHT = 1;
 
     // ── поверхности (меняются темой) ─────────────────────────────────────
     public static int SCRIM;
@@ -44,14 +45,15 @@ public final class UiTheme {
     public static final int ERROR = 0xFFF87171;
 
     // ── размеры ──────────────────────────────────────────────────────────
-    public static final int R_SM = 6;
-    public static final int R_MD = 9;
-    public static final int R_LG = 14;
-    public static final int SIDEBAR_W = 124;
-    public static final int HEADER_H = 46;
-    public static final int PAD = 10;
-    public static final int ROW_H = 28;
-    public static final int ROW_H_TALL = 36;
+    public static final int R_SM = 8;
+    public static final int R_MD = 10;
+    public static final int R_LG = 12;
+    public static final int R_XL = 16;
+    public static final int SIDEBAR_W = 122;
+    public static final int HEADER_H = 58;
+    public static final int PAD = 12;
+    public static final int ROW_H = 30;
+    public static final int ROW_H_TALL = 42;
 
     // ── акценты ──────────────────────────────────────────────────────────
     public static final String[] ACCENT_NAMES = {"Розовый", "Малиновый", "Сиреневый", "Голубой", "Зелёный", "Оранжевый"};
@@ -60,47 +62,51 @@ public final class UiTheme {
     private static boolean light = true;
 
     static {
-        applyPreset(PRESET_LIGHT);
+        applyPreset(PRESET_GRAPHITE);
     }
 
-    /** 0 — бело-розовая, 1 — тёмная. */
+    /**
+     * 0 — «графит» (по умолчанию: тёмные поверхности, тонкие светящиеся хайрлайны,
+     * акцент — розовый; ощущение тёмного терминала с аккуратной типографикой),
+     * 1 — светлая «бумага» (розовый акцент остаётся).
+     */
     public static void applyPreset(int index) {
-        if (index == PRESET_DARK) {
-            light = false;
-            SCRIM = 0xB0070A10;
-            PANEL = 0xF513161D;
-            SIDEBAR = 0xF50E111A;
-            CARD = 0xFF181B23;
-            CARD_HOVER = 0xFF1F242F;
-            ROW = 0xFF1C2029;
-            ROW_HOVER = 0xFF262C3A;
-            POPUP = 0xFF14171E;
-            TRACK = 0xFF2A2F3B;
-            BORDER = 0x26FFFFFF;
-            BORDER_SOFT = 0x14FFFFFF;
-            DIVIDER = 0x16FFFFFF;
-            SHADOW = 0x33000000;
-            TEXT = 0xFFFFFFFF;
-            TEXT_SOFT = 0xFFAAB0C0;
-            TEXT_DIM = 0xFF6E7484;
-        } else {
+        if (index == PRESET_LIGHT) {
             light = true;
-            SCRIM = 0x59FFFFFF;
-            PANEL = 0xF7FFFFFF;
-            SIDEBAR = 0xF7FFF6FB;
+            SCRIM = 0x59F4F4F7;
+            PANEL = 0xFBFFFFFF;
+            SIDEBAR = 0xFDF7F7FA;
             CARD = 0xFFFFFFFF;
-            CARD_HOVER = 0xFFFFF4FA;
-            ROW = 0xFFFDF0F7;
-            ROW_HOVER = 0xFFFBDFF0;
+            CARD_HOVER = 0xFFF7F7FB;
+            ROW = 0xFFF6F6F9;
+            ROW_HOVER = 0xFFEFEFF4;
             POPUP = 0xFFFFFFFF;
-            TRACK = 0xFFF4D6E8;
-            BORDER = 0x33E24CB8;
-            BORDER_SOFT = 0x22E24CB8;
-            DIVIDER = 0x22E24CB8;
-            SHADOW = 0x26000000;
-            TEXT = 0xFF2A1C2E;
-            TEXT_SOFT = 0xFF6D5A73;
-            TEXT_DIM = 0xFF9C8BA3;
+            TRACK = 0xFFE9E9F0;
+            BORDER = 0x1F14141A;
+            BORDER_SOFT = 0x1214141A;
+            DIVIDER = 0x1414141A;
+            SHADOW = 0x2E0B0B14;
+            TEXT = 0xFF14141A;
+            TEXT_SOFT = 0xFF4A4A55;
+            TEXT_DIM = 0xFF8C8C99;
+        } else {
+            light = false;
+            SCRIM = 0x59000000;
+            PANEL = 0xF2141218;
+            SIDEBAR = 0xF51A171F;
+            CARD = 0x14FFFFFF;
+            CARD_HOVER = 0x1FFFFFFF;
+            ROW = 0x0FFFFFFF;
+            ROW_HOVER = 0x1AFFFFFF;
+            POPUP = 0xF21D1A23;
+            TRACK = 0x1FFFFFFF;
+            BORDER = 0x24FFFFFF;
+            BORDER_SOFT = 0x12FFFFFF;
+            DIVIDER = 0x14FFFFFF;
+            SHADOW = 0x8C000000;
+            TEXT = 0xFFF6F4F8;
+            TEXT_SOFT = 0xE0FFFFFF;
+            TEXT_DIM = 0x8AFFFFFF;
         }
     }
 

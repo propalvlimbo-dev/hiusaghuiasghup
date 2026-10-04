@@ -251,3 +251,32 @@ bitmap-шрифт — он резкий, но «пиксельный» по ри
 TTF-атлас (рендер `java.awt`/FreeType → текстура) или TTF-провайдер
 `assets/elytrixclient/font/*.json` со стилем `Style.withFont(...)`. Это следующий
 шаг, если хочется «совсем не пиксельно».
+
+---
+
+## 8. Свои шрифты (04.10.2026)
+
+Ванильный шрифт — bitmap 5×7, поэтому «пиксельный». В клиент добавлены свои TTF:
+
+| файл | шрифт | где используется |
+|---|---|---|
+| `assets/elytrixclient/font/inter.ttf` + `ui.json` | Inter 10 px | весь текст интерфейса |
+| `assets/elytrixclient/font/inter.ttf` + `ui_title.json` | Inter 20 px | крупные заголовки (шапка панели, «ELYTRIX») |
+| `assets/elytrixclient/font/mono.ttf` + `mono.json` | JetBrains Mono 10 px | консоль, версии, адреса, числа |
+
+Как это работает: игра сама рендерит TTF через провайдер `{"type":"ttf", ...}`
+(сглаживание движком, любой масштаб интерфейса). Шрифт привязывается к тексту
+стилем: `Component.literal(s).withStyle(Style.EMPTY.withFont(identifier))` —
+этим занимается `ui/kit/UiText.java`, поэтому **измерять ширину тоже нужно через
+компонент**: `UiDraw.width(font, text)` / `UiDraw.width(font, text, face)`.
+
+Что учесть:
+- рисовать текст надо 1:1 (без дробного масштаба матрицей) — иначе сглаженный
+  шрифт «мылится»; заголовки берут отдельный шрифт `ui_title`, а не `pose().scale`;
+- в JSON провайдера менять можно `size`, `oversample`, `shift` — например,
+  если хочется текст крупнее/ниже: `assets/elytrixclient/font/ui.json`;
+- лицензии: Inter и JetBrains Mono — SIL OFL 1.1, текст лицензии лежит рядом
+  (`assets/elytrixclient/font/OFL.txt`).
+
+Если шрифт не загрузится (не совпадёт схема провайдера в новой версии игры),
+текст будет пустым/квадратиками — тогда правим JSON, код менять не нужно.

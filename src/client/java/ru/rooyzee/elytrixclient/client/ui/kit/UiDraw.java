@@ -318,48 +318,85 @@ public final class UiDraw {
     //  Текст
     // ─────────────────────────────────────────────────────────────────────
 
+    /** Ширина строки в текущем шрифте интерфейса (не в ванильном bitmap). */
+    public static int width(Font font, String s) {
+        return UiText.width(font, s, UiText.FACE);
+    }
+
+    /** Ширина строки в конкретном шрифте (заголовки — {@link UiText#TITLE}, консоль — {@link UiText#MONO}). */
+    public static int width(Font font, String s, Identifier face) {
+        return UiText.width(font, s, face);
+    }
+
     public static void text(GuiGraphicsExtractor g, Font font, String s, int x, int y, int color) {
-        g.text(font, s, x, y, color, false);
+        UiText.draw(g, font, s, x, y, color, UiText.FACE, false);
+    }
+
+    /** Текст своим шрифтом (заголовки, моноширинные значения). */
+    public static void text(GuiGraphicsExtractor g, Font font, String s, int x, int y, int color, Identifier face) {
+        UiText.draw(g, font, s, x, y, color, face, false);
     }
 
     public static void textShadow(GuiGraphicsExtractor g, Font font, String s, int x, int y, int color) {
-        g.text(font, s, x, y, color, true);
+        UiText.draw(g, font, s, x, y, color, UiText.FACE, true);
     }
 
     public static void textCenter(GuiGraphicsExtractor g, Font font, String s, int cx, int y, int color) {
-        g.text(font, s, cx - font.width(s) / 2, y, color, false);
+        textCenter(g, font, s, cx, y, color, UiText.FACE);
+    }
+
+    public static void textCenter(GuiGraphicsExtractor g, Font font, String s, int cx, int y, int color,
+                                  Identifier face) {
+        UiText.draw(g, font, s, cx - UiText.width(font, s, face) / 2, y, color, face, false);
     }
 
     public static void textRight(GuiGraphicsExtractor g, Font font, String s, int right, int y, int color) {
-        g.text(font, s, right - font.width(s), y, color, false);
+        UiText.draw(g, font, s, right - UiText.width(font, s, UiText.FACE), y, color, UiText.FACE, false);
+    }
+
+    /** Текст, прижатый вправо, своим шрифтом (моно для чисел и адресов). */
+    public static void textRight(GuiGraphicsExtractor g, Font font, String s, int right, int y, int color,
+                                 Identifier face) {
+        UiText.draw(g, font, s, right - UiText.width(font, s, face), y, color, face, false);
     }
 
     /** Текст с увеличенным межбуквенным интервалом (заголовки «в стиле интерфейса»). */
     public static void textSpaced(GuiGraphicsExtractor g, Font font, String s, int x, int y, int spacing,
                                   int color, boolean shadow) {
+        textSpaced(g, font, s, x, y, spacing, color, shadow, UiText.FACE);
+    }
+
+    public static void textSpaced(GuiGraphicsExtractor g, Font font, String s, int x, int y, int spacing,
+                                  int color, boolean shadow, Identifier face) {
         int cx = x;
         for (int i = 0; i < s.length(); i++) {
             String ch = String.valueOf(s.charAt(i));
+            int cw = UiText.width(font, ch, face);
             if (ch.equals(" ")) {
-                cx += 3 + spacing;
+                cx += Math.max(3, cw) + spacing;
                 continue;
             }
-            g.text(font, ch, cx, y, color, shadow);
-            cx += font.width(ch) + spacing;
+            UiText.draw(g, font, ch, cx, y, color, face, shadow);
+            cx += cw + spacing;
         }
     }
 
     public static int spacedWidth(Font font, String s, int spacing) {
+        return spacedWidth(font, s, spacing, UiText.FACE);
+    }
+
+    public static int spacedWidth(Font font, String s, int spacing, Identifier face) {
         int w = 0;
         for (int i = 0; i < s.length(); i++) {
             String ch = String.valueOf(s.charAt(i));
-            w += (ch.equals(" ") ? 3 : font.width(ch)) + spacing;
+            int cw = UiText.width(font, ch, face);
+            w += (ch.equals(" ") ? Math.max(3, cw) : cw) + spacing;
         }
         return Math.max(0, w - spacing);
     }
 
     public static void textCenterShadow(GuiGraphicsExtractor g, Font font, String s, int cx, int y, int color) {
-        g.text(font, s, cx - font.width(s) / 2, y, color, true);
+        UiText.draw(g, font, s, cx - UiText.width(font, s, UiText.FACE) / 2, y, color, UiText.FACE, true);
     }
 
     /** Обрезает строку так, чтобы она влезла в {@code maxWidth} (с «…»), — для узких мест. */
@@ -367,16 +404,23 @@ public final class UiDraw {
         if (text == null || maxWidth <= 0) {
             return "";
         }
-        if (font.width(text) <= maxWidth) {
+        if (UiText.width(font, text, UiText.FACE) <= maxWidth) {
             return text;
         }
         String ellipsis = "…";
-        int ew = font.width(ellipsis);
-        int end = text.length();
-        while (end > 0 && font.width(text.substring(0, end)) + ew > maxWidth) {
-            end--;
+        int ew = UiText.width(font, ellipsis, UiText.FACE);
+        StringBuilder sb = new StringBuilder();
+        int w = 0;
+        for (int i = 0; i < text.length(); i++) {
+            String ch = String.valueOf(text.charAt(i));
+            int cw = UiText.width(font, ch, UiText.FACE);
+            if (w + cw + ew > maxWidth) {
+                break;
+            }
+            sb.append(text.charAt(i));
+            w += cw;
         }
-        return text.substring(0, end) + ellipsis;
+        return sb + ellipsis;
     }
 
     public static void textComponentCenter(GuiGraphicsExtractor g, Font font, Component c, int cx, int y, int color) {

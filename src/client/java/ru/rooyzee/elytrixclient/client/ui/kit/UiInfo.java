@@ -27,23 +27,27 @@ public class UiInfo extends UiWidget {
     @Override
     public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float dt) {
         beginFrame(mouseX, mouseY, dt);
-        int bg = UiTheme.mix(UiTheme.ROW, UiTheme.ROW_HOVER, hoverT * 0.7f);
-        UiDraw.roundRect(graphics, x, y, w, h, UiTheme.R_MD, fadeIn(bg));
+        if (hoverT > 0.01f) {
+            UiDraw.roundRect(graphics, x - 2, y + 1, w + 4, h - 2, UiTheme.R_SM,
+                    fadeIn(UiTheme.withAlpha(UiTheme.ROW_HOVER, 0.55f * hoverT)));
+        }
 
         var font = font();
-        int textX = x + 10;
+        int textX = x + 4;
         if (icon != null) {
             icon.draw(graphics, textX, y + (h - 16) / 2, 16, fadeIn(UiTheme.TEXT_DIM));
-            textX += 20;
+            textX += 22;
         }
-        UiDraw.text(graphics, font, key, textX, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT_DIM));
+        UiDraw.text(graphics, font, key, textX, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT_SOFT));
 
         String text = value == null ? "" : value.get();
-        int vx = x + w - 10;
+        String shown = trim(font, text, Math.max(40, w - 110));
+        int vx = x + w - 4;
         if (dotColor != 0) {
-            UiDraw.disc(graphics, vx - font.width(text) - 8f, y + h / 2f, 3f, fadeIn(dotColor));
+            UiDraw.disc(graphics, vx - UiDraw.width(font, shown, UiText.MONO) - 10f, y + h / 2f, 3f,
+                    fadeIn(dotColor));
         }
-        UiDraw.textRight(graphics, font, trim(font, text, w - 60), vx, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT_SOFT));
+        UiDraw.textRight(graphics, font, shown, vx, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT), UiText.MONO);
         endFrame();
     }
 }

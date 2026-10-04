@@ -2,128 +2,96 @@ package ru.rooyzee.elytrixclient.client.ui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 
 /**
  * Свой экран загрузки ElytrixClient — рисуется вместо ванильного красного лоадера
  * (см. {@code mixin.client.LoadingOverlayMixin}) на всё время загрузки ресурсов.
  *
- * <p>Композиция: «хакерский» фон, логотип с пульсацией и орбитальной точкой,
- * заголовок в разрядку, полоса прогресса с бликом, «терминальный» список шагов
- * и мигающий курсор. {@code alpha} отвечает за плавный вход/выход.
+ * <p>Композиция намеренно сдержанная («Apple + терминал»): тёмный фон с тихой
+ * сеткой, знак клиента с мягким ореолом, название в разрядку, тонкая линия
+ * прогресса и одна строка состояния моноширинным шрифтом — без «терминального
+ * лога» и мигающих курсоров.
  */
 public final class ElytrixLoader {
 
-    /** Размер логотипа в единицах интерфейса (для него сгенерированы спрайты logo_88_xN). */
+    /** Размер, под который сгенерированы спрайты знака (logo_88_xN). */
     private static final int LOGO_SIZE = 88;
 
-    @SuppressWarnings("unused")
-    private static final Identifier LOGO =
-            Identifier.fromNamespaceAndPath("elytrixclient", "textures/gui/logo.png");
-
-    private static final String[] STEPS = {
-            "инициализация клиента",
-            "ресурсы и текстуры",
-            "реестры и модели",
-            "звуковая система",
-            "интерфейс и шрифты",
-            "запуск главного меню"
+    /** Короткие подписи по прогрессу (одна строка, без списка шагов). */
+    private static final String[] STATUS = {
+            "загружаю ресурсы",
+            "собираю реестры",
+            "готовлю интерфейс и шрифты",
+            "почти готово"
     };
 
     private ElytrixLoader() {
     }
 
     public static void render(GuiGraphicsExtractor g, float progress, float alpha) {
-        if (alpha <= 0.01f) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null) {
             return;
         }
-        Minecraft mc = Minecraft.getInstance();
+        Font font = mc.font;
         int w = g.guiWidth();
         int h = g.guiHeight();
         int accent = UiTheme.accent(ElytrixclientClient.CONFIG.accentIndex);
         float t = ElytrixBackground.time();
         float p = Mth.clamp(progress, 0f, 1f);
 
-        ElytrixBackground.render(g, w, h, t, accent, alpha);
+        ElytrixBackground.render(g, w, h, t, accent, 1.0f * alpha);
 
-        var font = mc.font;
         int cx = w / 2;
-        int cy = (int) (h * 0.40f);
+        int cy = h / 2 - 34;
 
-        // ── логотип с пульсацией и орбитальной точкой
-        float pulse = 1f + 0.035f * (float) Math.sin(t * 2.4f);
-        int size = Math.round(LOGO_SIZE * pulse);
-        int glowR = (int) (size * 0.78f);
-        UiDraw.disc(g, cx, cy, glowR, UiTheme.withAlpha(accent, 0.16f * alpha));
-        UiDraw.disc(g, cx, cy, size * 0.60f, UiTheme.withAlpha(accent, 0.10f * alpha));
-        UiDraw.ring(g, cx, cy, size * 0.62f, 1.4f, UiTheme.withAlpha(accent, 0.55f * alpha));
-        // логотип — спрайтом под текущий масштаб интерфейса (сглаженный, не пиксельный)
+        // ── знак клиента с мягким ореолом
+        int mark = 72;
+        UiDraw.glow(g, cx - mark / 2, cy - mark / 2, mark, mark, 18, accent, 1.15f * alpha);
         int k = UiDraw.shapeScale();
-        UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), cx - LOGO_SIZE / 2, cy - LOGO_SIZE / 2,
-                LOGO_SIZE, LOGO_SIZE, LOGO_SIZE * k, LOGO_SIZE * k,
-                UiTheme.withAlpha(0xFFFFFFFF, alpha));
-        double orbit = t * 1.9;
-        float ox = cx + (float) Math.cos(orbit) * size * 0.62f;
-        float oy = cy + (float) Math.sin(orbit) * size * 0.62f;
-        UiDraw.disc(g, ox, oy, 3.2f, UiTheme.withAlpha(0xFFFFFFFF, alpha));
-        UiDraw.disc(g, ox, oy, 6.5f, UiTheme.withAlpha(accent, 0.35f * alpha));
+        UiDraw.icon(g, UiDraw.shapeTexture("logo_" + LOGO_SIZE), cx - mark / 2, cy - mark / 2, mark, mark,
+                LOGO_SIZE * k, LOGO_SIZE * k, UiTheme.withAlpha(0xFFFFFFFF, alpha));
 
-        // ── заголовок в разрядку
-        int titleY = cy + (int) (size * 0.62f) + 16;
-        g.pose().pushMatrix();
-        g.pose().translate(cx, titleY);
-        g.pose().scale(1.7f, 1.7f);
-        String title = "ELYTRIX";
-        UiDraw.textSpaced(g, font, title, -UiDraw.spacedWidth(font, title, 3) / 2, 0, 3,
-                UiTheme.withAlpha(0xFFFFFFFF, alpha), true);
-        g.pose().popMatrix();
-        String sub = "client · minecraft " + mcVersion();
-        UiDraw.textCenter(g, font, sub, cx, titleY + 20, UiTheme.withAlpha(accent, 0.85f * alpha));
+        // ── название в разрядку
+        String name = "ELYTRIX";
+        int spacing = 7;
+        int nameW = UiDraw.spacedWidth(font, name, spacing, UiText.TITLE);
+        UiDraw.textSpaced(g, font, name, cx - nameW / 2, cy + mark / 2 + 20, spacing,
+                UiTheme.withAlpha(0xFFFFFFFF, alpha), false, UiText.TITLE);
 
-        // ── полоса прогресса
-        int barW = Math.min(360, w - 80);
+        // ── хайрлайн и подпись
+        int lineY = cy + mark / 2 + 52;
+        int lineW = Math.min(230, w - 80);
+        UiDraw.hLine(g, cx - lineW / 2, cx + lineW / 2, lineY, 1, UiTheme.withAlpha(UiTheme.DIVIDER, alpha));
+        UiDraw.textCenter(g, font, "minecraft " + mcVersion() + " · fabric · v" + version(),
+                cx, lineY + 9, UiTheme.withAlpha(UiTheme.TEXT_DIM, alpha), UiText.MONO);
+
+        // ── тонкая линия прогресса
+        int barW = Math.min(260, w - 120);
         int barX = cx - barW / 2;
-        int barY = (int) (h * 0.72f);
-        UiDraw.roundRect(g, barX, barY, barW, 6, 3, UiTheme.withAlpha(UiTheme.TRACK, 0.85f * alpha));
+        int barY = lineY + 40;
+        UiDraw.roundRect(g, barX, barY, barW, 3, 2, UiTheme.withAlpha(UiTheme.TRACK, alpha));
         int fillW = Math.round(barW * p);
         if (fillW > 2) {
-            UiDraw.roundRectGradient(g, barX, barY, fillW, 6, 3,
-                    UiTheme.withAlpha(UiTheme.accentLight(accent), alpha),
-                    UiTheme.withAlpha(accent, alpha));
-            float shimmer = (t * 0.45f) % 1f;
-            int sx = barX + Math.round(shimmer * Math.max(1, fillW - 24));
-            UiDraw.hGradient(g, sx, barY, Math.min(24, fillW), 6, 0x00000000,
-                    UiTheme.withAlpha(0xFFFFFFFF, 0.35f * alpha), 12);
+            UiDraw.glow(g, barX, barY - 2, fillW, 7, 3, accent, 0.5f * alpha);
+            UiDraw.roundRect(g, barX, barY, fillW, 3, 2, UiTheme.withAlpha(accent, alpha));
         }
-        String pct = Math.round(p * 100f) + "%";
-        UiDraw.text(g, font, pct, barX + barW + 10, barY - 1, UiTheme.withAlpha(0xFFFFFFFF, alpha));
+        int shineW = Math.max(16, barW / 7);
+        int sx = barX + Math.round((t * 0.3f % 1f) * Math.max(1, barW - shineW));
+        UiDraw.hGradient(g, sx, barY, shineW, 3, 0x00000000,
+                UiTheme.withAlpha(0xFFFFFFFF, 0.25f * alpha), 10);
 
-        // ── «терминальные» шаги
-        int step = Mth.clamp((int) (p * STEPS.length), 0, STEPS.length - 1);
-        int linesY = barY + 20;
-        for (int i = Math.max(0, step - 3); i <= step; i++) {
-            boolean done = i < step;
-            String mark = done ? "[ ok ]" : "[ >> ]";
-            int color = done ? UiTheme.OK : accent;
-            int ly = linesY + (i - Math.max(0, step - 3)) * 11;
-            UiDraw.text(g, font, mark, barX, ly, UiTheme.withAlpha(color, 0.85f * alpha));
-            UiDraw.text(g, font, STEPS[i], barX + 40, ly, UiTheme.withAlpha(UiTheme.TEXT_SOFT, alpha));
-        }
-
-        // ── нижняя строка + мигающий курсор
-        UiDraw.text(g, font, "elytrix:~$ boot", 12, h - 22, UiTheme.withAlpha(accent, 0.9f * alpha));
-        if ((int) (t * 2f) % 2 == 0) {
-            UiDraw.roundRect(g, 12 + font.width("elytrix:~$ boot") + 3, h - 21, 5, 9, 1,
-                    UiTheme.withAlpha(0xFFFFFFFF, 0.9f * alpha));
-        }
-        String right = "Elytrix Client v" + version();
-        UiDraw.textRight(g, font, right, w - 12, h - 22, UiTheme.withAlpha(UiTheme.TEXT_DIM, alpha));
-        UiDraw.hLine(g, 12, w - 12, h - 26, 1, UiTheme.withAlpha(accent, 0.20f * alpha));
+        // ── одна строка состояния
+        int idx = Mth.clamp((int) (p * STATUS.length), 0, STATUS.length - 1);
+        UiDraw.textCenter(g, font, STATUS[idx], cx, barY + 16,
+                UiTheme.withAlpha(UiTheme.TEXT_SOFT, alpha), UiText.MONO);
     }
 
     private static String mcVersion() {

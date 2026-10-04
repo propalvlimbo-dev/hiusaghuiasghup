@@ -19,18 +19,17 @@ public class UiEmpty extends UiWidget {
     @Override
     public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float dt) {
         tick(dt, false);
-        UiDraw.roundRectBordered(graphics, x, y, w, h, UiTheme.R_LG,
-                fadeIn(UiTheme.withAlpha(UiTheme.ROW, 0.55f)), fadeIn(UiTheme.BORDER_SOFT));
         int cx = x + w / 2;
         int cy = y + 30;
-        UiDraw.disc(graphics, cx, cy, 17f, UiTheme.withAlpha(UiTheme.accentSoft(accent, 0.35f), Math.max(0.05f, appear)));
-        UiDraw.ring(graphics, cx, cy, 17f, 1.4f, UiTheme.withAlpha(accent, 0.65f * Math.max(0.05f, appear)));
-        icon.drawCentered(graphics, cx, cy, 16, UiTheme.withAlpha(UiTheme.mix(accent, 0xFFFFFFFF, 0.25f), Math.max(0.05f, appear)));
+        float a = Math.max(0.05f, appear);
+        UiDraw.disc(graphics, cx, cy, 20f, UiTheme.withAlpha(UiTheme.accentSoft(accent, 0.30f), a));
+        icon.drawCentered(graphics, cx, cy, 16,
+                UiTheme.withAlpha(UiTheme.mix(accent, 0xFFFFFFFF, 0.30f), a));
 
         var font = font();
-        UiDraw.textCenter(graphics, font, title, cx, cy + 24, fadeIn(UiTheme.TEXT_SOFT));
+        UiDraw.textCenter(graphics, font, title, cx, cy + 26, fadeIn(UiTheme.TEXT_SOFT));
         if (subtitle != null) {
-            UiDraw.textCenter(graphics, font, subtitle, cx, cy + 36, fadeIn(UiTheme.TEXT_DIM));
+            UiDraw.textCenter(graphics, font, subtitle, cx, cy + 40, fadeIn(UiTheme.TEXT_DIM));
         }
     }
 }

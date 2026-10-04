@@ -56,9 +56,9 @@ public class UiDropdown extends UiWidget {
         var font = font();
         int widest = 0;
         for (String s : options) {
-            widest = Math.max(widest, font.width(s));
+            widest = Math.max(widest, UiDraw.width(font, s));
         }
-        return Math.max(widest, font.width(label)) + 2 * PAD + 16;
+        return Math.max(widest, UiDraw.width(font, label)) + 2 * PAD + 16;
     }
 
     private int chipX() {

@@ -78,7 +78,7 @@ public class UiSlider extends UiWidget {
         UiDraw.text(graphics, font, trim(font, label, w - 70), x + 10, y + 6, fadeIn(UiTheme.TEXT));
 
         String text = value + suffix;
-        int chipW = font.width(text) + 14;
+        int chipW = UiDraw.width(font, text) + 14;
         int chipX = x + w - 10 - chipW;
         UiDraw.roundRect(graphics, chipX, y + 4, chipW, 14, UiTheme.R_SM, fadeIn(UiTheme.accentSoft(accent, 0.22f)));
         UiDraw.textCenter(graphics, font, text, chipX + chipW / 2, y + 7,

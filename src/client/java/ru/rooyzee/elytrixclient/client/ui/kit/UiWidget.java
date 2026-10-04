@@ -80,7 +80,7 @@ public abstract class UiWidget {
             delay -= dt;
             return;
         }
-        float ka = ANIMATIONS ? Math.min(1f, dt * 7f) : 1f;
+        float ka = ANIMATIONS ? Math.min(1f, dt * 11f) : 1f;
         appear += (1f - appear) * ka;
         if (appear > 0.999f) {
             appear = 1f;
@@ -90,7 +90,7 @@ public abstract class UiWidget {
 
     /** Смещение виджета вниз при анимации появления. */
     protected int enterOffset() {
-        return ANIMATIONS ? Math.round(Math.min(1f, 1f - appear) * 8f) : 0;
+        return ANIMATIONS ? Math.round(Math.min(1f, 1f - appear) * 6f) : 0;
     }
 
     /** Цвет с учётом прозрачности появления. */
@@ -159,21 +159,8 @@ public abstract class UiWidget {
     }
 
     /** Обрезает строку по ширине и добавляет «…». */
+    /** Обрезка строки с учётом своего шрифта интерфейса (см. {@link UiDraw#trim}). */
     protected static String trim(Font font, String text, int maxWidth) {
-        if (text == null || maxWidth <= 0) {
-            return "";
-        }
-        if (font.width(text) <= maxWidth) {
-            return text;
-        }
-        String ellipsis = "…";
-        StringBuilder sb = new StringBuilder();
-        for (char c : text.toCharArray()) {
-            if (font.width(sb.toString() + c + ellipsis) > maxWidth) {
-                break;
-            }
-            sb.append(c);
-        }
-        return sb + ellipsis;
+        return UiDraw.trim(font, text, maxWidth);
     }
 }
