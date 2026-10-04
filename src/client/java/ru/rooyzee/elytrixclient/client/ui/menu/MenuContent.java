@@ -7,6 +7,7 @@ import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixLoader;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixQuality;
 import ru.rooyzee.elytrixclient.client.ui.UiSound;
+import ru.rooyzee.elytrixclient.client.music.CustomMusic;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
 
@@ -206,6 +207,24 @@ public final class MenuContent {
                 }).when(() -> cfg.menuSounds))
                 .add(toggle("Звук при наведении", () -> cfg.hoverSounds, v -> cfg.hoverSounds = v)
                         .when(() -> cfg.menuSounds)));
+
+        list.add(new MenuCard("Музыка")
+                .badge(() -> cfg.customMusic ? CustomMusic.trackCount() + " треков" : "", 0)
+                .add(toggle("Своя музыка из папки", () -> cfg.customMusic, v -> {
+                    cfg.customMusic = v;
+                    if (!v) {
+                        CustomMusic.stop();
+                    }
+                }))
+                .add(new MenuRow.Info("Сейчас", CustomMusic::nowPlaying, 0).when(() -> cfg.customMusic))
+                .add(new MenuRow.Slider("Громкость музыки", 0, 100, 5, "%", () -> cfg.musicVolume, v -> {
+                    cfg.musicVolume = v;
+                    dirty.run();
+                }).when(() -> cfg.customMusic))
+                .add(new MenuRow.Button("Открыть папку с музыкой", MenuRow.Button.Kind.SECONDARY, CustomMusic::openFolder))
+                .add(new MenuRow.Button("Следующий трек", MenuRow.Button.Kind.SECONDARY, CustomMusic::next)
+                        .when(() -> cfg.customMusic && CustomMusic.trackCount() > 0))
+                .add(new MenuRow.Info("Формат", () -> ".ogg", 0)));
 
         list.add(new MenuCard("Анимации")
                 .add(toggle("Плавные анимации", () -> cfg.animations, v -> {

@@ -62,7 +62,7 @@ public final class ElytrixConnect {
         // фон непрозрачный с первого кадра — ванильный экран под ним не мелькает,
         // а содержимое (индикатор, текст) проявляется плавно
         g.fill(0, 0, w, h, 0xFF07050A);
-        ElytrixBackground.render(g, w, h, t, accent, 0.55f + 0.45f * a);
+        MenuBackgrounds.render(g, w, h, t, accent, 0.55f + 0.45f * a);
 
         int cx = w / 2;
         int cy = h / 2;

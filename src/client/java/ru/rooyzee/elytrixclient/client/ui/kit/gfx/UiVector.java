@@ -38,7 +38,21 @@ public final class UiVector {
 
     /** Зеркало ванильного scissor-стека: ванильный приватный, а формам нужен их прямоугольник. */
     private static final Deque<ScreenRectangle> SCISSOR = new ArrayDeque<>();
-    private static final int MAX_SEGMENTS = 12;
+    private static final int MAX_SEGMENTS = 28;
+    /** Пикселей экрана на единицу текущей системы координат (GUI scale × масштаб матрицы). */
+    private static float px = 2f;
+    /** Сглаживание краёв (кайма 1 px с уходом в прозрачность); выключается для слоёв тени. */
+    private static boolean antialias = true;
+
+    private static void measure(GuiGraphicsExtractor g) {
+        float k = 1f;
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc != null && mc.getWindow() != null) {
+            k = Math.max(1, mc.getWindow().getGuiScale());
+        }
+        float m = (float) Math.hypot(g.pose().m00(), g.pose().m01());
+        px = Math.max(0.5f, k * (m > 0.01f ? m : 1f));
+    }
 
     private UiVector() {
     }
@@ -113,6 +127,7 @@ public final class UiVector {
         if (g == null || w <= 0.05f || h <= 0.05f) {
             return;
         }
+        measure(g);
         float[] r = radii(x, y, w, h, rTL, rTR, rBR, rBL);
         int[] seg = segments(r);
         float top = Math.max(r[0], r[1]);
@@ -152,6 +167,13 @@ public final class UiVector {
         mesh.pie(x + w - r[2], y + h - r[2], r[2], 0f, 90f, seg[2]);
         mesh.pie(x + r[3], y + h - r[3], r[3], 90f, 180f, seg[3]);
 
+        if (antialias && (r[0] > 0.05f || r[1] > 0.05f || r[2] > 0.05f || r[3] > 0.05f)) {
+            float f = 1f / px;
+            float[] edge = boundaryAll(x, y, w, h, r, seg);
+            float[] ro = {r[0] + f, r[1] + f, r[2] + f, r[3] + f};
+            float[] out = boundaryAll(x - f, y - f, w + 2 * f, h + 2 * f, ro, seg);
+            mesh.fringe(edge, out);
+        }
         mesh.emit(g);
     }
 
@@ -172,13 +194,14 @@ public final class UiVector {
         if (g == null || w <= 0.05f || h <= 0.05f || thickness <= 0.05f) {
             return;
         }
+        measure(g);
         float t = Math.min(thickness, Math.min(w, h) * 0.5f);
         float[] outerRadii = radii(x, y, w, h, radius, radius, radius, radius);
         int[] seg = segments(outerRadii);
-        float[] outer = boundary(x, y, w, h, outerRadii, seg);
-        float[] inner = boundary(x + t, y + t, w - 2 * t, h - 2 * t,
-                radii(x + t, y + t, w - 2 * t, h - 2 * t,
-                        outerRadii[0] - t, outerRadii[1] - t, outerRadii[2] - t, outerRadii[3] - t), seg);
+        float[] innerRadii = {Math.max(0f, outerRadii[0] - t), Math.max(0f, outerRadii[1] - t),
+                Math.max(0f, outerRadii[2] - t), Math.max(0f, outerRadii[3] - t)};
+        float[] outer = boundaryAll(x, y, w, h, outerRadii, seg);
+        float[] inner = boundaryAll(x + t, y + t, w - 2 * t, h - 2 * t, innerRadii, seg);
         int n = Math.min(outer.length, inner.length) / 2;
         if (n < 3) {
             return;
@@ -188,6 +211,16 @@ public final class UiVector {
             int j = (i + 1) % n;
             mesh.quad(outer[i * 2], outer[i * 2 + 1], outer[j * 2], outer[j * 2 + 1],
                     inner[j * 2], inner[j * 2 + 1], inner[i * 2], inner[i * 2 + 1]);
+        }
+        if (antialias) {
+            float f = 1f / px;
+            float[] ro = {outerRadii[0] + f, outerRadii[1] + f, outerRadii[2] + f, outerRadii[3] + f};
+            mesh.fringe(outer, boundaryAll(x - f, y - f, w + 2 * f, h + 2 * f, ro, seg));
+            if (w - 2 * t - 2 * f > 0.1f && h - 2 * t - 2 * f > 0.1f) {
+                float[] ri = {Math.max(0f, innerRadii[0] - f), Math.max(0f, innerRadii[1] - f),
+                        Math.max(0f, innerRadii[2] - f), Math.max(0f, innerRadii[3] - f)};
+                mesh.fringe(inner, boundaryAll(x + t + f, y + t + f, w - 2 * t - 2 * f, h - 2 * t - 2 * f, ri, seg));
+            }
         }
         mesh.emit(g);
     }
@@ -204,6 +237,8 @@ public final class UiVector {
             return;
         }
         int rgb = color & 0x00FFFFFF;
+        antialias = false;
+        try {
         for (int i = n; i >= 1; i--) {
             float t = (float) i / n;
             float grow = spread * t;
@@ -211,6 +246,9 @@ public final class UiVector {
             float alpha = base * 3f * (1f - t) * (1f - t) / n + base * 0.02f / n;
             int col = (Math.round(255f * Math.min(1f, alpha)) << 24) | rgb;
             roundRect(g, x - grow, y - grow, w + 2 * grow, h + 2 * grow, radius + grow, col);
+        }
+        } finally {
+            antialias = true;
         }
     }
 
@@ -287,7 +325,8 @@ public final class UiVector {
         if (radius <= 0.05f) {
             return 0;
         }
-        return (int) clamp((float) Math.ceil(radius * 0.35f) + 2f, 3f, MAX_SEGMENTS);
+        float rp = radius * px;                         // радиус в пикселях экрана
+        return (int) clamp((float) Math.ceil(Math.sqrt(rp) * 2.4f) + 1f, 3f, MAX_SEGMENTS);
     }
 
     /**
@@ -306,6 +345,35 @@ public final class UiVector {
         out.add(x, y + r[0]);
         arc(out, x + r[0], y + r[0], r[0], seg[0], 180f, 270f);
         return out.trim();
+    }
+
+    /**
+     * Контур с одинаковым числом точек при любых радиусах (дуги с нулевым радиусом
+     * вырождаются в точку угла) — нужен, чтобы соединять два контура квадами.
+     */
+    private static float[] boundaryAll(float x, float y, float w, float h, float[] r, int[] seg) {
+        int[] s = new int[4];
+        for (int i = 0; i < 4; i++) {
+            s[i] = Math.max(1, seg[i]);
+        }
+        Buf out = new Buf();
+        out.add(x + r[0], y);
+        out.add(x + w - r[1], y);
+        arcAll(out, x + w - r[1], y + r[1], r[1], s[1], 270f, 360f);
+        out.add(x + w, y + h - r[2]);
+        arcAll(out, x + w - r[2], y + h - r[2], r[2], s[2], 0f, 90f);
+        out.add(x + r[3], y + h);
+        arcAll(out, x + r[3], y + h - r[3], r[3], s[3], 90f, 180f);
+        out.add(x, y + r[0]);
+        arcAll(out, x + r[0], y + r[0], r[0], s[0], 180f, 270f);
+        return out.trim();
+    }
+
+    private static void arcAll(Buf out, float cx, float cy, float radius, int seg, float a0, float a1) {
+        for (int i = 1; i <= seg; i++) {
+            double a = Math.toRadians(a0 + (a1 - a0) * i / seg);
+            out.add(cx + (float) Math.cos(a) * radius, cy + (float) Math.sin(a) * radius);
+        }
     }
 
     /** Точки дуги, начиная со следующей за начальной (конечная точка входит). */
@@ -366,6 +434,42 @@ public final class UiVector {
                         cx + (float) Math.cos(s) * radius, cy + (float) Math.sin(s) * radius,
                         cx + (float) Math.cos(m) * radius, cy + (float) Math.sin(m) * radius,
                         cx + (float) Math.cos(e) * radius, cy + (float) Math.sin(e) * radius);
+            }
+        }
+
+        /** Кайма сглаживания: от контура {@code in} (цвет фигуры) к {@code out} (прозрачный). */
+        private void fringe(float[] in, float[] out) {
+            int n = Math.min(in.length, out.length) / 2;
+            for (int i = 0; i < n; i++) {
+                int j = (i + 1) % n;
+                float ax = in[i * 2], ay = in[i * 2 + 1], bx = in[j * 2], by = in[j * 2 + 1];
+                float cx = out[j * 2], cy = out[j * 2 + 1], dx = out[i * 2], dy = out[i * 2 + 1];
+                int ca = color(ax, ay), cb = color(bx, by);
+                quadColored(ax, ay, ca, bx, by, cb, cx, cy, ca(cb), dx, dy, ca(ca));
+            }
+        }
+
+        private static int ca(int c) {
+            return c & 0x00FFFFFF;
+        }
+
+        private void quadColored(float x0, float y0, int c0, float x1, float y1, int c1,
+                                 float x2, float y2, int c2, float x3, float y3, int c3) {
+            float area = (x0 * y1 - x1 * y0) + (x1 * y2 - x2 * y1)
+                    + (x2 * y3 - x3 * y2) + (x3 * y0 - x0 * y3);
+            if (Math.abs(area) < 1.0e-7f) {
+                return;
+            }
+            if (area > 0f) {
+                vertex(x0, y0, c0);
+                vertex(x3, y3, c3);
+                vertex(x2, y2, c2);
+                vertex(x1, y1, c1);
+            } else {
+                vertex(x0, y0, c0);
+                vertex(x1, y1, c1);
+                vertex(x2, y2, c2);
+                vertex(x3, y3, c3);
             }
         }
 

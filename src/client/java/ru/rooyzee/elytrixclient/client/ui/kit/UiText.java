@@ -71,7 +71,8 @@ public final class UiText {
         int k = 1;
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && mc.getWindow() != null) {
-            k = Math.max(1, Math.min(SCALE_MAX, mc.getWindow().getGuiScale()));
+            k = Math.max(1, Math.min(SCALE_MAX, UiDraw.scaleOverride > 0 ? UiDraw.scaleOverride
+                    : mc.getWindow().getGuiScale()));
         }
         String key = face.getPath() + "_x" + k;
         Identifier id = RESOLVED.get(key);

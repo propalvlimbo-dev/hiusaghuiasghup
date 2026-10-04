@@ -10,7 +10,8 @@
     "TitleScreenMixin",
     "LoadingScreensMixin",
     "AbstractButtonMixin",
-    "AbstractWidgetMixin"
+    "AbstractWidgetMixin",
+    "MusicManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

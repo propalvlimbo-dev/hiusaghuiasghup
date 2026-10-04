@@ -3,6 +3,7 @@ package ru.rooyzee.elytrixclient.client.ui.menu;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
@@ -60,7 +61,7 @@ public final class MenuKit {
     }
 
     public static int cardEdge() {
-        return UiTheme.isLight() ? 0x1F14141A : 0x1CFFFFFF;
+        return UiTheme.isLight() ? 0x1F14141A : 0x26FFFFFF;
     }
 
     public static int field() {
@@ -68,19 +69,19 @@ public final class MenuKit {
     }
 
     public static int divider() {
-        return UiTheme.isLight() ? 0x1414141A : 0x12FFFFFF;
+        return UiTheme.isLight() ? 0x1414141A : 0x1AFFFFFF;
     }
 
     public static int text() {
-        return UiTheme.isLight() ? 0xFF15131A : 0xFFF5F2F7;
+        return UiTheme.isLight() ? 0xFF15131A : 0xFFFFFFFF;
     }
 
     public static int soft() {
-        return UiTheme.isLight() ? 0xFF55525E : 0xFFB4AEBC;
+        return UiTheme.isLight() ? 0xFF55525E : 0xFFCFCAD6;
     }
 
     public static int dim() {
-        return UiTheme.isLight() ? 0xFF8E8A98 : 0xFF6F6878;
+        return UiTheme.isLight() ? 0xFF8E8A98 : 0xFF928B9C;
     }
 
     // ── прозрачность ────────────────────────────────────────────────────
@@ -167,6 +168,17 @@ public final class MenuKit {
         }
         int c = a(color);
         if (((c >>> 24) & 0xFF) < 6) {
+            return;
+        }
+        int o = UiDraw.scaleOverride;
+        if (o > 0) {
+            // панель в нецелом масштабе: ставим текст точно в сетку пикселей экрана
+            float sx = Math.round(x * o) / (float) o;
+            float sy = Math.round(y * o) / (float) o;
+            g.pose().pushMatrix();
+            g.pose().translate(sx, sy);
+            g.text(font, UiText.of(s, face), 0, 0, c, false);
+            g.pose().popMatrix();
             return;
         }
         g.text(font, UiText.of(s, face), Math.round(x), Math.round(y), c, false);

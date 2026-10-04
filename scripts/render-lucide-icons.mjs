@@ -29,7 +29,8 @@ const MAP = {
   bolt: "zap", play: "play", stop: "square", refresh: "refresh-cw", trash: "trash-2",
   copy: "copy", key: "key-round", clock: "clock", user: "user", list: "list",
   folder: "folder", chart: "chart-no-axes-column", shield: "shield", server: "server",
-  palette: "palette", sound: "volume-2",
+  palette: "palette", sound: "volume-2", users: "users", cloud: "cloud", power: "power",
+  image: "image", music: "music",
 };
 
 function strokeFor(px) {

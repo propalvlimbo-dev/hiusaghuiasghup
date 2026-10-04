@@ -47,7 +47,7 @@ public final class ElytrixLoader {
         float t = ElytrixBackground.time();
         float p = Mth.clamp(progress, 0f, 1f);
 
-        ElytrixBackground.render(g, w, h, t, accent, 1.0f * alpha);
+        MenuBackgrounds.render(g, w, h, t, accent, 1.0f * alpha);
 
         int cx = w / 2;
         int cy = h / 2 - 34;

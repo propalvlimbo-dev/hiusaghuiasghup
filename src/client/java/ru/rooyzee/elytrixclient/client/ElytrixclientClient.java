@@ -41,6 +41,7 @@ public class ElytrixclientClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             WindowIcon.tick(client);
+            ru.rooyzee.elytrixclient.client.music.CustomMusic.tick(client);
 
             if (!CONFIG.panelKey) {
                 panelKeyHeld = false;

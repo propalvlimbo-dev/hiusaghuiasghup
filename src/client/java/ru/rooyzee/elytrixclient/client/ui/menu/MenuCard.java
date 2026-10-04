@@ -110,7 +110,7 @@ public final class MenuCard {
         boolean hv = inside(mx, my, x, y, w, h);
         hoverT = approach(hoverT, hv ? 1f : 0f, 12f, dt);
 
-        card(g, x, cy, w, h, 6, cardFill(), UiTheme.mix(cardEdge(), accent, 0.22f * hoverT));
+        card(g, x, cy, w, h, 8, cardFill(), UiTheme.mix(cardEdge(), accent, 0.22f * hoverT));
         text(g, font, trim(font, title, BODY, w - 60), x + 10, ty(BODY, cy + HEADER / 2f + 0.5f), text(), BODY);
 
         if (badge != null) {

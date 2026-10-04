@@ -61,7 +61,16 @@ public final class UiDraw {
      * на этот множитель, поэтому спрайт нужного размера берём под него — тогда
      * сглаженный край ложится ровно в пиксели, без «ступенек» из квадратов.
      */
+    /**
+     * Пикселей на единицу внутри панели, если она нарисована в нецелом масштабе
+     * (0 — как масштаб интерфейса). Тогда шрифты/иконки/формы берутся под это значение.
+     */
+    public static int scaleOverride = 0;
+
     public static int shapeScale() {
+        if (scaleOverride > 0) {
+            return Math.max(1, Math.min(K_MAX, scaleOverride));
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getWindow() == null) {
             return 1;

@@ -13,6 +13,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.minecraft.client.input.MouseButtonEvent;
+import ru.rooyzee.elytrixclient.client.ui.ElytrixMenuButtons;
+import ru.rooyzee.elytrixclient.client.ui.MenuBgPicker;
 import java.util.ArrayList;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixBrand;
@@ -41,6 +45,25 @@ public abstract class TitleScreenMixin extends Screen {
             if (child instanceof PlainTextButton) {
                 this.removeWidget(child);
             }
+        }
+        // кнопки — столбцом слева, в стиле клиента
+        ElytrixMenuButtons.layout(this.children(), this.width, this.height);
+        MenuBgPicker.close();
+    }
+
+    /** Иконка выбора фона справа сверху и её выпадающий список. */
+    @Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
+    private void elytrix$bgPicker(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
+        if (ElytrixclientClient.CONFIG.hackerBackground) {
+            MenuBgPicker.render(graphics, this.width, this.height, mouseX, mouseY);
+        }
+    }
+
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 0)
+    private void elytrix$bgPickerClick(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
+        if (ElytrixclientClient.CONFIG.hackerBackground && event.button() == 0
+                && MenuBgPicker.click(event.x(), event.y(), this.width)) {
+            cir.setReturnValue(true);
         }
     }
 

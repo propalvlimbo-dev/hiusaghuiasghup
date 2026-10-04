@@ -66,6 +66,12 @@ public class ElytrixConfig {
     public int soundSet = 0;
     /** Громкость звуков меню, % (0…100). */
     public int soundVolume = 70;
+    /** Своя музыка из папки config/elytrixclient/music вместо ванильной. */
+    public boolean customMusic = false;
+    /** Громкость своей музыки, % (умножается на ползунок «Музыка» игры). */
+    public int musicVolume = 100;
+    /** Фон главного меню (MenuBackgrounds.NAMES), 0 — хакерский. */
+    public int menuBackground = 0;
     /** Тихий звук при наведении на элементы. */
     public boolean hoverSounds = true;
     /** Плавные анимации интерфейса. */

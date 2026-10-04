@@ -31,7 +31,7 @@ public abstract class ScreenMixin {
             return;
         }
         float alpha = 1.0F;
-        ElytrixBackground.render(graphics, graphics.guiWidth(), graphics.guiHeight(),
+        ru.rooyzee.elytrixclient.client.ui.MenuBackgrounds.render(graphics, graphics.guiWidth(), graphics.guiHeight(),
                 ElytrixBackground.time(), UiTheme.accent(ElytrixclientClient.CONFIG.accentIndex), alpha);
         ci.cancel();
     }

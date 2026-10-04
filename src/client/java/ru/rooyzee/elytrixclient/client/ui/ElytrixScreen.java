@@ -238,6 +238,8 @@ public class ElytrixScreen extends Screen {
     }
 
     private float footerY;
+    /** Пикселей на единицу панели, если не совпадает с GUI scale (иначе 0). */
+    private int pixelsPerUnit;
     private float footerHover;
 
     private int view() {
@@ -278,7 +280,13 @@ public class ElytrixScreen extends Screen {
 
     private void layout() {
         float e = easeOut(Mth.clamp(openT, 0f, 1f));
-        scale = targetScale() * (0.96f + 0.04f * e);
+        float target = targetScale();
+        int gs = Math.max(1, this.minecraft != null ? this.minecraft.getWindow().getGuiScale() : 1);
+        // целое число пикселей на единицу панели — текст и иконки 1:1, без размытия
+        int pixels = Math.max(1, Math.round(target * gs));
+        target = pixels / (float) gs;
+        pixelsPerUnit = pixels == gs ? 0 : pixels;
+        scale = target * (0.96f + 0.04f * e);
         originX = this.width / 2f - W * scale / 2f;
         originY = this.height / 2f - H * scale / 2f + (1f - e) * 6f;
         // привязка к сетке пикселей экрана — текст не «плывёт» между пикселями
@@ -339,6 +347,7 @@ public class ElytrixScreen extends Screen {
         graphics.pose().pushMatrix();
         graphics.pose().translate(originX, originY);
         graphics.pose().scale(scale, scale);
+        UiDraw.scaleOverride = pixelsPerUnit;
 
         int want = Mth.clamp(cfg.accentIndex, 0, MENU_BG.length - 1);
         if (bgCurrent < 0) {
@@ -354,14 +363,15 @@ public class ElytrixScreen extends Screen {
         drawContent(graphics, font, mx, my, dt);
 
         graphics.pose().popMatrix();
+        UiDraw.scaleOverride = 0;
         MenuKit.alpha = 1f;
     }
 
     private void drawFrame(GuiGraphicsExtractor g) {
         float op = Mth.clamp(cfg.panelOpacity / 100f, 0f, 1f);
-        shadow(g, 0, 0, W, H, 8, 26, UiTheme.withAlpha(0x80000000, 0.3f + 0.7f * op));
-        fill(g, 0, 0, BAR, H, 8, 0, 0, 8, UiTheme.withAlpha(sidebar(), op));
-        fill(g, BAR, 0, W - BAR, H, 0, 8, 8, 0, UiTheme.withAlpha(content(), op));
+        shadow(g, 0, 0, W, H, 12, 26, UiTheme.withAlpha(0x80000000, 0.3f + 0.7f * op));
+        fill(g, 0, 0, BAR, H, 12, 0, 0, 12, UiTheme.withAlpha(sidebar(), op));
+        fill(g, BAR, 0, W - BAR, H, 0, 12, 12, 0, UiTheme.withAlpha(content(), op));
         if (!UiTheme.isLight()) {
             if (bgFade < 1f && bgPrevious >= 0) {
                 g.blit(RenderPipelines.GUI_TEXTURED, MENU_BG[bgPrevious], (int) BAR, 0, 0f, 0f, (int) (W - BAR), (int) H,
@@ -371,7 +381,82 @@ public class ElytrixScreen extends Screen {
                     1050, 1050, 1050, 1050, a(0xFFFFFFFF, op * easeOut(bgFade)));
         }
         UiVector.rect(g, BAR, 0, 0.5f, H, a(divider()));
-        outline(g, 0, 0, W, H, 8, 0.5f, UiTheme.isLight() ? 0x2414141A : 0x24FFFFFF);
+        outline(g, 0, 0, W, H, 12, 0.5f, UiTheme.isLight() ? 0x2414141A : 0x24FFFFFF);
+    }
+
+    // ── поиск: плавная анимация набора ───────────────────────────────────
+
+    private String shownSearch = "";
+    private float[] charIn = new float[0];
+    private final List<float[]> ghostPos = new ArrayList<>();
+    private final List<String> ghostText = new ArrayList<>();
+    private float caretX = -1f;
+    private float searchOffset;
+    private float placeholderT = 1f;
+    private long lastTyped;
+
+    private void drawSearchText(GuiGraphicsExtractor g, Font font, float x0, float cy, float maxW, float dt) {
+        // сверяем показанную строку с реальной: новые символы появляются, удалённые растворяются
+        if (!search.equals(shownSearch)) {
+            int p = 0;
+            int n = Math.min(search.length(), shownSearch.length());
+            while (p < n && search.charAt(p) == shownSearch.charAt(p)) {
+                p++;
+            }
+            if (shownSearch.length() > p) {
+                float gx = x0 - searchOffset + width(font, shownSearch.substring(0, p), SMALL);
+                ghostText.add(shownSearch.substring(p));
+                ghostPos.add(new float[] {gx, 1f});
+            }
+            float[] next = new float[search.length()];
+            System.arraycopy(charIn, 0, next, 0, Math.min(p, charIn.length));
+            charIn = next;
+            shownSearch = search;
+            lastTyped = Util.getMillis();
+        }
+        boolean anim = UiWidget.ANIMATIONS;
+        placeholderT = approach(placeholderT, search.isEmpty() ? 1f : 0f, 14f, dt);
+        if (placeholderT > 0.01f) {
+            int pc = UiTheme.withAlpha(dim(), placeholderT * (searching ? 0.55f : 1f));
+            text(g, font, "Поиск", x0 + (1f - placeholderT) * 6f, ty(SMALL, cy), pc, SMALL);
+        }
+
+        float total = width(font, search, SMALL);
+        searchOffset = approach(searchOffset, Math.max(0f, total - maxW), 18f, dt);
+        float baseY = ty(SMALL, cy);
+        for (int i = 0; i < search.length(); i++) {
+            charIn[i] = anim ? approach(charIn[i], 1f, 16f, dt) : 1f;
+            float t = charIn[i];
+            if (t <= 0.01f) {
+                continue;
+            }
+            float cx = x0 - searchOffset + width(font, search.substring(0, i), SMALL);
+            float e = 1f - (1f - t) * (1f - t);
+            int col = UiTheme.withAlpha(UiTheme.mix(accent, text(), e), e);
+            text(g, font, String.valueOf(search.charAt(i)), cx, baseY - (1f - e) * 3f, col, SMALL);
+        }
+        for (int i = ghostPos.size() - 1; i >= 0; i--) {
+            float[] gp = ghostPos.get(i);
+            gp[1] = anim ? approach(gp[1], 0f, 12f, dt) : 0f;
+            if (gp[1] <= 0.02f) {
+                ghostPos.remove(i);
+                ghostText.remove(i);
+                continue;
+            }
+            text(g, font, ghostText.get(i), gp[0], baseY + (1f - gp[1]) * 3f,
+                    UiTheme.withAlpha(dim(), gp[1] * 0.8f), SMALL);
+        }
+
+        if (searching) {
+            float target = x0 - searchOffset + total + 0.5f;
+            caretX = caretX < 0 || !anim ? target : approach(caretX, target, 22f, dt);
+            long since = Util.getMillis() - lastTyped;
+            float pulse = since < 600L ? 1f
+                    : 0.5f + 0.5f * (float) Math.cos((Util.getMillis() % 1100L) / 1100.0 * Math.PI * 2.0);
+            fill(g, caretX, cy - 3.5f, 0.8f, 7, 0.4f, UiTheme.withAlpha(accent, 0.25f + 0.75f * pulse));
+        } else {
+            caretX = -1f;
+        }
     }
 
     // ── сайдбар ─────────────────────────────────────────────────────────
@@ -396,18 +481,7 @@ public class ElytrixScreen extends Screen {
         UiIcon.SEARCH.draw(g, (int) sx + 4, (int) (sy + 3.5f), 10, a(UiTheme.mix(dim(), accent, searchT)));
         UiDraw.scissor(g, (int) sx + 15, (int) sy, (int) (sx + sw - 4), (int) (sy + sh));
         float tcy = sy + sh / 2f;
-        if (search.isEmpty() && !searching) {
-            text(g, font, "Поиск", sx + 17, ty(SMALL, tcy), dim(), SMALL);
-        } else {
-            String shown = search;
-            while (!shown.isEmpty() && width(font, shown, SMALL) > sw - 24) {
-                shown = shown.substring(1);
-            }
-            text(g, font, shown, sx + 17, ty(SMALL, tcy), text(), SMALL);
-            if (searching && (Util.getMillis() / 530L) % 2L == 0L) {
-                fill(g, sx + 17 + width(font, shown, SMALL) + 0.5f, tcy - 3, 0.8f, 6, 0, accent);
-            }
-        }
+        drawSearchText(g, font, sx + 17, tcy, sw - 24, dt);
         UiDraw.unscissor(g);
 
         // разделы
