@@ -16,6 +16,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Util;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
@@ -354,7 +355,11 @@ public final class ElytrixScreen {
         return line.substring(0, CONSOLE_LINE_WIDTH) + "…";
     }
 
-    private static Component c(String value) {
+    /**
+     * В 26.2 метод withStyle есть только у MutableComponent (у интерфейса Component его нет),
+     * поэтому хелпер возвращает MutableComponent, а не Component.
+     */
+    private static MutableComponent c(String value) {
         return Component.literal(value);
     }
 }
