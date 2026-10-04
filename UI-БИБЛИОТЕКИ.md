@@ -1,0 +1,194 @@
+# UI-библиотеки для ElytrixClient (MC 26.2) — что берём и почему
+
+Дата проверки: **04.10.2026**. Версии сверены по Modrinth API, GitHub-веткам и реальным
+`build.gradle` мод-проектов, которые уже собираются под 26.2.
+
+---
+
+## 0. Решение (выбрано пользователем: весь UI на одной библиотеке)
+
+**Весь интерфейс панели — YACL (YetAnotherConfigLib) 3.9.7+26.2-fabric, Jar-in-Jar.**
+5 категорий YACL = 5 вкладок панели:
+
+| Вкладка | Как сделана на YACL |
+|---|---|
+| Обзор | группы «Цель» и «Управление», лейблы статуса, кнопки «Запустить/Остановить всё» |
+| BotMark | `StringOption` (путь, текст спама), `IntegerSliderOption` (боты/задержка/таймаут), 6 `TickBox` (поведение), кнопки |
+| SoulFire | `DropdownStringOption` (cli/mcp), текстовые поля путей/токена, кнопки CLI/MCP-команд |
+| Консоль | лейблы последних 22 строк лога с цветом по типу + кнопки обновить/очистить/копировать |
+| Настройки | акцент, сохранение конфига, открытие папки конфига |
+
+Своего кода отрисовки в моде больше нет — все версионно-зависимые имена спрятаны внутри YACL,
+а `ui/ElytrixScreen.java` работает только с публичным API библиотеки
+(`Option`/`ConfigCategory`/`OptionGroup`/`LabelOption`/`ButtonOption`).
+
+Почему не «своя панель + YACL только для настроек»: под 26.2 живые UI-фреймворки — это
+именно конфиг-библиотеки (см. §1), а свой кит — это ~900 строк, которые придётся
+поддерживать при каждом обновлении MC. Минус выбранного варианта один: живой консоли
+(строки сами дописываются) у YACL нет — строки обновляются кнопкой «Обновить»;
+если понадобится настоящий live-лог, добавим один кастомный `Controller`. 
+
+---
+
+## 1. Что реально доступно под 26.2 (проверено 04.10.2026)
+
+| Библиотека | 26.2? | Вес | Что даёт | Вердикт |
+|---|---|---|---|---|
+| **Ваниль** `Screen`, `GuiGraphicsExtractor` | ✅ это и есть 26.2 | 0 | `fill`, `fillGradient`, `fill(RenderPipeline,…)`, `blit`, `blitSprite` (в т.ч. nine-slice), `text`, scissor, `blurBeforeThisStratum`, готовые `Button`/`EditBox`/`AbstractSlider`/`Checkbox` | **база** |
+| **YACL** (isXander) `3.9.7+26.2-fabric` | ✅ релиз 20.09.2026 (Modrinth `yacl`); в Skyblocker для 26.2 стоит 3.9.4 | 1.1 МБ | конфиг-UI: категории, группы, поиск, слайдеры, цветовые пикеры, reset, переопределение контролов | **берём для «Настроек»** |
+| **Cloth Config** (shedaniel) ветка `v26.2` | ✅ (base_version=26.2, maven.shedaniel.me) | ~1 МБ | `ConfigBuilder`, AutoConfig; классический вид | альтернатива YACL, но вид старее, API многословнее |
+| **MoulConfig** (NotEnoughUpdates) `modern/26.2` | ✅ (NEU/Skyblocker/Dandelion) | ~ | динамическая конфиг-UI, бинды/цвета из коробки; публикуется на repo.nea.moe | нужен **Fabric Language Kotlin** → лишний вес |
+| **Dandelion** (AzureAaron) `1.0.0-alpha.22+26.2` | ✅, но **alpha** | шэдит MoulConfig | абстракция «YACL или MoulConfig» одним API | не сейчас |
+| **ModernUI / ModernUI-MC** (BloCamLimb) | ⚠️ ядро 3.13.0, `ModernUI-MC` master = **MC 26.1.2**, сборка `3.13.0.7-SNAPSHOT` | тяжёлая: Arc3D, LWJGL 3.3.6, ICU4J, свои нативы | nanoVG: настоящие скругления, свои шрифты, тени, блюр | ждём порт под 26.2; пока не тянем |
+| **owo-lib / owo-ui** (wisp-forest) | ❌ MC 1.21.11, последний пуш 19.08.2026 | средняя | богатый UI-фреймворк, data-driven экраны | мимо |
+| **LibGui** (CottonMC) | ❌ максимум ветка `port/1.21.5` | средняя | widget toolkit | мимо |
+| **imgui-java** (SpaiR) | ⚠️ не MC-либа: свой GL-контекст / второе окно | тяжёлая | мгновенные панели и графики | интеграция с blaze3d 26.2 = отдельный проект, не берём |
+| **Elementa / Vigilance** (Essential) | ❌ пуш 08.04.2026, MC до 1.21.x | средняя | UI-фреймворк Essential | нет |
+| **Fabric API** | ✅ `0.161.0+26.2` | — | хуки/события, но **не** UI | уже подключён |
+| **RenderChest / HM API** (AzureAaron) `1.0.3+26.2` | ✅ | малая | рендер-хелперы (предметы/модели), не виджеты | по необходимости |
+
+Итог: под 26.2 живут **только конфиг-библиотеки** (YACL, Cloth, MoulConfig) — и все они
+про настройки, а не про «красивую панель с логом и списком ботов». Панель пишем сами.
+
+---
+
+## 2. Свой кит: что именно пишем
+
+`src/client/java/…/ui/widget/`
+
+| Класс | Для чего |
+|---|---|
+| `ElyWidget` | база: bounds, hover/active/focus, tooltip, `extractRenderState(GuiGraphicsExtractor,…)` |
+| `ElyButton` | 3 стиля: primary (accent), ghost (прозрачная), danger (красная) |
+| `ElyIconButton` | квадратная кнопка под иконку (16×16) |
+| `ElyTabBar` + `ElyTab` | левый сайдбар, активная вкладка с accent-полосой и подсветкой |
+| `ElyToggle` | тумблер с анимацией (вместо `Button "ВКЛ/выкл"`) |
+| `ElySlider` | 0…N, drag + колесо |
+| `ElyDropdown` | выбор из списка (пресеты 10/50/100 ботов) |
+| `ElyTextField` | стилизованная обёртка `EditBox` (фон, рамка, плейсхолдер) |
+| `ElyPanel` | панель/карточка: заголовок, 9-slice фон, скругления, тень |
+| `ElyScroll` + `ElyScrollbar` | прокрутка контента, инерция |
+| `ElyList<T>` | виртуализированные списки (боты, прокси, логи) |
+| `ElyStatusPill` | «BotMark: RUN 50» — цвет по состоянию |
+| `ElyProgress` | прогресс запуска ботов |
+| `ElyToast` | всплывашки снизу справа (замена нынешнего самодельного toast) |
+
+`ui/Theme.java` расширяем: палитра (dark/light), радиусы, отступы, шрифтовые стили.
+`ui/Render.java` расширяем: `roundedRect`, `roundedOutline`, `gradient`, `shadowRadial`,
+`blurBackground`, `divider`, `accentBar`, `nineSlice`.
+
+Всё это — только публичные методы `GuiGraphicsExtractor`, поэтому при обновлении MC
+ломается максимум один файл (`Render`), а не весь UI.
+
+---
+
+## 3. «Красиво» без тяжёлых зависимостей
+
+1. **Блюр фона** — в 26.2 есть `GuiGraphicsExtractor.blurBeforeThisStratum()`
+   (ванилька использует его в `Screen.extractBackground` при `menuBackgroundBlurriness >= 1`).
+   Порядок отрисовки: `blur` → тёмный слой `ARGB ~0xC0101018` → панель.
+2. **Скруглённые панели** — `blitSprite` умеет nine-slice (`blitNineSlicedSprite`):
+   одна PNG 24×24 в `assets/elytrixclient/textures/gui/panel.png` даёт скругления,
+   рамку и «стеклянный» вид без шейдеров. Так же делаем кнопки/поля.
+3. **Свой шейдер (позже)** — `GuiGraphicsExtractor.fill(RenderPipeline, x0,y0,x1,y1,color)`
+   публичный, значит можно зарегистрировать свой пайплайн и шейдер
+   `assets/elytrixclient/shaders/core/rounded_rect.{json,vsh,fsh}` (SDF): идеальные
+   скругления любого радиуса, glow вокруг активного бота, градиент по accent-цвету.
+4. **Мелочи, которые дают 80% «дорогого» вида**: единая сетка отступов (4/8/12/16),
+   accent-полоса у активного элемента, анимация hover 120 мс, тень под панелью,
+   моноширинный шрифт в консоли, приглушённые подписи (`Theme.MUTED`).
+
+---
+
+## 4. Как подключить YACL (если берём его для «Настроек»)
+
+`build.gradle`:
+
+```gradle
+repositories {
+    mavenCentral()
+    // ...существующие репозитории loom/fabric
+    maven { name = 'isxander'; url = 'https://maven.isxander.dev/releases' }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // include = зашить в наш jar (Jar-in-Jar), игроку ставить YACL отдельно не надо.
+    include implementation 'dev.isxander:yet-another-config-lib:3.9.7+26.2-fabric'
+}
+```
+
+### 4.1 Шпаргалка по API YACL 3.9 (сверено по исходникам ветки main, 04.10.2026)
+
+```java
+// экран
+Screen screen = YetAnotherConfigLib.createBuilder()
+        .title(Component.literal("ElytrixClient"))
+        .category(category)                 // .categories(...)
+        .save(cfg::save)                    // что вызвать при «Сохранить»
+        .build()
+        .generateScreen(parent /* @Nullable */);
+
+// категория / группа / опция
+ConfigCategory.createBuilder().name(...).group(group).option(option).build();
+OptionGroup.createBuilder().name(...).option(...).collapsed(false).build();
+Option.<Integer>createBuilder()
+        .name(...).description(OptionDescription.of(...))
+        .binding(defaultValue, getter, setter)
+        .controller(IntegerSliderControllerBuilder::create)   // .range(min,max).step(1)
+        .build();
+
+// контроллеры: StringControllerBuilder, DropdownStringControllerBuilder(.values(List<String>)),
+// IntegerSliderControllerBuilder, TickBoxControllerBuilder, EnumControllerBuilder,
+// IntegerFieldControllerBuilder, ColorControllerBuilder, ItemControllerBuilder …
+
+// не-опции
+LabelOption.create(Component.literal("строка лога"));
+ButtonOption.createBuilder().name(...).text(на_кнопке).action((YACLScreen s, ButtonOption o) -> …).build();
+
+// ВАЖНО: значения опций применяются к конфигу не сразу, а по applyValue().
+// Кнопки действий должны сами «протолкнуть» введённое:
+for (Option<?> o : options) o.applyValue();
+cfg.save();
+```
+
+Метод `screen.finishOrSave()` — это кнопка «Сохранить/Готово» самого YACL (при отсутствии
+изменений она закрывает экран), для своих кнопок она не подходит — используем `applyValue()`.
+
+Если позже понадобится **живая консоль** — это один класс: `Controller<Component>` +
+наследник `dev.isxander.yacl3.gui.AbstractWidget`, который в `extractRenderState(GuiGraphicsExtractor,…)`
+рисует строки и обрабатывает `mouseScrolled`. Даёт полностью кастомный виджет внутри YACL-списка.
+
+Проверка, что путь верный: в Skyblocker (MC 26.2, тот же плагин `id 'net.fabricmc.fabric-loom'`,
+loom 1.17-SNAPSHOT) стоит `include implementation("dev.isxander:yet-another-config-lib:3.9.4+26.2-fabric")`.
+
+Если зашивать не хотим — добавляем в `fabric.mod.json`:
+`"depends": { "yet_another_config_lib_v3": ">=3.9.4" }` и просим игрока поставить YACL.
+
+Как использовать: `YetAnotherConfigLib.createBuilder()` → категории → `ScreenBuilder`;
+открывать из нашей панели кнопкой «Настройки (YACL)». Наш `ElytrixConfig` при этом
+остаётся источником данных — контролы просто читают/пишут его поля.
+
+---
+
+## 5. Чего не делаем
+
+- не тянем две конфиг-библиотеки сразу (YACL + Cloth) — разные стили и +2 МБ;
+- не пишем UI на Kotlin/Compose — Compose-рантайма для MC 26.2 нет;
+- не возвращаем `mappings`/yarn-имена — 26.x без обфускации (см. README §0);
+- не строим панель на `imgui-java`/втором окне — ломает ввод и не дружит с blaze3d.
+
+---
+
+## 6. Что сделано и что дальше
+
+1. ✅ YACL подключён (`include implementation`), панель `ui/ElytrixScreen.java` построена на нём,
+   5 категорий = 5 вкладок, свой код отрисовки удалён.
+2. ✅ Пакеты приведены к проекту в IDE: `ru.rooyzee.elytrixclient` (+ `.client` для клиентского кода).
+3. ⬜ Живая консоль: кастомный `Controller` + `AbstractWidget` (см. §4.1) — по желанию.
+4. ⬜ HUD-оверлей поверх игры (сводка «ботов онлайн») — отдельный маленький `Screen`/оверлей,
+   YACL для этого не предназначен.
+5. ⬜ График TPS/MSPT от Spark, пресеты сценариев — это уже данные, а не UI-библиотеки.

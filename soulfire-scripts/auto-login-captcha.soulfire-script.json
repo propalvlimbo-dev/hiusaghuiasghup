@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "name": "Auto login + captcha",
+  "description": "Авто-регистрация, авто-логин и авто-ответ на текстовую капчу. ВАЖНО: замените CHANGE_ME на свой пароль. Не включайте одновременно с плагинами auto-register и captcha-solver (будут двойные ответы).",
+  "paused": true,
+  "nodes": [
+    {
+      "id": "on_join",
+      "type": "trigger.on_join",
+      "position": { "x": 0, "y": 0 },
+      "data": {}
+    },
+    {
+      "id": "join_wait",
+      "type": "action.wait",
+      "position": { "x": 340, "y": 0 },
+      "data": { "baseMs": 1500, "jitterMs": 2500 }
+    },
+    {
+      "id": "join_log",
+      "type": "action.print",
+      "position": { "x": 680, "y": 0 },
+      "data": { "level": "info" }
+    },
+
+    {
+      "id": "on_chat",
+      "type": "trigger.on_chat",
+      "position": { "x": 0, "y": 260 },
+      "data": {}
+    },
+
+    {
+      "id": "reg_match",
+      "type": "string.regex_match",
+      "position": { "x": 340, "y": 220 },
+      "data": { "pattern": "(?i)/reg(ister)?\\b" }
+    },
+    {
+      "id": "reg_branch",
+      "type": "flow.branch",
+      "position": { "x": 680, "y": 160 },
+      "data": {}
+    },
+    {
+      "id": "reg_gate",
+      "type": "flow.rate_limit",
+      "position": { "x": 1020, "y": 160 },
+      "data": { "key": "register-reply", "maxTokens": 3, "refillRate": 0.02, "tokensRequired": 1 }
+    },
+    {
+      "id": "reg_wait",
+      "type": "action.wait",
+      "position": { "x": 1360, "y": 160 },
+      "data": { "baseMs": 700, "jitterMs": 1200 }
+    },
+    {
+      "id": "reg_send",
+      "type": "action.send_chat",
+      "position": { "x": 1700, "y": 160 },
+      "data": {}
+    },
+    {
+      "id": "reg_cmd",
+      "type": "constant.string",
+      "position": { "x": 1020, "y": 340 },
+      "data": { "value": "/register CHANGE_ME CHANGE_ME" }
+    },
+
+    {
+      "id": "login_match",
+      "type": "string.regex_match",
+      "position": { "x": 340, "y": 440 },
+      "data": { "pattern": "(?i)/log(in)?\\b" }
+    },
+    {
+      "id": "login_branch",
+      "type": "flow.branch",
+      "position": { "x": 680, "y": 420 },
+      "data": {}
+    },
+    {
+      "id": "login_gate",
+      "type": "flow.rate_limit",
+      "position": { "x": 1020, "y": 420 },
+      "data": { "key": "login-reply", "maxTokens": 5, "refillRate": 0.02, "tokensRequired": 1 }
+    },
+    {
+      "id": "login_wait",
+      "type": "action.wait",
+      "position": { "x": 1360, "y": 420 },
+      "data": { "baseMs": 700, "jitterMs": 1200 }
+    },
+    {
+      "id": "login_send",
+      "type": "action.send_chat",
+      "position": { "x": 1700, "y": 420 },
+      "data": {}
+    },
+    {
+      "id": "login_cmd",
+      "type": "constant.string",
+      "position": { "x": 1020, "y": 600 },
+      "data": { "value": "/login CHANGE_ME" }
+    },
+
+    {
+      "id": "cap_match",
+      "type": "string.regex_match",
+      "position": { "x": 340, "y": 660 },
+      "data": { "pattern": "(?is)(?:captcha|капч|code|код)[^A-Za-z0-9]{0,24}([A-Za-z0-9]{3,10})" }
+    },
+    {
+      "id": "cap_extract",
+      "type": "string.regex_replace",
+      "position": { "x": 680, "y": 840 },
+      "data": {
+        "pattern": "(?is)(?:captcha|капч|code|код)[^A-Za-z0-9]{0,24}([A-Za-z0-9]{3,10})",
+        "replacement": "$1",
+        "replaceAll": true
+      }
+    },
+    {
+      "id": "cap_branch",
+      "type": "flow.branch",
+      "position": { "x": 680, "y": 640 },
+      "data": {}
+    },
+    {
+      "id": "cap_gate",
+      "type": "flow.rate_limit",
+      "position": { "x": 1020, "y": 640 },
+      "data": { "key": "captcha-reply", "maxTokens": 4, "refillRate": 0.05, "tokensRequired": 1 }
+    },
+    {
+      "id": "cap_wait",
+      "type": "action.wait",
+      "position": { "x": 1360, "y": 640 },
+      "data": { "baseMs": 400, "jitterMs": 600 }
+    },
+    {
+      "id": "cap_log",
+      "type": "action.print",
+      "position": { "x": 1700, "y": 800 },
+      "data": { "level": "info" }
+    },
+    {
+      "id": "cap_send",
+      "type": "action.send_chat",
+      "position": { "x": 2040, "y": 640 },
+      "data": {}
+    }
+  ],
+  "edges": [
+    { "id": "e_join_exec", "source": "on_join", "target": "join_wait", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_join_exec2", "source": "join_wait", "target": "join_log", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_join_username", "source": "on_join", "target": "join_log", "sourceHandle": "username", "targetHandle": "message" },
+
+    { "id": "e_reg_exec", "source": "on_chat", "target": "reg_branch", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_reg_text", "source": "on_chat", "target": "reg_match", "sourceHandle": "messagePlainText", "targetHandle": "input" },
+    { "id": "e_reg_cond", "source": "reg_match", "target": "reg_branch", "sourceHandle": "matches", "targetHandle": "condition" },
+    { "id": "e_reg_exec2", "source": "reg_branch", "target": "reg_gate", "sourceHandle": "exec_true", "targetHandle": "in" },
+    { "id": "e_reg_exec3", "source": "reg_gate", "target": "reg_wait", "sourceHandle": "exec_allowed", "targetHandle": "in" },
+    { "id": "e_reg_exec4", "source": "reg_wait", "target": "reg_send", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_reg_msg", "source": "reg_cmd", "target": "reg_send", "sourceHandle": "value", "targetHandle": "message" },
+    { "id": "e_reg_bot", "source": "on_chat", "target": "reg_send", "sourceHandle": "bot", "targetHandle": "bot" },
+
+    { "id": "e_login_exec", "source": "on_chat", "target": "login_branch", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_login_text", "source": "on_chat", "target": "login_match", "sourceHandle": "messagePlainText", "targetHandle": "input" },
+    { "id": "e_login_cond", "source": "login_match", "target": "login_branch", "sourceHandle": "matches", "targetHandle": "condition" },
+    { "id": "e_login_exec2", "source": "login_branch", "target": "login_gate", "sourceHandle": "exec_true", "targetHandle": "in" },
+    { "id": "e_login_exec3", "source": "login_gate", "target": "login_wait", "sourceHandle": "exec_allowed", "targetHandle": "in" },
+    { "id": "e_login_exec4", "source": "login_wait", "target": "login_send", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_login_msg", "source": "login_cmd", "target": "login_send", "sourceHandle": "value", "targetHandle": "message" },
+    { "id": "e_login_bot", "source": "on_chat", "target": "login_send", "sourceHandle": "bot", "targetHandle": "bot" },
+
+    { "id": "e_cap_exec", "source": "on_chat", "target": "cap_branch", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_cap_text", "source": "on_chat", "target": "cap_match", "sourceHandle": "messagePlainText", "targetHandle": "input" },
+    { "id": "e_cap_cond", "source": "cap_match", "target": "cap_branch", "sourceHandle": "matches", "targetHandle": "condition" },
+    { "id": "e_cap_exec2", "source": "cap_branch", "target": "cap_gate", "sourceHandle": "exec_true", "targetHandle": "in" },
+    { "id": "e_cap_exec3", "source": "cap_gate", "target": "cap_wait", "sourceHandle": "exec_allowed", "targetHandle": "in" },
+    { "id": "e_cap_exec4", "source": "cap_wait", "target": "cap_log", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_cap_exec5", "source": "cap_log", "target": "cap_send", "sourceHandle": "out", "targetHandle": "in" },
+    { "id": "e_cap_extract_in", "source": "on_chat", "target": "cap_extract", "sourceHandle": "messagePlainText", "targetHandle": "input" },
+    { "id": "e_cap_msg", "source": "cap_extract", "target": "cap_send", "sourceHandle": "result", "targetHandle": "message" },
+    { "id": "e_cap_log", "source": "cap_extract", "target": "cap_log", "sourceHandle": "result", "targetHandle": "message" },
+    { "id": "e_cap_bot", "source": "on_chat", "target": "cap_send", "sourceHandle": "bot", "targetHandle": "bot" }
+  ]
+}

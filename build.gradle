@@ -26,6 +26,12 @@ loom {
 
 repositories {
     mavenCentral()
+
+    // YACL (YetAnotherConfigLib) — на нём построена вся панель мода.
+    maven {
+        name = 'isxander'
+        url = 'https://maven.isxander.dev/releases'
+    }
 }
 
 dependencies {
@@ -34,6 +40,11 @@ dependencies {
     // Строки `mappings` здесь быть НЕ должно: в 26.x игра не обфусцирована.
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // ── UI: YACL (YetAnotherConfigLib) ────────────────────────────────────────
+    // Панель мода = 5 категорий YACL. `include` = Jar-in-Jar: библиотека
+    // зашивается в наш jar, игроку не нужно ставить её отдельно.
+    include implementation 'dev.isxander:yet-another-config-lib:3.9.7+26.2-fabric'
 }
 
 processResources {
