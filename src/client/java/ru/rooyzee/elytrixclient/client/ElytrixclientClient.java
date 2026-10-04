@@ -10,6 +10,7 @@ import ru.rooyzee.elytrixclient.client.botmark.BotMarkRunner;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.soulfire.SoulFireController;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixScreen;
+import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
 import ru.rooyzee.elytrixclient.client.ui.WindowIcon;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
@@ -66,5 +67,19 @@ public class ElytrixclientClient implements ClientModInitializer {
         });
 
         LOG.add("[Elytrix] Мод загружен. Панель — правый Ctrl.");
+
+        // Глобальный трекинг кликов для островка музыки (работает на ВСЕХ экранах)
+        final boolean[] islandWasPressed = {false};
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            boolean pressed = client.mouseHandler.isLeftPressed();
+            if (pressed && !islandWasPressed[0]) {
+                int mx = (int) (client.mouseHandler.xpos()
+                        * client.getWindow().getGuiScaledWidth() / client.getWindow().getWidth());
+                int my = (int) (client.mouseHandler.ypos()
+                        * client.getWindow().getGuiScaledHeight() / client.getWindow().getHeight());
+                MusicIsland.onClick(mx, my);
+            }
+            islandWasPressed[0] = pressed;
+        });
     }
 }

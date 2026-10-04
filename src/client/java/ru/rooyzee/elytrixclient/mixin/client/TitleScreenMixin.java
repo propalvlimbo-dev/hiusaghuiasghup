@@ -4,6 +4,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.LogoRenderer;
 import net.minecraft.client.gui.components.PlainTextButton;
+import net.minecraft.client.gui.components.SpriteIconButton;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.components.SplashRenderer;
 import net.minecraft.client.gui.screens.Screen;
@@ -35,7 +36,7 @@ public abstract class TitleScreenMixin extends Screen {
         super(null);
     }
 
-    /** Убираем надпись копирайта внизу справа (это кликабельный PlainTextButton). */
+    /** Убираем надпись копирайта внизу справа и маленькие иконки (язык и т.д.). */
     @Inject(method = "init", at = @At("TAIL"), require = 0)
     private void elytrix$noCopyright(CallbackInfo ci) {
         if (!ElytrixclientClient.CONFIG.hackerBackground) {
@@ -43,6 +44,12 @@ public abstract class TitleScreenMixin extends Screen {
         }
         for (GuiEventListener child : new ArrayList<>(this.children())) {
             if (child instanceof PlainTextButton) {
+                this.removeWidget(child);
+            }
+        }
+        // Убираем маленькие иконки (язык, доступность, realms и т.д.)
+        for (GuiEventListener child : new ArrayList<>(this.children())) {
+            if (child instanceof SpriteIconButton) {
                 this.removeWidget(child);
             }
         }
