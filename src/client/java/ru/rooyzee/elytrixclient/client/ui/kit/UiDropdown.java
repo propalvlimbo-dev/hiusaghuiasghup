@@ -5,7 +5,10 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import java.util.List;
 import java.util.function.Consumer;
 
-/** Выпадающий список: строка с подписью и «чипом» выбранного значения. */
+/**
+ * Выпадающий список: строка с подписью и «чипом» выбранного значения.
+ * Список раскрывается плавно (растёт и проявляется), стрелка поворачивается.
+ */
 public class UiDropdown extends UiWidget {
 
     private static final int ITEM_H = 18;
@@ -16,6 +19,7 @@ public class UiDropdown extends UiWidget {
     private final Consumer<Integer> onChange;
     private int index;
     private boolean open;
+    private float openT;
 
     public UiDropdown(String label, List<String> options, int index, Consumer<Integer> onChange) {
         super(UiTheme.ROW_H);
@@ -38,6 +42,12 @@ public class UiDropdown extends UiWidget {
     }
 
     @Override
+    public void replay(float delay) {
+        super.replay(delay);
+        openT = open ? 1f : 0f;
+    }
+
+    @Override
     public boolean hasPopup() {
         return open;
     }
@@ -48,17 +58,20 @@ public class UiDropdown extends UiWidget {
         for (String s : options) {
             widest = Math.max(widest, font.width(s));
         }
-        return Math.max(widest, font.width(label)) + 2 * PAD + 14;
+        return Math.max(widest, font.width(label)) + 2 * PAD + 16;
     }
 
     private int chipX() {
         return x + w - 10 - chipW();
     }
 
+    private int listH() {
+        return options.size() * ITEM_H + 8;
+    }
+
     private int popupTop() {
-        int listH = options.size() * ITEM_H + 8;
         int below = y + h + 4;
-        int top = below + listH <= popupLimitBottom ? below : y - 4 - listH;
+        int top = below + listH() <= popupLimitBottom ? below : y - 4 - listH();
         return Math.max(popupLimitTop + 2, top);
     }
 
@@ -67,17 +80,34 @@ public class UiDropdown extends UiWidget {
         if (!visible) {
             return;
         }
-        hovered = enabled && contains(mouseX, mouseY);
-        UiDraw.roundRect(graphics, x, y, w, h, UiTheme.R_MD, hovered || open ? UiTheme.ROW_HOVER : UiTheme.ROW);
+        beginFrame(mouseX, mouseY, dt);
+        openT += ((open ? 1f : 0f) - openT) * (ANIMATIONS ? Math.min(1f, dt * 15f) : 1f);
+        if (!open && openT < 0.02f) {
+            openT = 0f;
+        }
+        if (open && openT > 0.98f) {
+            openT = 1f;
+        }
+
+        int bg = UiTheme.mix(UiTheme.ROW, UiTheme.ROW_HOVER, Math.max(hoverT, open ? 1f : 0f));
+        UiDraw.roundRect(graphics, x, y, w, h, UiTheme.R_MD, fadeIn(bg));
 
         var font = font();
-        UiDraw.text(graphics, font, label, x + 10, y + (h - 8) / 2 + 1, UiTheme.TEXT);
+        UiDraw.text(graphics, font, trim(font, label, chipX() - x - 14), x + 10, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT));
 
         int cw = chipW();
         int cx = chipX();
-        UiDraw.roundRect(graphics, cx, y + 4, cw, h - 8, UiTheme.R_SM, open ? UiTheme.mix(UiTheme.TRACK, accent, 0.25f) : UiTheme.TRACK);
-        UiDraw.text(graphics, font, options.get(index), cx + PAD, y + (h - 8) / 2 + 1, UiTheme.TEXT_SOFT);
-        UiDraw.icon(graphics, UiDraw.Icon.CHEVRON, cx + cw - 16, y + (h - 10) / 2, 10, UiTheme.TEXT_DIM);
+        int chipBg = UiTheme.mix(UiTheme.TRACK, UiTheme.accentSoft(accent, 0.30f), Math.max(hoverT * 0.5f, openT));
+        UiDraw.roundRect(graphics, cx, y + 4, cw, h - 8, UiTheme.R_SM, fadeIn(chipBg));
+        UiDraw.text(graphics, font, trim(font, options.get(index), cw - 26), cx + PAD, y + (h - 8) / 2 + 1, fadeIn(UiTheme.TEXT_SOFT));
+
+        // поворачивающаяся «галочка»: две линии, угол зависит от openT
+        float ccx = cx + cw - 11;
+        float ccy = y + h / 2f;
+        float vy = 2f - 4f * openT;
+        UiDraw.line(graphics, ccx - 3.5f, ccy - vy, ccx, ccy + vy, 1.6f, fadeIn(UiTheme.TEXT_DIM));
+        UiDraw.line(graphics, ccx, ccy + vy, ccx + 3.5f, ccy - vy, 1.6f, fadeIn(UiTheme.TEXT_DIM));
+        endFrame();
     }
 
     @Override
@@ -86,33 +116,40 @@ public class UiDropdown extends UiWidget {
             return false;
         }
         int top = popupTop();
-        int height = options.size() * ITEM_H + 8;
-        return mx >= chipX() && mx < chipX() + chipW() && my >= top && my < top + height;
+        return mx >= chipX() && mx < chipX() + chipW() && my >= top && my < top + listH();
     }
 
     @Override
     public void renderPopup(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float dt) {
-        if (!open) {
+        if (openT <= 0.02f) {
             return;
         }
         int cx = chipX();
         int cw = chipW();
         int top = popupTop();
-        int height = options.size() * ITEM_H + 8;
-        UiDraw.shadow(graphics, cx, top, cw, height, UiTheme.R_MD, 4, UiTheme.withAlpha(0xFF000000, 0.35f));
-        UiDraw.roundRectBordered(graphics, cx, top, cw, height, UiTheme.R_MD, UiTheme.POPUP, UiTheme.BORDER);
+        int full = listH();
+        int height = Math.max(8, Math.round(full * Math.min(1f, openT * 1.2f)));
+        float a = Math.min(1f, openT * 1.4f);
+
+        UiDraw.shadow(graphics, cx, top, cw, height, UiTheme.R_MD, 4, UiTheme.withAlpha(0xFF000000, 0.30f * a));
+        UiDraw.roundRectBordered(graphics, cx, top, cw, height, UiTheme.R_MD,
+                UiTheme.withAlpha(UiTheme.POPUP, a), UiTheme.withAlpha(UiTheme.BORDER, a));
+
         var font = font();
         for (int i = 0; i < options.size(); i++) {
             int iy = top + 4 + i * ITEM_H;
+            if (iy + ITEM_H > top + height) {
+                break;
+            }
             boolean ih = mouseX >= cx + 2 && mouseX < cx + cw - 2 && mouseY >= iy && mouseY < iy + ITEM_H;
             if (ih) {
-                UiDraw.roundRect(graphics, cx + 3, iy, cw - 6, ITEM_H, UiTheme.R_SM, UiTheme.ROW_HOVER);
+                UiDraw.roundRect(graphics, cx + 3, iy, cw - 6, ITEM_H, UiTheme.R_SM, UiTheme.withAlpha(UiTheme.ROW_HOVER, a));
             }
             if (i == index) {
-                UiDraw.roundRect(graphics, cx + 3, iy, 2, ITEM_H, 1, accent);
+                UiDraw.roundRect(graphics, cx + 3, iy + 2, 2, ITEM_H - 4, 1, UiTheme.withAlpha(accent, a));
             }
-            UiDraw.text(graphics, font, options.get(i), cx + PAD + 3, iy + (ITEM_H - 8) / 2 + 1,
-                    i == index ? UiTheme.TEXT : UiTheme.TEXT_SOFT);
+            UiDraw.text(graphics, font, trim(font, options.get(i), cw - 14), cx + PAD + 3, iy + (ITEM_H - 8) / 2 + 1,
+                    UiTheme.withAlpha(i == index ? UiTheme.TEXT : UiTheme.TEXT_SOFT, a));
         }
     }
 

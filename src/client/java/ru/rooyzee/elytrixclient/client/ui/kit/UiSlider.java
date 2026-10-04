@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 
 /**
  * Слайдер в стиле панели: строка с подписью, «чипом» значения справа и дорожкой снизу.
- * Значение целочисленное, меняется перетаскиванием или кликом по дорожке.
+ * Ползунок плавно догоняет значение, при наведении подсвечивается акцентом.
  */
 public class UiSlider extends UiWidget {
 
@@ -17,6 +17,7 @@ public class UiSlider extends UiWidget {
     private final Consumer<Integer> onChange;
     private int value;
     private boolean dragging;
+    private float shownRatio = -1f;
 
     public UiSlider(String label, String suffix, int min, int max, int value, Consumer<Integer> onChange) {
         super(UiTheme.ROW_H_TALL);
@@ -69,30 +70,46 @@ public class UiSlider extends UiWidget {
         if (!visible) {
             return;
         }
-        hovered = enabled && contains(mouseX, mouseY);
-        UiDraw.roundRect(graphics, x, y, w, h, UiTheme.R_MD, hovered || dragging ? UiTheme.ROW_HOVER : UiTheme.ROW);
+        beginFrame(mouseX, mouseY, dt);
+        int bg = UiTheme.mix(UiTheme.ROW, UiTheme.ROW_HOVER, Math.max(hoverT, dragging ? 1f : 0f));
+        UiDraw.roundRect(graphics, x, y, w, h, UiTheme.R_MD, fadeIn(bg));
 
         var font = font();
-        UiDraw.text(graphics, font, label, x + 10, y + 6, UiTheme.TEXT);
+        UiDraw.text(graphics, font, trim(font, label, w - 70), x + 10, y + 6, fadeIn(UiTheme.TEXT));
 
         String text = value + suffix;
         int chipW = font.width(text) + 14;
         int chipX = x + w - 10 - chipW;
-        UiDraw.roundRect(graphics, chipX, y + 4, chipW, 14, UiTheme.R_SM, UiTheme.accentSoft(accent, 0.22f));
-        UiDraw.textCenter(graphics, font, text, chipX + chipW / 2, y + 7, UiTheme.mix(accent, 0xFFFFFFFF, 0.35f));
+        UiDraw.roundRect(graphics, chipX, y + 4, chipW, 14, UiTheme.R_SM, fadeIn(UiTheme.accentSoft(accent, 0.22f)));
+        UiDraw.textCenter(graphics, font, text, chipX + chipW / 2, y + 7,
+                fadeIn(UiTheme.mix(accent, 0xFFFFFFFF, 0.35f)));
 
         int tx = trackX();
         int tw = trackW();
         int ty = trackY();
-        UiDraw.roundRect(graphics, tx, ty, tw, 4, 2, UiTheme.TRACK);
-        int fillW = Math.round(tw * ratio());
-        if (fillW > 0) {
-            UiDraw.roundRect(graphics, tx, ty, Math.max(2, fillW), 4, 2, accent);
+        UiDraw.roundRect(graphics, tx, ty, tw, 4, 2, fadeIn(UiTheme.TRACK));
+
+        float target = ratio();
+        if (shownRatio < 0f) {
+            shownRatio = target;
         }
-        float knobX = tx + fillW;
-        UiDraw.disc(graphics, knobX, ty + 2f, 7f, UiTheme.mix(accent, 0xFFFFFFFF, 0.15f));
-        UiDraw.disc(graphics, knobX, ty + 2f, 5.5f, 0xFFFFFFFF);
-        UiDraw.disc(graphics, knobX, ty + 2f, 3.2f, accent);
+        shownRatio += (target - shownRatio) * (ANIMATIONS ? Math.min(1f, dt * 16f) : 1f);
+        if (Math.abs(target - shownRatio) < 0.0015f) {
+            shownRatio = target;
+        }
+
+        int fillW = Math.round(tw * shownRatio);
+        if (fillW > 0) {
+            UiDraw.roundRect(graphics, tx, ty, Math.max(2, fillW), 4, 2, fadeIn(accent));
+        }
+        float knobX = tx + tw * shownRatio;
+        float kr = 6.5f + 1.5f * Math.max(hoverT, dragging ? 1f : 0f);
+        if (dragging || hoverT > 0.05f) {
+            UiDraw.disc(graphics, knobX, ty + 2f, kr + 3.5f, UiTheme.withAlpha(accent, 0.25f * Math.max(hoverT, dragging ? 1f : 0f)));
+        }
+        UiDraw.disc(graphics, knobX, ty + 2f, kr, fadeIn(0xFFFFFFFF));
+        UiDraw.disc(graphics, knobX, ty + 2f, kr - 2.2f, fadeIn(accent));
+        endFrame();
     }
 
     @Override

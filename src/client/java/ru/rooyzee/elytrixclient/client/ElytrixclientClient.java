@@ -9,16 +9,17 @@ import org.lwjgl.glfw.GLFW;
 import ru.rooyzee.elytrixclient.client.botmark.BotMarkRunner;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.soulfire.SoulFireController;
-import ru.rooyzee.elytrixclient.client.ui.ElytrixLoadingScreen;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixScreen;
 import ru.rooyzee.elytrixclient.client.ui.WindowIcon;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
 import ru.rooyzee.elytrixclient.client.util.LogBuffer;
 
 /**
- * Клиентский entrypoint: конфиг, общий лог, раннеры, горячая клавиша панели,
- * иконка окна и свой экран загрузки.
+ * Клиентский entrypoint: конфиг, общий лог, раннеры, горячая клавиша панели и иконка окна.
  *
- * <p>Главное меню остаётся ванильным — мы в него ничего не добавляем.
+ * <p>Фон главного меню и экран загрузки рисует миксин-слой ({@code mixin.client}):
+ * панорама заменяется на анимированный фон Elytrix, ванильный красный лоадер — на свой.
  * Панель ({@link ElytrixScreen}) целиком рисуется своим кодом, см. пакет {@code ui.kit}.
  */
 public class ElytrixclientClient implements ClientModInitializer {
@@ -31,19 +32,15 @@ public class ElytrixclientClient implements ClientModInitializer {
     private static final int PANEL_KEY = GLFW.GLFW_KEY_RIGHT_CONTROL;
 
     private boolean panelKeyHeld;
-    private boolean loadingShown;
 
     @Override
     public void onInitializeClient() {
+        // Тема и тумблер анимаций из конфига — до первого кадра.
+        UiTheme.applyPreset(CONFIG.themeIndex);
+        UiWidget.ANIMATIONS = CONFIG.animations;
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             WindowIcon.tick(client);
-
-            // Свой экран загрузки показываем один раз — вместо первого показа главного меню.
-            if (!loadingShown && client.gui.screen() instanceof TitleScreen) {
-                loadingShown = true;
-                client.gui.setScreen(new ElytrixLoadingScreen());
-                return;
-            }
 
             if (!CONFIG.panelKey) {
                 panelKeyHeld = false;

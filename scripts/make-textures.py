@@ -243,6 +243,7 @@ def main():
     px = key_corner_background(w, h, px)
     for size, name in ((128, "icon.png"), (256, "window_icon_256.png"),
                        (128, "window_icon_128.png"), (64, "window_icon_64.png"),
+                       (48, "window_icon_48.png"),
                        (32, "window_icon_32.png"), (16, "window_icon_16.png")):
         nw, nh, out = resize(w, h, px, size, size)
         write_png(os.path.join(ASSETS, name), nw, nh, out)

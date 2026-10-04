@@ -11,6 +11,7 @@ public class UiSection extends UiWidget {
     private final String title;
     private final String subtitle;
     private String badge;
+    private UiIcon icon;
     private final List<UiWidget> children = new ArrayList<>();
 
     public UiSection(String title, String subtitle) {
@@ -24,6 +25,11 @@ public class UiSection extends UiWidget {
         return this;
     }
 
+    public UiSection icon(UiIcon i) {
+        this.icon = i;
+        return this;
+    }
+
     public UiSection add(UiWidget widget) {
         children.add(widget);
         return this;
@@ -33,8 +39,16 @@ public class UiSection extends UiWidget {
         return children;
     }
 
+    @Override
+    public void replay(float delay) {
+        super.replay(delay);
+        for (int i = 0; i < children.size(); i++) {
+            children.get(i).replay(delay + 0.05f * (i + 1));
+        }
+    }
+
     private int headerH() {
-        int hh = 8;
+        int hh = 9;
         if (title != null) {
             hh += 12;
         }
@@ -49,7 +63,7 @@ public class UiSection extends UiWidget {
         for (int i = 0; i < children.size(); i++) {
             hh += children.get(i).h + (i < children.size() - 1 ? 6 : 0);
         }
-        return hh + 8;
+        return hh + 9;
     }
 
     /** Раскладывает карточку и её строки. */
@@ -60,29 +74,36 @@ public class UiSection extends UiWidget {
         this.h = contentHeight();
         int cy = y + headerH();
         for (UiWidget c : children) {
-            c.place(x + 8, cy, w - 16);
+            c.place(x + 9, cy, w - 18);
             cy += c.h + 6;
         }
     }
 
     @Override
     public void render(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float dt) {
-        UiDraw.roundRectBordered(graphics, x, y, w, h, UiTheme.R_LG, UiTheme.CARD, UiTheme.DIVIDER);
+        tick(dt, false);
+        UiDraw.roundRectBordered(graphics, x, y, w, h, UiTheme.R_LG, fadeIn(UiTheme.CARD), fadeIn(UiTheme.DIVIDER));
 
         var font = font();
-        int ty = y + 8;
+        int ty = y + 9;
+        int titleX = x + 11;
+        if (icon != null) {
+            int size = 13;
+            icon.draw(graphics, titleX, ty - 2, size, fadeIn(UiTheme.mix(accent, UiTheme.TEXT, 0.35f)));
+            titleX += size + 6;
+        }
         if (title != null) {
-            UiDraw.text(graphics, font, title, x + 10, ty, UiTheme.TEXT);
+            UiDraw.textShadow(graphics, font, title, titleX, ty, fadeIn(UiTheme.TEXT));
             if (badge != null) {
                 int bw = font.width(badge) + 12;
-                int bx = x + w - 10 - bw;
-                UiDraw.roundRect(graphics, bx, ty - 3, bw, 14, UiTheme.R_SM, UiTheme.accentSoft(accent, 0.20f));
-                UiDraw.textCenter(graphics, font, badge, bx + bw / 2, ty, UiTheme.mix(accent, 0xFFFFFFFF, 0.40f));
+                int bx = x + w - 11 - bw;
+                UiDraw.roundRect(graphics, bx, ty - 3, bw, 14, UiTheme.R_SM, fadeIn(UiTheme.accentSoft(accent, 0.22f)));
+                UiDraw.textCenter(graphics, font, badge, bx + bw / 2, ty, fadeIn(UiTheme.mix(accent, 0xFFFFFFFF, 0.30f)));
             }
             ty += 12;
         }
         if (subtitle != null) {
-            UiDraw.text(graphics, font, subtitle, x + 10, ty, UiTheme.TEXT_DIM);
+            UiDraw.text(graphics, font, subtitle, x + 11, ty, fadeIn(UiTheme.TEXT_DIM));
         }
 
         for (UiWidget c : children) {

@@ -2,7 +2,9 @@ package ru.rooyzee.elytrixclient.client.ui.kit;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
  * Примитивы отрисовки кастомного GUI: скруглённые прямоугольники и градиенты,
@@ -205,6 +207,30 @@ public final class UiDraw {
         g.text(font, s, right - font.width(s), y, color, false);
     }
 
+    /** Текст с увеличенным межбуквенным интервалом (заголовки «в стиле интерфейса»). */
+    public static void textSpaced(GuiGraphicsExtractor g, Font font, String s, int x, int y, int spacing,
+                                  int color, boolean shadow) {
+        int cx = x;
+        for (int i = 0; i < s.length(); i++) {
+            String ch = String.valueOf(s.charAt(i));
+            if (ch.equals(" ")) {
+                cx += 3 + spacing;
+                continue;
+            }
+            g.text(font, ch, cx, y, color, shadow);
+            cx += font.width(ch) + spacing;
+        }
+    }
+
+    public static int spacedWidth(Font font, String s, int spacing) {
+        int w = 0;
+        for (int i = 0; i < s.length(); i++) {
+            String ch = String.valueOf(s.charAt(i));
+            w += (ch.equals(" ") ? 3 : font.width(ch)) + spacing;
+        }
+        return Math.max(0, w - spacing);
+    }
+
     public static void textCenterShadow(GuiGraphicsExtractor g, Font font, String s, int cx, int y, int color) {
         g.text(font, s, cx - font.width(s) / 2, y, color, true);
     }
@@ -232,84 +258,38 @@ public final class UiDraw {
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    //  Иконки (рисуются кодом, без текстур)
+    //  Иконки-текстуры (PNG 16×16, тонируются цветом)
     // ─────────────────────────────────────────────────────────────────────
 
-    public enum Icon {
-        HOME, BOTS, PROXY, CONSOLE, SETTINGS, CLOSE, CHEVRON, CHECK, SEARCH, PLUS, DOTS, BOLT
+    /** Текстура 16×16, растянутая в квадрат {@code size}×{@code size}, с тонировкой {@code argb}. */
+    public static void icon(GuiGraphicsExtractor g, Identifier texture, int x, int y, int size, int argb) {
+        if (size <= 0) {
+            return;
+        }
+        g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0f, 0f, size, size, 16, 16, 16, 16, argb);
     }
 
-    public static void icon(GuiGraphicsExtractor g, Icon icon, int x, int y, int size, int color) {
-        float cx = x + size / 2f;
-        float cy = y + size / 2f;
-        float s = size;
-        switch (icon) {
-            case HOME -> {
-                line(g, x + s * 0.10f, cy, cx, y + s * 0.16f, Math.max(1.6f, s * 0.13f), color);
-                line(g, cx, y + s * 0.16f, x + s * 0.90f, cy, Math.max(1.6f, s * 0.13f), color);
-                roundRect(g, Math.round(x + s * 0.22f), Math.round(cy - s * 0.02f), Math.round(s * 0.56f), Math.round(s * 0.44f), 2, color);
-            }
-            case BOTS -> {
-                disc(g, cx, y + s * 0.27f, s * 0.16f, color);
-                roundRect(g, Math.round(x + s * 0.18f), Math.round(y + s * 0.54f), Math.round(s * 0.64f), Math.round(s * 0.34f), Math.round(s * 0.17f), color);
-                vLine(g, Math.round(cx), Math.round(y + s * 0.06f), Math.round(y + s * 0.14f), Math.max(1, Math.round(s * 0.07f)), color);
-            }
-            case PROXY -> {
-                ring(g, cx, cy, s * 0.42f, Math.max(1.4f, s * 0.09f), color);
-                hLine(g, Math.round(cx - s * 0.42f), Math.round(cx + s * 0.42f), Math.round(cy), Math.max(1, Math.round(s * 0.08f)), color);
-                line(g, cx - s * 0.20f, cy - s * 0.36f, cx - s * 0.20f, cy + s * 0.36f, Math.max(1f, s * 0.07f), color);
-                line(g, cx + s * 0.20f, cy - s * 0.36f, cx + s * 0.20f, cy + s * 0.36f, Math.max(1f, s * 0.07f), color);
-            }
-            case CONSOLE -> {
-                roundRectBordered(g, Math.round(x + s * 0.06f), Math.round(y + s * 0.14f), Math.round(s * 0.88f), Math.round(s * 0.72f), 3, 0x00000000, color);
-                line(g, x + s * 0.26f, y + s * 0.36f, x + s * 0.44f, y + s * 0.50f, Math.max(1.2f, s * 0.09f), color);
-                line(g, x + s * 0.44f, y + s * 0.50f, x + s * 0.26f, y + s * 0.64f, Math.max(1.2f, s * 0.09f), color);
-                hLine(g, Math.round(x + s * 0.56f), Math.round(x + s * 0.74f), Math.round(y + s * 0.64f), Math.max(1, Math.round(s * 0.09f)), color);
-            }
-            case SETTINGS -> {
-                ring(g, cx, cy, s * 0.24f, Math.max(1.4f, s * 0.10f), color);
-                for (int i = 0; i < 8; i++) {
-                    double a = Math.PI * i / 4.0;
-                    int tx = Math.round(cx + (float) Math.cos(a) * s * 0.40f);
-                    int ty = Math.round(cy + (float) Math.sin(a) * s * 0.40f);
-                    int t = Math.max(2, Math.round(s * 0.14f));
-                    roundRect(g, tx - t / 2, ty - t / 2, t, t, 1, color);
-                }
-            }
-            case CLOSE -> {
-                float t = Math.max(1.3f, s * 0.11f);
-                line(g, x + s * 0.28f, y + s * 0.28f, x + s * 0.72f, y + s * 0.72f, t, color);
-                line(g, x + s * 0.72f, y + s * 0.28f, x + s * 0.28f, y + s * 0.72f, t, color);
-            }
-            case CHEVRON -> {
-                float t = Math.max(1.2f, s * 0.11f);
-                line(g, x + s * 0.30f, y + s * 0.42f, cx, y + s * 0.62f, t, color);
-                line(g, cx, y + s * 0.62f, x + s * 0.70f, y + s * 0.42f, t, color);
-            }
-            case CHECK -> {
-                float t = Math.max(1.2f, s * 0.12f);
-                line(g, x + s * 0.24f, y + s * 0.52f, x + s * 0.44f, y + s * 0.72f, t, color);
-                line(g, x + s * 0.44f, y + s * 0.72f, x + s * 0.78f, y + s * 0.30f, t, color);
-            }
-            case SEARCH -> {
-                float r = s * 0.32f;
-                ring(g, cx - s * 0.06f, cy - s * 0.06f, r, Math.max(1.3f, s * 0.10f), color);
-                line(g, cx + r * 0.62f, cy + r * 0.62f, x + s * 0.86f, y + s * 0.86f, Math.max(1.3f, s * 0.11f), color);
-            }
-            case PLUS -> {
-                hLine(g, Math.round(x + s * 0.24f), Math.round(x + s * 0.76f), Math.round(cy), Math.max(1, Math.round(s * 0.12f)), color);
-                vLine(g, Math.round(cx), Math.round(y + s * 0.24f), Math.round(y + s * 0.76f), Math.max(1, Math.round(s * 0.12f)), color);
-            }
-            case DOTS -> {
-                disc(g, x + s * 0.24f, cy, s * 0.09f, color);
-                disc(g, cx, cy, s * 0.09f, color);
-                disc(g, x + s * 0.76f, cy, s * 0.09f, color);
-            }
-            case BOLT -> {
-                line(g, x + s * 0.56f, y + s * 0.12f, x + s * 0.34f, y + s * 0.54f, Math.max(1.6f, s * 0.15f), color);
-                line(g, x + s * 0.34f, y + s * 0.54f, x + s * 0.62f, y + s * 0.52f, Math.max(1.6f, s * 0.15f), color);
-                line(g, x + s * 0.62f, y + s * 0.52f, x + s * 0.44f, y + s * 0.88f, Math.max(1.6f, s * 0.15f), color);
-            }
+    /** Текстура произвольного размера с тонировкой. */
+    public static void icon(GuiGraphicsExtractor g, Identifier texture, int x, int y, int w, int h,
+                            int texW, int texH, int argb) {
+        if (w <= 0 || h <= 0) {
+            return;
         }
+        g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0f, 0f, w, h, texW, texH, texW, texH, argb);
+    }
+
+    /** Мягкое «свечение» вокруг прямоугольника — несколько полупрозрачных слоёв акцента. */
+    public static void glow(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int accent, float strength) {
+        int layers = Math.max(1, Math.round(6 * strength));
+        float base = 0.10f * strength;
+        for (int i = layers; i >= 1; i--) {
+            float a = base * (1f - (float) (i - 1) / layers);
+            roundRect(g, x - i, y - i, w + 2 * i, h + 2 * i, radius + i, withAlpha(accent, a));
+        }
+    }
+
+    private static int withAlpha(int color, float a) {
+        int alpha = Math.round(255 * Math.max(0f, Math.min(1f, a)));
+        return (alpha << 24) | (color & 0x00FFFFFF);
     }
 }

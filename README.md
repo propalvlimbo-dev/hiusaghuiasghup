@@ -103,34 +103,44 @@ src/main/resources/fabric.mod.json, lang/, icon.png              — маниф�
 src/main/resources/assets/elytrixclient/window_icon_*.png        — иконки окна (16…256)
 src/main/resources/assets/elytrixclient/textures/gui/logo.png    — логотип для экрана загрузки
 src/client/java/ru/rooyzee/elytrixclient/client/
-    ElytrixclientClient.java      — конфиг, лог, раннеры, панель по ПРАВОМУ CTRL, экран загрузки, иконка
+    ElytrixclientClient.java      — конфиг, лог, раннеры, панель по ПРАВОМУ CTRL, иконка
     config/ElytrixConfig.java     — config/elytrixclient.json (+ настройки интерфейса)
     util/LogBuffer.java           — общий лог BotMark + SoulFire + мода
     botmark/BotMarkRunner.java    — запуск бинарника BotMark, стрим stdout
     soulfire/SoulFireController.java — CLI-режим (stdin/stdout) и MCP-режим (HTTP API)
     soulfire/McpClient.java       — JSON-RPC вызовы MCP-инструментов SoulFire
     ui/ElytrixScreen.java         — панель: Главная / Боты / Прокси / Консоль / Настройки
-    ui/ElytrixLoadingScreen.java  — свой экран загрузки перед главным меню
+    ui/ElytrixLoader.java         — свой экран загрузки (вместо ванильного красного лоадера)
+    ui/ElytrixBackground.java     — «хакерский» анимированный фон (сетка + дождь символов)
+    ui/ElytrixBrand.java          — своя «шапка» главного меню вместо логотипа Minecraft
     ui/WindowIcon.java            — подмена иконки окна/панели задач на нашу
     ui/kit/                       — свой мини-кит отрисовки, без ванильных виджетов:
-        UiTheme    — палитра, радиусы, акценты      UiDraw     — скругления, градиенты, иконки, текст
-        UiWidget   — база (hover, ввод, попапы)     UiButton   — кнопка (PRIMARY/SECONDARY/GHOST/DANGER)
-        UiToggle   — тумблер-«пилюля»               UiSlider   — слайдер с чипом значения
-        UiDropdown — выпадающий список              UiSection  — карточка-раздел со строками
-        UiInfo     — строка «ключ → значение»       UiEmpty    — пустое состояние
+        UiTheme    — палитра (бело-розовая/тёмная), радиусы, акценты
+        UiDraw     — скругления, градиенты, свечение, иконки, текст, разрядка
+        UiIcon     — 27 PNG-иконок 16×16 (тонятся цветом), генерируются скриптом
+        UiWidget   — база (hover, ввод, попапы, анимации появления)
+        UiButton   — кнопка (PRIMARY/SECONDARY/GHOST/DANGER)  UiToggle — тумблер-«пилюля»
+        UiSlider   — слайдер с чипом значения       UiDropdown — выпадающий список
+        UiSection  — карточка-раздел со строками    UiInfo     — строка «ключ → значение»
+        UiEmpty    — пустое состояние
+mixin/client/                     — LoadingOverlayMixin (свой лоадер), ScreenMixin (хакерский фон
+                                    вместо панорамы), TitleScreenMixin (своя шапка и версия, без сплэша)
 art/icon-master.png — мастер-картинка иконки (из неё собираются все текстуры)
 ```
 
 Текстуры пересобираются одной командой (чистый Python, без PIL):
 
 ```bash
-python scripts/make-textures.py      # из scripts/ в корне репозитория
+python scripts/make-textures.py      # иконка окна/moda, логотип (из art/icon-master.png)
+python scripts/generate-icons.py     # 27 UI-иконок 16×16 (SDF → PNG, без PIL)
 ```
 
 Панель рисуется **полностью своим кодом** (пакет `ui/kit`): ванильных виджетов и сторонних
-UI-библиотек нет — тёмная тема, скругления, мягкие тени, сайдбар с иконками, карточки-разделы,
-тумблеры/слайдеры/выпадающие списки, плавные анимации и скролл. Именно кастомный рендер даёт
-такой вид: YACL и ванильные контролы рисуются «по-ванильному». Разбор вариантов — `UI-БИБЛИОТЕКИ.md`.
+UI-библиотек нет — бело-розовая (и тёмная) тема, крупные скругления, свечения, сайдбар с
+PNG-иконками, карточки-разделы, тумблеры/слайдеры/выпадающие списки с анимациями
+переключения, скролл с полосой. Цвета и радиусы — в `UiTheme`, примитивы — в `UiDraw`.
+Под 26.2 подходящих «красивых» UI-библиотек нет (owo-lib/LibGui/ModernUI отстают),
+поэтому кит свой — как у Meteor/Wurst. Разбор вариантов — `UI-БИБЛИОТЕКИ.md`.
 
 Наполнение разделов пока пустое — это осознанно: сначала интерфейс, потом объединение
 ботов (BotMark + SoulFire и другие репозитории) в один список.
@@ -188,14 +198,14 @@ UI-библиотек нет — тёмная тема, скругления, м
 
 | Что | Как сделано |
 |---|---|
-| Иконка окна / панели задач | `ui/WindowIcon.java` — на первом клиентском тике зовёт `GLFW.glfwSetWindowIcon` с нашими `window_icon_{16,32,64,128,256}.png` (ваниль ставит свою раньше, поэтому наша побеждает). Заголовок окна **не трогаем** |
+| Иконка окна / панели задач | `ui/WindowIcon.java` — как сама игра: PNG → `NativeImage` → `getPixelsABGR()` → `GLFW.glfwSetWindowIcon`. Ваниль ставит свою иконку при создании окна, поэтому установка **повторяется** (раз в 4 с) и перекрывает её. Файлы: `window_icon_{16,32,48,64,128,256}.png`. Заголовок окна не трогаем |
 | Иконка мода (в списке модов) | `assets/elytrixclient/icon.png` (128×128), прописана в `fabric.mod.json` |
-| **Экран загрузки** | `ui/ElytrixLoadingScreen.java` — показывается один раз при запуске (перехватывает первый показ главного меню): тёмный градиент, пульсирующий логотип (`textures/gui/logo.png`), прогресс-бар с градиентом и бегущим бликом, степпер из 4 шагов, плавное затухание → ванильный `TitleScreen` |
-| Главное меню | **не тронуто вообще** — ни логотипа, ни кнопок, ни сплэшей (раньше был встроенный ресурспак и кнопка — удалены) |
+| **Экран загрузки** | `mixin/client/LoadingOverlayMixin` + `ui/ElytrixLoader.java`: ванильный `LoadingOverlay` (красный фон Mojang) отменяется **всё время загрузки** и рисуется наш экран — хакерский фон, пульсирующий логотип, полоса прогресса с бликом, «терминальные» шаги, мигающий курсор. Логика завершения загрузки (`gui.setOverlay(null)`) сохранена. Тумблер в настройках: «Свой экран загрузки» |
+| Главное меню | хакерский анимированный фон вместо панорамы (`mixin/client/ScreenMixin` + `ui/ElytrixBackground`), вместо логотипа Minecraft — своя «шапка» `ElytrixBrand`, сплэш не показывается, внизу бейдж версии вместо «Minecraft 26.2». Кнопки меню ванильные. Тумблер: «Хакерский фон меню» |
 | Панель | свой рендер, см. §3 и `ui/kit` |
 
 Мастер-картинка (`art/icon-master.png`) — сгенерированная; замени её и пересобери текстуры
-скриптом `scripts/make-textures.py`.
+скриптом `scripts/make-textures.py`. UI-иконки пересобираются `scripts/generate-icons.py`.
 
 ---
 

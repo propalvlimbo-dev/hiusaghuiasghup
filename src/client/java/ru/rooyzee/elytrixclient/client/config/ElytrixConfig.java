@@ -44,8 +44,16 @@ public class ElytrixConfig {
     public String soulfireCommand = "";
 
     // ---------- UI ----------
+    /** Тема интерфейса: 0 — бело-розовая, 1 — тёмная (UiTheme.PRESET_NAMES). */
+    public int themeIndex = 0;
+    /** Масштаб панели: 0 — как масштаб интерфейса игры, иначе 90/100/115/130 %. */
+    public int uiScaleIndex = 0;
+    /** «Хакерский» анимированный фон в главном меню вместо панорамы. */
+    public boolean hackerBackground = true;
+    /** Свой экран загрузки вместо ванильного красного лоадера. */
+    public boolean customLoading = true;
     /** Цвет акцента строкой (для совместимости и внешних правок файла). */
-    public String accent = "#8B5CF6";
+    public String accent = "#FF4FC3";
     /** Индекс акцента в палитре UiTheme.ACCENTS (0 — розовый). */
     public int accentIndex = 0;
     /** Непрозрачность поверхностей панели, % (60…100). */
