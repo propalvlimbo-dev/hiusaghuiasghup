@@ -280,3 +280,40 @@ TTF-атлас (рендер `java.awt`/FreeType → текстура) или TT
 
 Если шрифт не загрузится (не совпадёт схема провайдера в новой версии игры),
 текст будет пустым/квадратиками — тогда правим JSON, код менять не нужно.
+
+## 9. Векторный слой форм вместо спрайтов (04.10.2026)
+
+Раньше скругления/круги/тени рисовались заранее посчитанными PNG-спрайтами
+(`textures/gui/shapes/*_x1..x4.png`, 116 файлов). Спрайт даёт мягкий край, только если
+ложится ровно 1:1 в пиксель экрана: при дробном размере панели или нестандартном масштабе
+интерфейса он «квадратился», а наборов под каждый масштаб не хватало.
+
+Теперь формы считаются геометрией (`client/ui/kit/gfx/UiVector.java`) и кладутся в тот же
+список элементов кадра, что и ванильная заливка:
+
+```
+UiDraw.roundRect/outline/shadow/disc/ring/line/progress
+        → UiVector  (float-координаты, дуги, билинейный градиент по 4 углам)
+        → GuiGraphicsExtractorAccessor.elytrix$guiRenderState().addGuiElement(MeshState)
+        → MeshState implements GuiElementRenderState   (pipeline = RenderPipelines.GUI)
+```
+
+Важные детали 26.2, на которые опирается слой:
+
+* поле `GuiGraphicsExtractor.guiRenderState` приватное — доступ через `@Accessor`-миксин
+  `mixin/client/GuiGraphicsExtractorAccessor`;
+* `GuiElementRenderState` требует `buildVertices(VertexConsumer)`, `pipeline()`,
+  `textureSetup()`, `scissorArea()`, `bounds()`;
+* `RenderPipelines.GUI` работает в `VertexFormat.Mode.QUADS` — геометрия обязана идти
+  четвёрками вершин (дуги — «пирогами» из двух треугольников в одном кваде, кольца — полосами
+  между внешним и внутренним контуром);
+* `VertexConsumer.addVertexWith2DPose(Matrix3x2fc, x, y).setColor(argb)` — цвет на вершину,
+  поэтому градиент получается бесплатно;
+* элементы без текстуры и с одним пайплайном попадают в один меш в `GuiRenderer`, то есть
+  десятки скруглений — это один draw call (не дороже спрайтов);
+* ванильный scissor-стек приватный, поэтому `UiDraw.scissor/unscissor` ведут своё зеркало
+  (используется во вкладках: содержимое обрезается прямоугольником).
+
+Аварийный откат: `UiDraw.VECTOR = false` — вернёт старую отрисовку спрайтами (весь спрайтовый
+путь сохранён). Сборка проверяется CI (`.github/workflows/build.yml`, JDK 25 + Gradle 9.7.1),
+он же проверяет, что классы GUI реально скомпилировались.
