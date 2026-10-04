@@ -19,6 +19,7 @@ import ru.rooyzee.elytrixclient.client.ui.kit.UiDraw;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiIcon;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
+import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
 import ru.rooyzee.elytrixclient.client.ui.menu.ConsoleView;
 import ru.rooyzee.elytrixclient.client.ui.menu.MenuCard;
 import ru.rooyzee.elytrixclient.client.ui.menu.MenuContent;
