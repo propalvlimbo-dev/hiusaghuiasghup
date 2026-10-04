@@ -232,6 +232,15 @@ public final class CustomMusic {
 
         @Override
         public void run() {
+            // Ждём инициализации OpenAL (Minecraft.setUpAudio может быть ещё не вызван)
+            try {
+                for (int i = 0; i < 100 && !halted; i++) {
+                    if (org.lwjgl.openal.AL.getCapabilities() != null) break;
+                    Thread.sleep(150);
+                }
+            } catch (InterruptedException e) { return; }
+            if (halted || org.lwjgl.openal.AL.getCapabilities() == null) return;
+
             String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
             if (name.endsWith(".ogg")) {
                 runOgg();
