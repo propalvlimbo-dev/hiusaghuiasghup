@@ -15,9 +15,9 @@ import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
 public final class MusicIsland {
     private MusicIsland() {}
 
-    private static final float IH = 20, IH_EXP = 46, IR = 10;
-    private static final float IW_EMPTY = 48, IW_PLAY = 150, IW_EXP = 200;
-    private static final float BW = 28, BH = 16, BGAP = 4;
+    private static final float IH = 20, IH_EXP = 56, IR = 10;
+    private static final float IW_EMPTY = 48, IW_PLAY = 150, IW_EXP = 220;
+    private static final float BW = 36, BH = 20, BGAP = 6;
 
     private static float openT, expandT, hoverT;
     private static long lastFrame;
@@ -83,6 +83,7 @@ public final class MusicIsland {
         UiVector.roundRect(g, cx, cy, curW, curH, rad, bg);
         UiVector.outline(g, cx, cy, curW, curH, rad, 0.5f, UiTheme.withAlpha(accent, 0.08f + 0.1f * hoverT));
 
+        // строка 1: иконка + трек + эквалайзер
         float row1Y = cy + (expanded ? 4 : (IH - 12) / 2f);
         float iconX = cx + 5;
         UiVector.roundRect(g, iconX - 1, row1Y - 1, 13, 13, 6, UiTheme.withAlpha(accent, 0.2f));
@@ -108,12 +109,13 @@ public final class MusicIsland {
             }
         }
 
+        // строка 2: контролы (текстовые метки вместо Unicode-иконок)
         if (expandT > 0.05f) {
             float a2 = expandT;
-            float by = cy + IH + 3;
-            float tw = BW * 5 + BGAP * 4;
-            float bx = cx + (curW - tw) / 2f;
-            String[] lbl = {"\u23EE", CustomMusic.isPlaying() ? "\u23F8" : "\u25B6", "\u23ED", "\uD83D\uDD09", "\uD83D\uDD0A"};
+            float by = cy + IH + 4;
+            float totalW = BW * 5 + BGAP * 4;
+            float bx = cx + (curW - totalW) / 2f;
+            String[] lbl = {"|<", CustomMusic.isPlaying() ? "||" : ">", ">|", "-", "+"};
             for (int i = 0; i < 5; i++) {
                 float x = bx + i * (BW + BGAP);
                 btnR[i] = new float[]{x, by, BW, BH};
@@ -129,10 +131,10 @@ public final class MusicIsland {
 
     private static void drawBtn(GuiGraphicsExtractor g, Font font, float x, float y,
             float w, float h, String label, int accent, float alpha, boolean hover) {
-        int fill = UiTheme.mix(0xFF1A1A1A, UiTheme.withAlpha(accent, 0.25f), hover ? 1f : 0f);
-        UiVector.roundRect(g, x, y, w, h, 4, UiTheme.withAlpha(fill, alpha * 0.9f));
-        UiVector.outline(g, x, y, w, h, 4, 0.4f, UiTheme.withAlpha(0x33FFFFFF, alpha * (hover ? 0.6f : 0.3f)));
-        int col = UiTheme.withAlpha(0xFFFFFFFF, alpha * (hover ? 1f : 0.6f));
+        int fill = UiTheme.mix(0xFF1A1A1A, UiTheme.withAlpha(accent, 0.3f), hover ? 1f : 0f);
+        UiVector.roundRect(g, x, y, w, h, 5, UiTheme.withAlpha(fill, alpha * 0.95f));
+        UiVector.outline(g, x, y, w, h, 5, 0.5f, UiTheme.withAlpha(0x44FFFFFF, alpha * (hover ? 0.8f : 0.4f)));
+        int col = UiTheme.withAlpha(0xFFFFFFFF, alpha * (hover ? 1f : 0.7f));
         float tw = font.width(label);
         g.text(font, label, Math.round(x + w / 2f - tw / 2f), Math.round(y + h / 2f - 4), col, false);
     }
