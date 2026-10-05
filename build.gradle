@@ -45,6 +45,7 @@ dependencies {
 
     // ── Зависимости перенесённого визуал-стека delta-26.2 ──
     compileOnly(files("bundled-mods/baritone-fabric-1.15.0-10.jar"))
+    implementation(files("bundled-mods/baritone-fabric-1.15.0-10.jar"))
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
     implementation 'com.google.code.findbugs:jsr305:3.0.2'

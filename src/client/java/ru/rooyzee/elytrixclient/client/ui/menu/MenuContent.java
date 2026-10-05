@@ -225,6 +225,16 @@ public final class MenuContent {
                 : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
             vis.add(toggle(m.name(), m::enabled, m::setEnabled));
         }
+        // Рендер-модули delta-26.2 (из их реестра) — как в родном GUI delta.
+        platform.client.Delta delta = platform.client.Delta.h();
+        if (delta != null && delta.d() != null && delta.d().t() != null) {
+            for (platform.api.module.Module mod : delta.d().t().d()) {
+                if (mod == null || mod.l() != platform.api.module.Category.Render) {
+                    continue;
+                }
+                vis.add(new MenuRow.Toggle(mod.j(), mod::m, mod::a));
+            }
+        }
         list.add(vis);
         return list;
     }
