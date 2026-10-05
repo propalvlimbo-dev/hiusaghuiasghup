@@ -57,6 +57,8 @@ public class FontRenderer {
         text = normalize(text);
         if (text.isEmpty()) return;
 
+        // ВАЖНО: вызываем textureSetup() чтобы зарегистрировать текстуру в TextureManager
+        this.msdfFont.textureSetup();
         Identifier fontTex = this.msdfFont.textureId();
         float baseline = y + this.msdfFont.ascender(size);
         List<MtsdfTextRenderState.GlyphData> gd = new ArrayList<>();
