@@ -379,6 +379,8 @@ public class OwnBot implements Runnable {
                         }
                         out2.write(buf, 0, n);
                     }
+                } catch (java.util.zip.DataFormatException e) {
+                    throw new IOException("битый zlib-кадр: " + e.getMessage());
                 } finally {
                     inf.end();
                 }
