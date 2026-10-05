@@ -11,7 +11,9 @@
     "LoadingScreensMixin",
     "AbstractButtonMixin",
     "AbstractWidgetMixin",
-    "HudMixin"
+    "HudMixin",
+    "AttackHookMixin",
+    "WorldRenderHookMixin"
   ],
   "injectors": {
     "defaultRequire": 1
