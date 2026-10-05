@@ -90,7 +90,7 @@ public final class BlockOutlineRenderer {
             }
 
             this.fade = Math.min(1.0F, this.fade + seconds * 7.5F);
-            this.transition = Math.min(1.0F, this.transition + seconds * feature.animationSpeed.getValue().floatValue() * 0.12F);
+            this.transition = Math.min(1.0F, this.transition + seconds * feature.animationSpeed.getValue().floatValue() * 0.35F);
             this.updateRenderPos(feature, seconds);
          }
 
@@ -144,7 +144,7 @@ public final class BlockOutlineRenderer {
             this.hasRenderPos = true;
          } else {
             double rate = feature.transitionSpeed.getValue();
-            double alpha = 1.0 - Math.exp(-rate * seconds);
+            double alpha = 1.0 - Math.exp(-rate * 3.0 * seconds);
             this.renderX = this.renderX + (target.getX() - this.renderX) * alpha;
             this.renderY = this.renderY + (target.getY() - this.renderY) * alpha;
             this.renderZ = this.renderZ + (target.getZ() - this.renderZ) * alpha;

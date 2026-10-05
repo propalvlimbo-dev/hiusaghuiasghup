@@ -20,8 +20,7 @@ public final class Visuals {
 
     static {
         register(new FullBright());
-        register(new Particles());
-        register(new HitParticles());
+        register(new ru.rooyzee.elytrixclient.client.features.misc.AutoRegister());
     }
 
     private Visuals() {

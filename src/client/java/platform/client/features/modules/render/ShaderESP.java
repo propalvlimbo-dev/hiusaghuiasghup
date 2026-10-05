@@ -15,7 +15,7 @@ import platform.api.module.setting.SliderSetting;
  */
 @ModuleRegister(a = "Shader ESP", b = "Накладывает на игроков шейдерное свечение в стиле ShaderSky", c = Category.Render)
 public class ShaderESP extends Module {
-    public final ModeSetting rezhim = new ModeSetting("Режим", "Matrix", "Darkness", "Caustics", "Clouds", "Matrix", "Starfield");
+    public final ModeSetting rezhim = new ModeSetting("Режим", "Matrix", "Darkness", "Caustics", "Clouds", "Matrix", "Starfield", "Aurora", "Grid");
     public final SliderSetting speed = new SliderSetting("Скорость", 1.0f, 0.1f, 5.0f, 0.1f);
     public final SliderSetting intensity = new SliderSetting("Интенсивность", 0.8f, 0.1f, 1.0f, 0.05f);
 

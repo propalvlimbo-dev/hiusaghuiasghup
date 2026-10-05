@@ -150,13 +150,7 @@ public class Delta {
 
     @EventTarget
     public void a(KeyEvent event) {
-        if (event.d() == 1 && Interface.aM_.gui.screen() == null && (event.b() == 344 || (event.b() == 258 && (event.e() & 1) != 0))) {
-            Minecraft class_310Var = Interface.aM_;
-            if (this.c == null) {
-                this.c = new GUIScreen(Component.literal(""));
-            }
-            class_310Var.gui.setScreen(this.c);
-        }
+        // Своё меню (GUIScreen) на RShift больше не открываем — меню клиента теперь xrose.
     }
 
     @EventTarget(a = 0)

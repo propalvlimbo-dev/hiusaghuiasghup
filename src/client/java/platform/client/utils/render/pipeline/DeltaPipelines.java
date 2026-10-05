@@ -74,6 +74,8 @@ public final class DeltaPipelines {
             .build();
 
     public static final RenderPipeline SKY_CAUSTICS = skyBuilder("sky_caustics", "caustics");
+    public static final RenderPipeline SKY_XROSE_AURORA = skyBuilder("sky_xrose_aurora", "xrose_aurora");
+    public static final RenderPipeline SKY_XROSE_GRID = skyBuilder("sky_xrose_grid", "xrose_grid");
     public static final RenderPipeline SKY_CLOUDS = skyBuilder("sky_clouds", "clouds");
     public static final RenderPipeline SKY_DARKNESS = skyBuilder("sky_darkness", "darkness");
     public static final RenderPipeline SKY_MATRIX = skyBuilder("sky_matrix", "matrix");

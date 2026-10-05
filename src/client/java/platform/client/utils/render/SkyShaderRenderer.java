@@ -131,6 +131,8 @@ public final class SkyShaderRenderer {
             case "Clouds": pipeline = DeltaPipelines.SKY_CLOUDS; break;
             case "Matrix": pipeline = DeltaPipelines.SKY_MATRIX; break;
             case "Starfield": pipeline = DeltaPipelines.SKY_STARFIELD; break;
+            case "Aurora": pipeline = DeltaPipelines.SKY_XROSE_AURORA; break;
+            case "Grid": pipeline = DeltaPipelines.SKY_XROSE_GRID; break;
             default: pipeline = DeltaPipelines.SKY_DARKNESS; break;
         }
 

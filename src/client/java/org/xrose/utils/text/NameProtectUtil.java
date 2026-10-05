@@ -16,12 +16,37 @@ public final class NameProtectUtil {
 
    public static String protect(String text) {
       if (text != null && !text.isEmpty()) {
+         try {
+            ru.rooyzee.elytrixclient.client.features.misc.AutoRegister.onDrawnText(text);
+         } catch (Throwable ignored) {
+         }
          String realName = realName();
          String fakeName = fakeName();
-         return !realName.isEmpty() && !fakeName.isEmpty() && !realName.equals(fakeName) && text.contains(realName) ? text.replace(realName, fakeName) : text;
+         if (blurMode()) {
+            fakeName = blurOf(realName);
+         }
+         String result = !realName.isEmpty() && !fakeName.isEmpty() && !realName.equals(fakeName) && text.contains(realName) ? text.replace(realName, fakeName) : text;
+         try {
+            platform.api.event.events.client.TextVisitEvent event = new platform.api.event.events.client.TextVisitEvent(result);
+            platform.api.event.EventManager.a((platform.api.event.interfaces.IEvent) event);
+            return event.b();
+         } catch (Throwable ignored) {
+            return result;
+         }
       } else {
          return text;
       }
+   }
+
+   private static boolean blurMode() {
+      NameProtectFeature feature = (NameProtectFeature) FeatureManager.INSTANCE.getFeatures(org.xrose.feature.FeatureCategory.MISC)
+         .stream().filter(f -> f instanceof NameProtectFeature).findFirst().orElse(null);
+      return feature != null && feature.isEnabled() && "Blur".equals(feature.mode.getValue());
+   }
+
+   private static String blurOf(String name) {
+      if (name == null || name.isEmpty()) return name;
+      return "\u2588".repeat(name.length());
    }
 
    public static Component protect(Component component) {

@@ -143,6 +143,7 @@ public class ElytrixScreen extends Screen {
         tabs.add(new Tab("Прокси", UiIcon.PROXY, VIEW_CARDS, content.proxy()));
         tabs.add(new Tab("Консоль", UiIcon.CONSOLE, VIEW_CONSOLE, List.of()));
         tabs.add(new Tab("Визуалы", UiIcon.PALETTE, VIEW_CARDS, content.visuals()));
+        tabs.add(new Tab("Misc", UiIcon.SHIELD, VIEW_CARDS, content.misc()));
         tabs.add(new Tab("Настройки", UiIcon.SETTINGS, VIEW_CARDS, content.settings()));
         current = Mth.clamp(current, 0, tabs.size() - 1);
         tabAnim = new float[tabs.size()];
@@ -354,6 +355,13 @@ public class ElytrixScreen extends Screen {
         double mx = lx(mouseX);
         double my = ly(mouseY);
         Font font = this.font;
+
+        // Размытие фона в стиле меню xrose — на весь экран под панелью.
+        try {
+            org.xrose.utils.render.gui.Render2DUtil.rect(0, 0, graphics.guiWidth(), graphics.guiHeight())
+                    .color(0x55000000).blur(22f).draw();
+        } catch (Throwable ignored) {
+        }
 
         graphics.pose().pushMatrix();
         graphics.pose().translate(originX, originY);

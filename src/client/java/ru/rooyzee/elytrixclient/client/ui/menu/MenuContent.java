@@ -210,6 +210,13 @@ public final class MenuContent {
     }
 
     /** Вкладка «Визуалы»: компактный плеер MusicIsland и папка визуальных модулей delta-26.2. */
+    /** Кураторский список визуалов: только то, что выбрал пользователь. */
+    private static final java.util.Set<String> VISUAL_DELTA = java.util.Set.of(
+            "ShaderSky", "Hands Shader", "Aspect Ratio", "Interface", "Item Physic", "Jump Circles", "See Invisibles");
+    private static final java.util.Set<String> VISUAL_XROSE = java.util.Set.of(
+            "BlockOutline", "Removals", "Chams", "AtmoDawnFog");
+    private static final java.util.Set<String> MISC_DELTA = java.util.Set.of("RP Spoofs", "Streamer Mode");
+
     public List<MenuCard> visuals() {
         List<MenuCard> list = new ArrayList<>();
         list.add(new MenuCard("MusicIsland")
@@ -219,33 +226,40 @@ public final class MenuContent {
                         () -> ru.rooyzee.elytrixclient.client.ui.MusicIsland.settingsOpen = true)
                         .when(() -> cfg.musicIsland)));
 
-        // Наши визуалы (features/render): партиклы в воздухе и партиклы на ударе — перенос xroses.
+        // FullBright — скрещенный (xrose-гамма + delta-ночное зрение).
         for (ru.rooyzee.elytrixclient.client.features.render.VisualModule vm
                 : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
-            MenuCard card = new MenuCard(vm.name())
-                    .badge(() -> vm.enabled() ? "вкл" : "выкл", 0)
-                    .add(toggle("Включить", vm::enabled, vm::setEnabled));
-            if (vm instanceof ru.rooyzee.elytrixclient.client.features.render.modules.Particles wp) {
-                card.add(new MenuRow.Mode("Тип", ru.rooyzee.elytrixclient.client.features.render.modules.Particles.SHAPES,
-                                () -> wp.shape, v -> wp.shape = v))
-                        .add(new MenuRow.Slider("Радиус", 1, 40, 1, " бл", () -> wp.radius, v -> wp.radius = v))
-                        .add(new MenuRow.Slider("Частота", 1, 10, 1, " т", () -> wp.spawnRate, v -> wp.spawnRate = v))
-                        .add(new MenuRow.Slider("Кол-во", 1, 10, 1, "", () -> wp.amount, v -> wp.amount = v))
-                        .add(new MenuRow.Slider("Лимит/с", 20, 400, 20, "", () -> wp.maxParticles, v -> wp.maxParticles = v));
+            if (vm instanceof ru.rooyzee.elytrixclient.client.features.render.modules.FullBright fb) {
+                list.add(new MenuCard("FullBright")
+                        .badge(() -> fb.enabled() ? "вкл" : "выкл", 0)
+                        .add(toggle("Включить", fb::enabled, fb::setEnabled))
+                        .add(new MenuRow.Mode("Режим", new String[]{"Гамма (xrose)", "Ночное зрение (delta)"},
+                                () -> fb.mode, v -> fb.mode = v)));
             }
-            if (vm instanceof ru.rooyzee.elytrixclient.client.features.render.modules.HitParticles hp) {
-                card.add(new MenuRow.Mode("Тип", ru.rooyzee.elytrixclient.client.features.render.modules.Particles.SHAPES,
-                                () -> hp.shape, v -> hp.shape = v))
-                        .add(new MenuRow.Slider("Кол-во", 1, 50, 1, "", () -> hp.amount, v -> hp.amount = v));
-            }
-            list.add(card);
         }
-        // Новые визуалы xroses, которых нет в delta-26.2: карточка с тумблером,
-        // настройки — в родном меню xroses (кнопка «Настройки»).
+
+        // delta-26.2 — только визуалы из списка пользователя.
+        platform.client.Delta delta = platform.client.Delta.h();
+        if (delta != null && delta.d() != null && delta.d().t() != null) {
+            for (platform.api.module.Module mod : delta.d().t().d()) {
+                if (mod == null || mod.l() != platform.api.module.Category.Render
+                        || !VISUAL_DELTA.contains(mod.j())) {
+                    continue;
+                }
+                list.add(new MenuCard(mod.j())
+                        .badge(() -> mod.m() ? "вкл" : "выкл", 0)
+                        .add(new MenuRow.Toggle("Включить", mod::m, mod::a).describe(mod.k()))
+                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY,
+                                () -> ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.open(mod))
+                                .describe(mod.k())));
+            }
+        }
+
+        // xrose — только визуалы из списка пользователя; настройки в родном меню.
         try {
             for (org.xrose.feature.Feature fx
                     : org.xrose.feature.FeatureManager.INSTANCE.getFeatures(org.xrose.feature.FeatureCategory.VISUAL)) {
-                if (fx == null || isXroseDuplicate(fx.getName())) {
+                if (fx == null || !VISUAL_XROSE.contains(fx.getName())) {
                     continue;
                 }
                 list.add(new MenuCard(fx.getName())
@@ -259,14 +273,17 @@ public final class MenuContent {
             }
         } catch (Throwable ignored) {
         }
-        // Каждая функция визуалов — отдельная карточка со своим окном настроек (как MusicIsland).
+        return list;
+    }
+
+    /** Misc: RP Spoofs / Streamer Mode (delta), NameProtect (xrose), AutoRegister (наш). */
+    public List<MenuCard> misc() {
+        List<MenuCard> list = new ArrayList<>();
         platform.client.Delta delta = platform.client.Delta.h();
         if (delta != null && delta.d() != null && delta.d().t() != null) {
             for (platform.api.module.Module mod : delta.d().t().d()) {
-                if (mod == null || mod.l() != platform.api.module.Category.Render) {
-                    continue;
-                }
-                if (isHiddenVisual(mod.j())) {
+                if (mod == null || mod.l() != platform.api.module.Category.Misc
+                        || !MISC_DELTA.contains(mod.j())) {
                     continue;
                 }
                 list.add(new MenuCard(mod.j())
@@ -277,37 +294,33 @@ public final class MenuContent {
                                 .describe(mod.k())));
             }
         }
-        return list;
-    }
-
-    /** Эти дельтовские визуалы убраны из списка по решению пользователя. */
-    private static boolean isHiddenVisual(String name) {
-        return "Sound ESP".equals(name) || "Warden ESP".equals(name)
-                || "Board Spoofer".equals(name) || "Block ESP".equals(name);
-    }
-
-    /** Визуалы xroses, которые у нас уже есть в delta или перенесены своими модулями. */
-    private static boolean isXroseDuplicate(String name) {
-        switch (name) {
-            case "Arrows":
-            case "AtmoDawnFog":
-            case "BlockESP":
-            case "Crosshair":
-            case "SwingAnimation":
-            case "ViewModel":
-            case "JumpCircles":
-            case "Removals":
-            case "ItemPhysics":
-            case "See Invisible":
-            case "EntityESP":
-            case "ShaderHands":
-            case "HUD":
-            case "WorldParticles":
-            case "HitParticles":
-                return true;
-            default:
-                return false;
+        try {
+            for (org.xrose.feature.Feature fx
+                    : org.xrose.feature.FeatureManager.INSTANCE.getFeatures(org.xrose.feature.FeatureCategory.MISC)) {
+                if (fx == null || !"NameProtect".equals(fx.getName())) {
+                    continue;
+                }
+                list.add(new MenuCard("NameProtect")
+                        .badge(() -> fx.isEnabled() ? "вкл" : "выкл", 0)
+                        .add(new MenuRow.Toggle("Включить", fx::isEnabled, fx::setEnabled).describe(fx.getDescription()))
+                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY, () -> {
+                            if (!org.xrose.menu.core.MenuOverlay.isOpen()) {
+                                org.xrose.menu.core.MenuOverlay.toggle(net.minecraft.client.Minecraft.getInstance());
+                            }
+                        }).describe("Свой ник или блюр ников (режим Blur)")));
+            }
+        } catch (Throwable ignored) {
         }
+        for (ru.rooyzee.elytrixclient.client.features.render.VisualModule vm
+                : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
+            if (vm instanceof ru.rooyzee.elytrixclient.client.features.misc.AutoRegister ar) {
+                list.add(new MenuCard("AutoRegister")
+                        .badge(() -> ar.enabled() ? "вкл" : "выкл", 0)
+                        .add(toggle("Включить", ar::enabled, ar::setEnabled))
+                        .add(new MenuRow.Text("Пароль", 32, () -> ar.password, v -> ar.password = v)));
+            }
+        }
+        return list;
     }
 
     private MenuRow toggle(String label, java.util.function.BooleanSupplier get,

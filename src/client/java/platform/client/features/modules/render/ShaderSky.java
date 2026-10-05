@@ -14,7 +14,7 @@ public class ShaderSky extends Module {
     @Getter
     private static ShaderSky instance;
 
-    public final ModeSetting rezhim = new ModeSetting("Режим", "Darkness", "Darkness", "Caustics", "Clouds", "Matrix", "Starfield");
+    public final ModeSetting rezhim = new ModeSetting("Режим", "Darkness", "Darkness", "Caustics", "Clouds", "Matrix", "Starfield", "Aurora", "Grid");
     public final SliderSetting speed = new SliderSetting("Скорость", 1.0f, 0.1f, 5.0f, 0.1f);
     public final SliderSetting scale = new SliderSetting("Размер", 5.0f, 1.0f, 20.0f, 0.5f);
     public final SliderSetting intensity = new SliderSetting("Интенсивность", 0.01f, 0.001f, 0.05f, 0.001f);
