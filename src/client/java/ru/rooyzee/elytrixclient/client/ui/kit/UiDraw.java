@@ -382,7 +382,7 @@ public final class UiDraw {
         return UiText.width(font, s, UiText.FACE);
     }
 
-    /** Ширина строки в конкретном шрифте (заголовки — {@link UiText#TITLE}, консоль — {@link UiText#MONO}). */
+    /** Ширина строки в конкретном размере Onest (заголовки — {@link UiText#TITLE}, консоль — {@link UiText#MONO}). */
     public static int width(Font font, String s, Identifier face) {
         return UiText.width(font, s, face);
     }
@@ -391,7 +391,7 @@ public final class UiDraw {
         UiText.draw(g, font, s, x, y, color, UiText.FACE, false);
     }
 
-    /** Текст своим шрифтом (заголовки, моноширинные значения). */
+    /** Текст Onest выбранного размера (заголовки и короткие значения). */
     public static void text(GuiGraphicsExtractor g, Font font, String s, int x, int y, int color, Identifier face) {
         UiText.draw(g, font, s, x, y, color, face, false);
     }
@@ -413,7 +413,7 @@ public final class UiDraw {
         UiText.draw(g, font, s, right - UiText.width(font, s, UiText.FACE), y, color, UiText.FACE, false);
     }
 
-    /** Текст, прижатый вправо, своим шрифтом (моно для чисел и адресов). */
+    /** Текст Onest, прижатый вправо (числа, адреса и значения). */
     public static void textRight(GuiGraphicsExtractor g, Font font, String s, int right, int y, int color,
                                  Identifier face) {
         UiText.draw(g, font, s, right - UiText.width(font, s, face), y, color, face, false);

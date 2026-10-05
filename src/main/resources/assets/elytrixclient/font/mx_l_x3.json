@@ -2,7 +2,7 @@
   "providers": [
     {
       "type": "ttf",
-      "file": "elytrixclient:mono.ttf",
+      "file": "elytrixclient:onest.ttf",
       "size": 17.0,
       "oversample": 3.0,
       "shift": [

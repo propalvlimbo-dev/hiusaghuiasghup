@@ -23,13 +23,13 @@ public final class MenuKit {
     }
 
     // ── шрифты (assets/elytrixclient/font/menu*.json) ───────────────────
-    /** Основной текст, Inter 7.5. */
+    /** Основной текст, Onest 8. */
     public static final Identifier BODY = id("menu");
-    /** Подписи и значения, Inter 6.5. */
+    /** Подписи и значения, Onest 7. */
     public static final Identifier SMALL = id("menu_s");
-    /** Логотип/заголовки, Inter 9. */
+    /** Логотип/заголовки, Onest 10. */
     public static final Identifier TITLE = id("menu_t");
-    /** Консоль, адреса, числа — JetBrains Mono 6.5. */
+    /** Консоль, адреса и числа — Onest в компактном кегле. */
     public static final Identifier MONO = id("mono_s");
 
     /** Общая прозрачность кадра (анимация открытия/закрытия панели). */
@@ -196,8 +196,8 @@ public final class MenuKit {
 
     /**
      * Y для отрисовки, чтобы заглавные буквы встали по центру {@code centerY}.
-     * В 26.2 базовая линия TTF-глифа — {@code y + 7 + shift} (shift = 0.5 в наших json),
-     * высота заглавных у Inter/JetBrains Mono ≈ 0.73 размера шрифта.
+     * В наших font providers с нулевым shift базовая линия TTF-глифа — {@code y + 7};
+     * высота заглавных у Onest — примерно 0.73 размера шрифта.
      */
     public static float ty(Identifier face, float centerY) {
         float size = face == TITLE ? 10f : (face == BODY ? 8f : 7f);

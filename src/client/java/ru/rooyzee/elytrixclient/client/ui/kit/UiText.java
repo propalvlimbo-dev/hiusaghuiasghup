@@ -15,11 +15,11 @@ import net.minecraft.resources.Identifier;
 /**
  * Шрифты интерфейса ElytrixClient.
  *
- * <p>Ванильный шрифт Minecraft — bitmap 5×7, он «пиксельный» по рисунку и не
- * годится для современного вида. Здесь свои TTF-шрифты (Inter для текста,
- * JetBrains Mono для консоли и чисел), которые рендерит сама игра через
- * font-провайдеры {@code type: ttf} — то есть со сглаживанием и под любым
- * масштабом интерфейса.
+ * <p>Все текстовые роли интерфейса используют Onest — семейство, применяемое
+ * в Delta 26.2. Оно подключено как TTF-провайдер Minecraft, поэтому одинаково
+ * работает в наших экранах и в обычном HUD/чате/меню игры. Отдельные font-id
+ * сохранены для размеров и выравнивания; незнакомые глифы остаются на ванильном
+ * fallback, чтобы не терялись значки и Unicode.
  *
  * <p>Файлы: {@code assets/elytrixclient/font/*.json} + {@code .ttf}.
  * Стиль со своим шрифтом применяется к {@link Component}, поэтому измерение
@@ -27,11 +27,11 @@ import net.minecraft.resources.Identifier;
  * «не влезал» бы в отведённые рамки.
  */
 public final class UiText {
-    /** Основной шрифт интерфейса (Inter). */
+    /** Основной шрифт интерфейса (Onest). */
     public static final Identifier UI = Identifier.fromNamespaceAndPath("elytrixclient", "ui");
-    /** Крупные заголовки (Inter, размер ~20). */
+    /** Крупные заголовки (тот же Onest в увеличенном кегле). */
     public static final Identifier TITLE = Identifier.fromNamespaceAndPath("elytrixclient", "ui_title");
-    /** Моноширинный: консоль, версии, адреса, числа (JetBrains Mono). */
+    /** Служебный face для консоли, версий, адресов и чисел (Onest). */
     public static final Identifier MONO = Identifier.fromNamespaceAndPath("elytrixclient", "mono");
 
     /** Текущий шрифт по умолчанию для {@link UiDraw#text}. */
