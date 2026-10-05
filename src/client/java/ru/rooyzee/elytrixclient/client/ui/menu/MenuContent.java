@@ -81,13 +81,15 @@ public final class MenuContent {
 
     public List<MenuCard> bots() {
         List<MenuCard> list = new ArrayList<>();
-        var bm = ElytrixclientClient.BOTMARK;
-        var sf = ElytrixclientClient.SOULFIRE;
         var ob = ElytrixclientClient.OWN_BOTS;
 
-        list.add(new MenuCard("BotMark")
-                .badge(() -> bm.isRunning() ? "работает" : "стоп", 0)
-                .add(new MenuRow.Slider("Ботов", 1, 1000, 1, "", () -> cfg.botmarkCount, v -> {
+        list.add(new MenuCard("Боты")
+                .badge(() -> ob.status(), 0)
+                .add(new MenuRow.Text("Адрес сервера", 200, () -> cfg.botAddress, v -> {
+                    cfg.botAddress = v;
+                    dirty.run();
+                }))
+                .add(new MenuRow.Slider("Ботов", 1, 500, 1, "", () -> cfg.botmarkCount, v -> {
                     cfg.botmarkCount = v;
                     dirty.run();
                 }))
@@ -99,25 +101,24 @@ public final class MenuContent {
                     cfg.botmarkTimeout = v;
                     dirty.run();
                 }))
-                .add(new MenuRow.Text("Путь к botmark", 260, () -> cfg.botmarkPath, v -> {
-                    cfg.botmarkPath = v;
-                    dirty.run();
-                }))
-                .add(new MenuRow.Button(() -> bm.isRunning() ? "Остановить" : "Запустить на " + cfg.target(),
-                        MenuRow.Button.Kind.PRIMARY, () -> {
-                    if (bm.isRunning()) {
-                        bm.stop();
-                    } else {
-                        bm.start(cfg);
-                    }
-                })));
-
-        list.add(new MenuCard("Встроенные боты")
-                .badge(() -> ob.status(), 0)
                 .add(new MenuRow.Text("Префикс ников", 160, () -> cfg.ownBotPrefix, v -> {
                     cfg.ownBotPrefix = v;
                     dirty.run();
                 }))
+                .add(toggle("Авторегистрация", () -> cfg.botAutoReg, v -> cfg.botAutoReg = v))
+                .add(toggle("Автовход", () -> cfg.botAutoLogin, v -> cfg.botAutoLogin = v))
+                .add(new MenuRow.Text("Пароль", 160, () -> cfg.botPassword, v -> {
+                    cfg.botPassword = v;
+                    dirty.run();
+                }).when(() -> cfg.botAutoReg || cfg.botAutoLogin))
+                .add(toggle("Сообщения в чат", () -> cfg.bmSpam, v -> cfg.bmSpam = v))
+                .add(new MenuRow.Text("Текст сообщения", 140, () -> cfg.bmSpamMessage, v -> {
+                    cfg.bmSpamMessage = v;
+                    dirty.run();
+                }).when(() -> cfg.bmSpam))
+                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v))
+                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
+                .add(toggle("Движение", () -> cfg.bmMovement, v -> cfg.bmMovement = v))
                 .add(new MenuRow.Button(() -> ob.isRunning() ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
                         MenuRow.Button.Kind.PRIMARY, () -> {
                     if (ob.isRunning()) {
@@ -129,63 +130,20 @@ public final class MenuContent {
                         st.delayMs = cfg.botmarkDelay;
                         st.timeoutMs = cfg.botmarkTimeout;
                         st.prefix = cfg.ownBotPrefix;
+                        st.autoReg = cfg.botAutoReg;
+                        st.autoLogin = cfg.botAutoLogin;
+                        st.password = cfg.botPassword;
                         st.spam = cfg.bmSpam;
                         st.spamMessage = cfg.bmSpamMessage;
                         st.rotation = cfg.bmRotation;
                         st.swing = cfg.bmSwing;
                         st.movement = cfg.bmMovement;
-                        String[] hp = cfg.target().split(":");
+                        String addr = cfg.botAddress.trim();
+                        String[] hp = addr.split(":");
                         ob.start(hp[0], hp.length > 1 ? Integer.parseInt(hp[1]) : 25565, 776, st);
                     }
                 })));
-
-        list.add(new MenuCard("Поведение ботов")
-                .add(toggle("Сообщения в чат", () -> cfg.bmSpam, v -> cfg.bmSpam = v))
-                .add(new MenuRow.Text("Текст сообщения", 120, () -> cfg.bmSpamMessage, v -> {
-                    cfg.bmSpamMessage = v;
-                    dirty.run();
-                }).when(() -> cfg.bmSpam))
-                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v))
-                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
-                .add(toggle("Движение", () -> cfg.bmMovement, v -> cfg.bmMovement = v))
-                .add(toggle("Прыжки", () -> cfg.bmJumping, v -> cfg.bmJumping = v))
-                .add(toggle("Физика", () -> cfg.bmPhysics, v -> cfg.bmPhysics = v)));
-
-        list.add(new MenuCard("SoulFire")
-                .badge(() -> "mcp".equalsIgnoreCase(cfg.soulfireMode) ? "MCP" : (sf.isRunning() ? "работает" : "стоп"), 0)
-                .add(new MenuRow.Mode("Режим", new String[] {"CLI", "MCP"},
-                        () -> "mcp".equalsIgnoreCase(cfg.soulfireMode) ? 1 : 0, i -> {
-                    cfg.soulfireMode = i == 1 ? "mcp" : "cli";
-                    dirty.run();
-                }))
-                .add(new MenuRow.Text("SoulFireCLI.jar", 260, () -> cfg.soulfireJar, v -> {
-                    cfg.soulfireJar = v;
-                    dirty.run();
-                }).when(this::cli))
-                .add(new MenuRow.Text("Аргументы Java", 120, () -> cfg.soulfireJavaArgs, v -> {
-                    cfg.soulfireJavaArgs = v;
-                    dirty.run();
-                }).when(this::cli))
-                .add(new MenuRow.Text("Адрес API", 200, () -> cfg.soulfireApiUrl, v -> {
-                    cfg.soulfireApiUrl = v;
-                    dirty.run();
-                }).when(() -> !cli()))
-                .add(new MenuRow.Button(() -> sf.isRunning() ? "Остановить SoulFire" : "Запустить SoulFire",
-                        MenuRow.Button.Kind.SECONDARY, () -> {
-                    if (sf.isRunning()) {
-                        sf.stopSoulFire();
-                    } else {
-                        sf.startSoulFire(cfg);
-                    }
-                }).when(this::cli))
-                .add(new MenuRow.Button("Запустить ботов", MenuRow.Button.Kind.PRIMARY, () -> sf.botsStart(cfg)))
-                .add(new MenuRow.Button("Остановить ботов", MenuRow.Button.Kind.SECONDARY, () -> sf.botsStop(cfg)))
-                .add(new MenuRow.Info("Статус", () -> sf.status(cfg), 0)));
         return list;
-    }
-
-    private boolean cli() {
-        return !"mcp".equalsIgnoreCase(cfg.soulfireMode);
     }
 
     public List<MenuCard> proxy() {

@@ -32,6 +32,10 @@ public class ElytrixConfig {
     public String ownBotPrefix = "ElytrixBot_";
     public boolean bmJumping = true;
     public boolean bmPhysics = true;
+    public String botAddress = "127.0.0.1:25565";
+    public boolean botAutoReg = false;
+    public boolean botAutoLogin = false;
+    public String botPassword = "elytrix123";
 
     // ---------- SoulFire ----------
     /** cli — запускать SoulFireCLI.jar как процесс и писать команды ему в stdin; mcp — дёргать HTTP API (MCP). */

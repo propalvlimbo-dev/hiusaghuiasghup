@@ -52,6 +52,8 @@ public class OwnBot implements Runnable {
     private boolean havePos;
     private int entityId = -1;
 
+    private long regAt = -1, loginAt = -1;
+    private boolean regSent, loginSent;
     private long nextChatAt;
     private long nextSwingAt;
     private long nextTurnAt;
@@ -198,6 +200,13 @@ public class OwnBot implements Runnable {
                     log.add("[Бот " + name + "] в игре на " + host + ":" + port);
                     send(P_LOADED, w -> {
                     });
+                    long now = System.currentTimeMillis();
+                    if (settings.autoReg) {
+                        regAt = now + 1000 + rnd.nextInt(500);
+                    }
+                    if (settings.autoLogin || settings.autoReg) {
+                        loginAt = now + (settings.autoReg ? 2500 : 1000) + rnd.nextInt(500);
+                    }
                 }
                 return true;
             }
@@ -252,7 +261,29 @@ public class OwnBot implements Runnable {
         }
     }
 
+    private void sendChat(String msg, long now) throws IOException {
+        send(P_CHAT, w -> {
+            w.str(msg);
+            w.i64(now);
+            w.i64(0);
+            w.bool(false);
+            w.varInt(0);
+            w.bytes(new byte[3]);
+            w.u8(0);
+        });
+    }
+
     private void tick(long now) throws IOException {
+        if (regAt > 0 && !regSent && now >= regAt) {
+            regSent = true;
+            sendChat("/register " + settings.password + " " + settings.password, now);
+            log.add("[Бот " + name + "] авторегистрация");
+        }
+        if (loginAt > 0 && !loginSent && now >= loginAt) {
+            loginSent = true;
+            sendChat("/login " + settings.password, now);
+            log.add("[Бот " + name + "] автовход");
+        }
         if (settings.movement) {
             if (now >= nextWalkChangeAt) {
                 nextWalkChangeAt = now + 2000 + rnd.nextInt(4000);
@@ -280,16 +311,7 @@ public class OwnBot implements Runnable {
         }
         if (settings.spam && now >= nextChatAt) {
             nextChatAt = now + settings.spamDelayMin + rnd.nextInt(Math.max(1, settings.spamDelayMax - settings.spamDelayMin));
-            String msg = settings.spamMessage;
-            send(P_CHAT, w -> {
-                w.str(msg);
-                w.i64(now);
-                w.i64(0);
-                w.bool(false); // без подписи
-                w.varInt(0);
-                w.bytes(new byte[3]);
-                w.u8(0);
-            });
+            sendChat(settings.spamMessage, now);
         }
     }
 
