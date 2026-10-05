@@ -30,7 +30,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 public abstract class MinecraftClientMixin {
 
     @Unique
-    private static final String DELTA_WINDOW_TITLE = "Delta Client 26.2";
+    private static final String DELTA_WINDOW_TITLE = "Elytrix Client 26.2";
 
     @Shadow
     public HitResult hitResult;

@@ -195,7 +195,7 @@ public class AltScreen extends Screen {
             if (keyCode != 256) {
                 return super.keyPressed(event);
             }
-            aM_.gui.setScreen(new MainScreen());
+            aM_.gui.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
             return true;
         }
         if (keyCode == 257) {

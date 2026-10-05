@@ -217,14 +217,14 @@ public class MainScreen extends Screen {
     }
 
     private void a(GuiGraphicsExtractor context, float centerX, float titleY, float open) {
-        float titleWidth = Fonts.e.a("Delta Client", 12.0f);
+        float titleWidth = Fonts.e.a("Elytrix", 12.0f);
         float scale = 0.85f + (0.15f * EasingList.s.ease(open));
         context.pose().pushMatrix();
         context.pose().translate(centerX, titleY + 8.0f);
         context.pose().scale(scale, scale);
         context.pose().translate(-centerX, -titleY - 8.0f);
         int primary = Delta.h().d().o().a(ThemeInfo.PRIMARY).a();
-        Fonts.e.a(context, GradientUtil.a("Delta Client", primary, 5.0f, 0.5f), centerX - (titleWidth / 2.0f), titleY + 1.5f, 12.0f, (double) open);
+        Fonts.e.a(context, GradientUtil.a("Elytrix", primary, 5.0f, 0.5f), centerX - (titleWidth / 2.0f), titleY + 1.5f, 12.0f, (double) open);
         Fonts.e.a(context, "26.2", centerX - (Fonts.e.a("26.2", 12.0f) / 2.0f), titleY + 15.0f, 12.0f, ColorUtil.a(255, 255, 255, (int) (160.0f * open)));
         context.pose().popMatrix();
     }
