@@ -597,6 +597,18 @@ public class OwnBot implements Runnable {
         String component() {
             try {
                 int[] h = {off};
+                int save = h[0];
+                try {
+                    int len = readVarInt(data, h);
+                    if (len > 0 && h[0] + len <= data.length && data[h[0]] == '{') {
+                        String json = new String(data, h[0], len, StandardCharsets.UTF_8);
+                        off = h[0] + len;
+                        String t = jsonText(json);
+                        return t.isEmpty() ? "(нет текста)" : t;
+                    }
+                } catch (Exception ignored) {
+                }
+                h[0] = save;
                 int t = data[h[0]++] & 0xFF;
                 String r = nbtWalk(data, h, t, null, 0);
                 off = h[0];
@@ -604,6 +616,48 @@ public class OwnBot implements Runnable {
             } catch (Exception e) {
                 return "(не читается)";
             }
+        }
+
+        /** Склеивает все "text"-значения из JSON-компонента (1.16-серверы через Via шлют JSON). */
+        private static String jsonText(String json) {
+            StringBuilder sb = new StringBuilder();
+            int i = 0;
+            while (true) {
+                int k = json.indexOf("\"text\"", i);
+                if (k < 0) break;
+                int q = json.indexOf(':', k + 6);
+                if (q < 0) break;
+                q++;
+                while (q < json.length() && json.charAt(q) <= ' ') q++;
+                if (q >= json.length() || json.charAt(q) != '"') { i = k + 6; continue; }
+                q++;
+                StringBuilder part = new StringBuilder();
+                while (q < json.length() && json.charAt(q) != '"') {
+                    char c = json.charAt(q);
+                    if (c == '\\' && q + 1 < json.length()) {
+                        char e = json.charAt(++q);
+                        switch (e) {
+                            case 'n' -> part.append('\n');
+                            case 't' -> part.append('\t');
+                            case 'u' -> {
+                                if (q + 4 < json.length()) {
+                                    try {
+                                        part.append((char) Integer.parseInt(json.substring(q + 1, q + 5), 16));
+                                        q += 4;
+                                    } catch (NumberFormatException ex) { part.append(e); }
+                                } else part.append(e);
+                            }
+                            default -> part.append(e);
+                        }
+                    } else if (c != '\n' && c != '\r' && c != '\t') {
+                        part.append(c);
+                    } else part.append(' ');
+                    q++;
+                }
+                sb.append(part);
+                i = q + 1;
+            }
+            return sb.toString().replace("\n\n", " ").trim();
         }
 
         static int u16at(byte[] d, int[] h) {

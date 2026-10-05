@@ -24,7 +24,9 @@ public class ElytrixConfig {
     public int botmarkCount = 50;
     public int botmarkDelay = 200;
     public int botmarkTimeout = 5000;
-    public boolean bmSpam = true;
+    public boolean bmSpam = false;
+    public int botSpamMin = 3000;
+    public int botSpamMax = 6000;
     public String bmSpamMessage = "Please do not spam!";
     public boolean bmRotation = true;
     public boolean bmSwing = true;

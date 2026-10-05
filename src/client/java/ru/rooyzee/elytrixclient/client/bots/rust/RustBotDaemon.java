@@ -120,8 +120,8 @@ public class RustBotDaemon {
         o.addProperty("prefix", cfg.ownBotPrefix);
         o.addProperty("spam", cfg.bmSpam);
         o.addProperty("spam_message", cfg.bmSpamMessage);
-        o.addProperty("spam_delay_min", 150);
-        o.addProperty("spam_delay_max", 250);
+        o.addProperty("spam_delay_min", cfg.botSpamMin);
+        o.addProperty("spam_delay_max", cfg.botSpamMax);
         o.addProperty("rotation", cfg.bmRotation);
         o.addProperty("swing", cfg.bmSwing);
         o.addProperty("movement", cfg.bmMovement);

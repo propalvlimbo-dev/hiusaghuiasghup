@@ -41,6 +41,15 @@ public class ElytrixclientClient implements ClientModInitializer {
     private static long tickStartNano;
     public static volatile float mspt;
 
+    /**
+     * Оценка серверного TPS: игровое время приходит с сервера (пакет Update Time каждый тик),
+     * считаем сколько тиков сервера прошло за секунду реального времени. Здоровый сервер = 20.0.
+     * Серверный MSPT напрямую с клиента не измерим — только так, через частоту тиков.
+     */
+    public static volatile float serverTps = 20f;
+    private long tpsWindowNano;
+    private long tpsWindowGameTime;
+
     @Override
     public void onInitializeClient() {
         // Инициализация перенесённого ядра delta-26.2 (рендер-модули, события, шейдеры).
@@ -83,6 +92,24 @@ public class ElytrixclientClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             long dt = System.nanoTime() - tickStartNano;
             mspt = mspt * 0.8f + (dt / 1_000_000f) * 0.2f;
+
+            if (client.level != null) {
+                long gt = client.level.getGameTime();
+                if (tpsWindowNano == 0L) {
+                    tpsWindowNano = System.nanoTime();
+                    tpsWindowGameTime = gt;
+                } else {
+                    long elapsed = System.nanoTime() - tpsWindowNano;
+                    if (elapsed >= 1_000_000_000L) {
+                        float tps = (gt - tpsWindowGameTime) * 1_000_000_000f / elapsed;
+                        serverTps = Math.min(20f, tps);
+                        tpsWindowNano = System.nanoTime();
+                        tpsWindowGameTime = gt;
+                    }
+                }
+            } else {
+                tpsWindowNano = 0L;
+            }
             WindowIcon.tick(client);
             ru.rooyzee.elytrixclient.client.features.render.Visuals.tick(client);
             ru.rooyzee.elytrixclient.client.features.EmbeddedGate.tick(client);

@@ -58,7 +58,15 @@ public final class MenuContent {
                 .badge(() -> Minecraft.getInstance().getFps() + " fps", UiTheme.OK)
                 .add(new MenuRow.Info("Эффекты", ElytrixQuality::summary, 0))
                 .add(new MenuRow.Info("Где", MenuContent::whereAmI, 0))
-                .add(new MenuRow.Info("Строк в логе", () -> String.valueOf(ElytrixclientClient.LOG.size()), 0)));
+                .add(new MenuRow.Info("Строк в логе", () -> String.valueOf(ElytrixclientClient.LOG.size()), 0))
+                .add(new MenuRow.Info("Боты", () -> {
+                    var rd = ElytrixclientClient.RUST_BOTS;
+                    var ob = ElytrixclientClient.OWN_BOTS;
+                    if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg) || rd.isRunning()) {
+                        return "rust: " + rd.statusLine();
+                    }
+                    return "встроенные: " + ob.status();
+                }, 0)));
 
         list.add(new MenuCard("Цель")
                 .badge(cfg::target, 0)
@@ -123,6 +131,14 @@ public final class MenuContent {
                     cfg.bmSpamMessage = v;
                     dirty.run();
                 }).when(() -> cfg.bmSpam))
+                .add(new MenuRow.Slider("Интервал спама от", 500, 30000, 500, " мс", () -> cfg.botSpamMin, v -> {
+                    cfg.botSpamMin = v;
+                    dirty.run();
+                }).when(() -> cfg.bmSpam))
+                .add(new MenuRow.Slider("до", 500, 60000, 500, " мс", () -> cfg.botSpamMax, v -> {
+                    cfg.botSpamMax = v;
+                    dirty.run();
+                }).when(() -> cfg.bmSpam))
                 .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v))
                 .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
                 .add(toggle("Движение", () -> cfg.bmMovement, v -> cfg.bmMovement = v))
@@ -145,6 +161,8 @@ public final class MenuContent {
                         st.password = cfg.botPassword;
                         st.spam = cfg.bmSpam;
                         st.spamMessage = cfg.bmSpamMessage;
+                        st.spamDelayMin = cfg.botSpamMin;
+                        st.spamDelayMax = cfg.botSpamMax;
                         st.rotation = cfg.bmRotation;
                         st.swing = cfg.bmSwing;
                         st.movement = cfg.bmMovement;

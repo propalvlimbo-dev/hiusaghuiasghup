@@ -202,10 +202,10 @@ public class WatermarkWidget extends Widget implements Interface {
             sections.add(new String[]{"b", "x " + ((int) aM_.player.getX()) + " y " + ((int) aM_.player.getY()) + " z " + ((int) aM_.player.getZ())});
         }
         if (this.n.c().booleanValue()) {
-            sections.add(new String[]{"g", "20.0 TPS"});
+            sections.add(new String[]{"g", String.format("%.1f TPS", ru.rooyzee.elytrixclient.client.ElytrixclientClient.serverTps)});
         }
         if (this.o.c().booleanValue()) {
-            sections.add(new String[]{"e", String.format("%.2f MSPT", ru.rooyzee.elytrixclient.client.ElytrixclientClient.mspt)});
+            sections.add(new String[]{"e", String.format("%.2f MSPT клиента", ru.rooyzee.elytrixclient.client.ElytrixclientClient.mspt)});
         }
         return (String[][]) sections.toArray(new String[0][]);
     }
