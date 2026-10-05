@@ -12,15 +12,16 @@ import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
-import java.lang.reflect.Field;
-import java.util.Optional;
-
 /**
  * Кастомные RenderPipeline для ElytrixClient.
- * PROJECTION layout = DynamicTransforms (ProjMat, ModelViewMat, ColorModulator).
- * SAMPLER0 layout = текстура шрифта.
+ * DynamicTransforms = ProjMat + ModelViewMat + ColorModulator.
  */
 public final class ElytrixPipelines {
+
+    private static final BindGroupLayout MTSDF_LAYOUT = BindGroupLayout.builder()
+            .withUniform("DynamicTransforms", UniformType.UNIFORM_BUFFER)
+            .withSampler("Sampler0")
+            .build();
 
     private static RenderPipeline textPipeline;
     private static boolean initFailed = false;
@@ -33,8 +34,7 @@ public final class ElytrixPipelines {
                     .withLocation(Identifier.fromNamespaceAndPath("elytrixclient", "pipeline/text"))
                     .withVertexShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/text"))
                     .withFragmentShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/text"))
-                    .withBindGroupLayout(BindGroupLayouts.PROJECTION) // DynamicTransforms (ProjMat, ModelViewMat)
-                    .withBindGroupLayout(BindGroupLayouts.SAMPLER0)    // Sampler0 для текстуры
+                    .withBindGroupLayout(MTSDF_LAYOUT)
                     .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                     .withVertexBinding(0, ElytrixVertexFormats.UI)
