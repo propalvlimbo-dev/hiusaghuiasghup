@@ -52,9 +52,7 @@ public final class MenuKeyHandler implements MinecraftContext {
                   }
                }
             } else {
-               if (MenuOverlay.toggle(mc)) {
-                  event.cancel();
-               }
+               // Меню xrose отключено по решению пользователя: RShift его не открывает.
             }
          }
       }

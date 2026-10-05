@@ -1,6 +1,6 @@
 package platform.client.features.commands;
 
-import platform.api.annotation.Command;
+import platform.api.command.Command;
 
 /** Алиас `.config` для `.cfg` — как просил пользователь. */
 @Command(a = "config")

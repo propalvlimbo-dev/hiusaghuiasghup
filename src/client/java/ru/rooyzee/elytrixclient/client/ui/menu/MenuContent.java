@@ -265,11 +265,9 @@ public final class MenuContent {
                 list.add(new MenuCard(fx.getName())
                         .badge(() -> fx.isEnabled() ? "вкл" : "выкл", 0)
                         .add(new MenuRow.Toggle("Включить", fx::isEnabled, fx::setEnabled).describe(fx.getDescription()))
-                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY, () -> {
-                            if (!org.xrose.menu.core.MenuOverlay.isOpen()) {
-                                org.xrose.menu.core.MenuOverlay.toggle(net.minecraft.client.Minecraft.getInstance());
-                            }
-                        }).describe(fx.getDescription())));
+                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY,
+                                () -> ru.rooyzee.elytrixclient.client.ui.menu.XroseModal.open(fx))
+                                .describe(fx.getDescription())));
             }
         } catch (Throwable ignored) {
         }
@@ -303,11 +301,9 @@ public final class MenuContent {
                 list.add(new MenuCard("NameProtect")
                         .badge(() -> fx.isEnabled() ? "вкл" : "выкл", 0)
                         .add(new MenuRow.Toggle("Включить", fx::isEnabled, fx::setEnabled).describe(fx.getDescription()))
-                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY, () -> {
-                            if (!org.xrose.menu.core.MenuOverlay.isOpen()) {
-                                org.xrose.menu.core.MenuOverlay.toggle(net.minecraft.client.Minecraft.getInstance());
-                            }
-                        }).describe("Свой ник или блюр ников (режим Blur)")));
+                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY,
+                                () -> ru.rooyzee.elytrixclient.client.ui.menu.XroseModal.open(fx))
+                                .describe("Свой ник или блюр ников (режим Blur)")));
             }
         } catch (Throwable ignored) {
         }

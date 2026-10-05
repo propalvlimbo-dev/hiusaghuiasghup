@@ -169,6 +169,7 @@ public class ElytrixScreen extends Screen {
     public void onClose() {
         // Модалка настроек модуля закрывается вместе с панелью.
         ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.close();
+        ru.rooyzee.elytrixclient.client.ui.menu.XroseModal.close();
         if (!closing) {
             UiSound.play(UiSound.Event.CLOSE);
         }
@@ -190,6 +191,7 @@ public class ElytrixScreen extends Screen {
     public void removed() {
         // Если панель сменили другим экраном напрямую (без onClose) — модалку тоже закрыть.
         ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.close();
+        ru.rooyzee.elytrixclient.client.ui.menu.XroseModal.close();
         super.removed();
     }
 
@@ -599,6 +601,7 @@ public class ElytrixScreen extends Screen {
             card.render(g, font, mx, my, dt);
         }
         ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.render(g, (int) W, (int) H, (int) mx, (int) my, dt);
+        ru.rooyzee.elytrixclient.client.ui.menu.XroseModal.render(g, (int) W, (int) H, (int) mx, (int) my, dt);
         ru.rooyzee.elytrixclient.client.ui.menu.MenuRow.drawTooltip(g);
         if (footer != null) {
             // неприметная текстовая ссылка внизу раздела
@@ -649,7 +652,8 @@ public class ElytrixScreen extends Screen {
         int button = event.button();
 
         // Открытая модалка настроек модуля перехватывает весь ввод.
-        if (ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.isOpen()) {
+        if (ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.isOpen()
+                || ru.rooyzee.elytrixclient.client.ui.menu.XroseModal.isOpen()) {
             return true;
         }
 
