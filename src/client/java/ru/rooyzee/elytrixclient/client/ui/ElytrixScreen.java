@@ -581,6 +581,7 @@ public class ElytrixScreen extends Screen {
             card.render(g, font, mx, my, dt);
         }
         ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.render(g, (int) W, (int) H, (int) mx, (int) my, dt);
+        ru.rooyzee.elytrixclient.client.ui.menu.MenuRow.drawTooltip(g);
         if (footer != null) {
             // неприметная текстовая ссылка внизу раздела
             float fw = width(font, footer, SMALL);

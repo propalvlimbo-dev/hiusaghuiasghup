@@ -43,6 +43,27 @@ public abstract class MenuRow {
         return this;
     }
 
+    // Тултип рисуется поверх всего меню в конце кадра — строка лишь «запрашивает» его.
+    private static String tipDesc;
+    private static float tipX, tipY;
+
+    /** Отрисовать запрошенный в этом кадре тултип поверх всего и сбросить. */
+    public static void drawTooltip(GuiGraphicsExtractor g) {
+        if (tipDesc == null) {
+            return;
+        }
+        float tw = ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer
+                .width(ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, tipDesc, 7f);
+        float tx = tipX + 10f, ty = tipY + 12f;
+        ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector
+                .roundRect(g, tx, ty, tw + 12f, 15f, 4f, 0xF2141218);
+        ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector
+                .outline(g, tx, ty, tw + 12f, 15f, 4f, .5f, 0x33FFFFFF);
+        ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer
+                .draw(g, ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, tipDesc, tx + 6f, ty + 4f, 7f, 0xE6FFFFFF);
+        tipDesc = null;
+    }
+
     /** Показывать строку только при условии. */
     public MenuRow when(BooleanSupplier condition) {
         this.visible = condition;
@@ -78,15 +99,9 @@ public abstract class MenuRow {
             fill(g, x + 4, y + 1, w - 8, h - 2, 4, UiTheme.withAlpha(text(), 0.045f * hoverT));
         }
         if (desc != null && hoverT > .5f) {
-            float tw = ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer
-                    .width(ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, desc, 7f);
-            float tx = (float) mx + 10f, ty = (float) my + 12f;
-            ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector
-                    .roundRect(g, tx, ty, tw + 12f, 15f, 4f, 0xF2141218);
-            ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector
-                    .outline(g, tx, ty, tw + 12f, 15f, 4f, .5f, 0x33FFFFFF);
-            ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer
-                    .draw(g, ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, desc, tx + 6f, ty + 4f, 7f, 0xE6FFFFFF);
+            tipDesc = desc;
+            tipX = (float) mx;
+            tipY = (float) my;
         }
     }
 
