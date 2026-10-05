@@ -11,6 +11,7 @@ import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.media.CoverTexture;
 import ru.rooyzee.elytrixclient.client.media.Lyrics;
 import ru.rooyzee.elytrixclient.client.media.MediaSession;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
 
@@ -229,9 +230,9 @@ public final class MusicIsland {
             String done = line.substring(0, cut);
             String left = line.substring(cut);
             float rowY2 = y + row * LYRIC_ROW_H + lift;
-            g.text(font, done, (int) x, (int) rowY2, UiTheme.withAlpha(text, fade), false);
+            UiText.draw(g, font, done, (int) x, (int) rowY2, UiTheme.withAlpha(text, fade), UiText.FACE, false);
             float doneW = font.width(done) * (layout.size() / 9f);
-            g.text(font, left, (int) (x + doneW), (int) rowY2, UiTheme.withAlpha(text, 0.35f * fade), false);
+            UiText.draw(g, font, left, (int) (x + doneW), (int) rowY2, UiTheme.withAlpha(text, 0.35f * fade), UiText.FACE, false);
             consumed += lw;
         }
     }
@@ -248,8 +249,8 @@ public final class MusicIsland {
         float barX = x + elapsedW + 8f;
         float barW = Math.max(10f, width - elapsedW - leftW - 16f);
 
-        g.text(font, elapsed, (int) x, (int) (y - 1f), UiTheme.withAlpha(text, 0.45f * openT), false);
-        g.text(font, left, (int) (x + width - leftW), (int) (y - 1f), UiTheme.withAlpha(text, 0.45f * openT), false);
+        UiText.draw(g, font, elapsed, (int) x, (int) (y - 1f), UiTheme.withAlpha(text, 0.45f * openT), UiText.FACE, false);
+        UiText.draw(g, font, left, (int) (x + width - leftW), (int) (y - 1f), UiTheme.withAlpha(text, 0.45f * openT), UiText.FACE, false);
         UiVector.roundRect(g, barX, y + 1.5f, barW, 3f, 1.5f, UiTheme.withAlpha(text, 0.16f * openT));
 
         float filled = barW * progress;
@@ -307,7 +308,7 @@ public final class MusicIsland {
             while (end > 0 && font.width(shown.substring(0, end) + "...") > maxW) end--;
             shown = end > 0 ? shown.substring(0, end) + "..." : "...";
         }
-        g.text(font, shown, (int) x, (int) y, color, false);
+        UiText.draw(g, font, shown, (int) x, (int) y, color, UiText.FACE, false);
     }
 
     private static String time(long millis) {
