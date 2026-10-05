@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer;
+import ru.rooyzee.elytrixclient.client.ui.DeltaHud;
 import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
 
 /**
@@ -41,6 +42,7 @@ public abstract class HudMixin {
         int my = (int) (mc.mouseHandler.ypos() * scaleY);
         MtsdfTextRenderer.beginFrame();
         MusicIsland.render(g, sw, sh, mx, my);
+        DeltaHud.render(g, sw, sh);
         MtsdfTextRenderer.flush(g);
     }
 }

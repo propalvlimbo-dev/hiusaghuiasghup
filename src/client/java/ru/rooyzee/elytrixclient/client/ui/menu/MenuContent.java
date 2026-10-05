@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
-import ru.rooyzee.elytrixclient.client.render.font.Fonts;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixLoader;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixQuality;
 import ru.rooyzee.elytrixclient.client.ui.UiSound;
@@ -187,11 +186,6 @@ public final class MenuContent {
                     cfg.uiScaleIndex = i;
                     dirty.run();
                 }))
-                .add(new MenuRow.Mode("Шрифт", Fonts.FAMILY_NAMES, () -> cfg.fontFamily, i -> {
-                    cfg.fontFamily = i;
-                    Fonts.setFamily(i);
-                    dirty.run();
-                }))
                 .add(new MenuRow.Slider("Непрозрачность фона", 0, 100, 1, "%", () -> cfg.panelOpacity, v -> {
                     cfg.panelOpacity = v;
                     dirty.run();
@@ -213,6 +207,40 @@ public final class MenuContent {
                 }).when(() -> cfg.menuSounds))
                 .add(toggle("Звук при наведении", () -> cfg.hoverSounds, v -> cfg.hoverSounds = v)
                         .when(() -> cfg.menuSounds)));
+        return list;
+    }
+
+    /** Вкладка «Визуалы»: плеер MusicIsland, HUD-визуалы из delta-26.2 и своя музыка. */
+    public List<MenuCard> visuals() {
+        List<MenuCard> list = new ArrayList<>();
+        list.add(new MenuCard("MusicIsland")
+                .badge(() -> cfg.musicIsland ? "вкл" : "выкл", 0)
+                .add(toggle("Показывать плеер", () -> cfg.musicIsland, v -> cfg.musicIsland = v))
+                .add(toggle("Субтитры", () -> cfg.islandLyrics, v -> cfg.islandLyrics = v)
+                        .when(() -> cfg.musicIsland))
+                .add(toggle("Источник", () -> cfg.islandSource, v -> cfg.islandSource = v)
+                        .when(() -> cfg.musicIsland))
+                .add(toggle("Обложка", () -> cfg.islandCover, v -> cfg.islandCover = v)
+                        .when(() -> cfg.musicIsland))
+                .add(new MenuRow.Slider("Масштаб", 80, 130, 5, "%", () -> cfg.islandScale, v -> {
+                    cfg.islandScale = v;
+                    dirty.run();
+                }).when(() -> cfg.musicIsland))
+                .add(new MenuRow.Button("Открыть настройки плеера", MenuRow.Button.Kind.SECONDARY,
+                        () -> ru.rooyzee.elytrixclient.client.ui.MusicIsland.settingsOpen = true)
+                        .when(() -> cfg.musicIsland))
+                .add(new MenuRow.Button("Сбросить позицию", MenuRow.Button.Kind.SECONDARY,
+                        ru.rooyzee.elytrixclient.client.ui.MusicIsland::resetPosition)
+                        .when(() -> cfg.musicIsland)));
+
+        list.add(new MenuCard("Визуалы")
+                .add(toggle("Инфо-панель (delta)", () -> cfg.hudWatermark, v -> cfg.hudWatermark = v))
+                .add(toggle("Размывать фон за панелью", () -> cfg.blurBackground, v -> cfg.blurBackground = v))
+                .add(toggle("Хакерский фон меню", () -> cfg.hackerBackground, v -> cfg.hackerBackground = v))
+                .add(new MenuRow.Mode("Качество эффектов", ElytrixQuality.NAMES, () -> cfg.effectsQuality, i -> {
+                    cfg.effectsQuality = i;
+                    dirty.run();
+                })));
 
         list.add(new MenuCard("Музыка")
                 .badge(() -> cfg.customMusic ? CustomMusic.trackCount() + " треков" : "", 0)

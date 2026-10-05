@@ -74,6 +74,20 @@ public class ElytrixConfig {
     public int menuBackground = 0;
     /** Семейство шрифтов интерфейса: 0 — Google Sans, 1 — Google Sans Flex, 2 — SF Pro (Fonts.FAMILY_NAMES). */
     public int fontFamily = 0;
+
+    // ---------- Визуалы / HUD ----------
+    /** Плавающий музыкальный плеер (MusicIsland). */
+    public boolean musicIsland = true;
+    /** Субтитры (текущая строка) в плеере. */
+    public boolean islandLyrics = true;
+    /** Источник (Spotify/YouTube) под исполнителем. */
+    public boolean islandSource = true;
+    /** Обложка трека в плеере. */
+    public boolean islandCover = true;
+    /** Масштаб плеера, % (80…130). */
+    public int islandScale = 100;
+    /** Вотермарка-инфопанель в стиле delta-26.2 (WatermarkWidget). */
+    public boolean hudWatermark = true;
     /** Тихий звук при наведении на элементы. */
     public boolean hoverSounds = true;
     /** Плавные анимации интерфейса. */

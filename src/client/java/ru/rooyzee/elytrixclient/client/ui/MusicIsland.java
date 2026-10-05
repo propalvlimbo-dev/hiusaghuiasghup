@@ -54,6 +54,8 @@ public final class MusicIsland {
     private static long lastNanos;
     private static String lastTrack = "", lastLine = "", prevLine = "";
     private static boolean wasPressed, dragging, expanded = true;
+    /** Компактная модалка настроек плеера (открывается ЛКМ по плееру). */
+    public static boolean settingsOpen = false;
     private static float dragOX, dragOY;
     private static LyricLayout curLayout;
     private static final Object tKey = new Object(), aKey = new Object();
@@ -62,15 +64,18 @@ public final class MusicIsland {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
         MediaSession.keepAlive();
-        boolean want = MediaSession.present();
+        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
+        boolean enabled = cfg != null && cfg.musicIsland;
+        boolean want = MediaSession.present() && enabled;
         long now = Util.getMillis();
         float dt = lastNanos == 0 ? .016f : Math.min(.05f, (now - lastNanos) / 1000f);
         lastNanos = now;
         openT += ((want ? 1f : 0f) - openT) * (1f - (float) Math.exp(-5f * dt));
-        if (openT < .005f && !want) { openT = 0; return; }
+        if (openT < .005f && !want) { openT = 0; if (!enabled) settingsOpen = false; return; }
+        if (!enabled) { settingsOpen = false; return; }
 
-        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
-        int accent = UiTheme.accent(cfg != null ? cfg.accentIndex : 0);
+        int accent = UiTheme.accent(cfg.accentIndex);
+        expanded = cfg.islandLyrics;
 
         String title = MediaSession.title(), artist = MediaSession.artist(), source = MediaSession.source();
         long pos = MediaSession.positionMs(), dur = MediaSession.durationMs();
@@ -85,30 +90,106 @@ public final class MusicIsland {
         float lh = (LROW * lyricRows + 3f) * lyricsRoom;
         float pH = PAD * 2 + COV + lh + 13f;
 
+        // масштаб из настроек (80…130 %) поверх базового 0.85
+        float k = SC * (Math.max(80, Math.min(130, cfg.islandScale)) / 100f);
+        float pw = PANEL_W * k, ph = pH * k;
+
         float x = sX, y = sY;
-        boolean over = mx >= x && mx <= x + PANEL_W && my >= y && my <= y + pH;
+        boolean overPop = settingsOpen && inside(mx, my, popX, popY, popW, popH);
+        boolean over = !settingsOpen && mx >= x && mx <= x + pw && my >= y && my <= y + ph;
         boolean pr = org.lwjgl.glfw.GLFW.glfwGetMouseButton(
                 org.lwjgl.glfw.GLFW.glfwGetCurrentContext(), 0) == 1;
         boolean cl = pr && !wasPressed; wasPressed = pr;
         if (pr && over && !dragging) { dragging = true; dragOX = mx - x; dragOY = my - y; }
         if (pr && dragging) {
-            sX = Math.max(0, Math.min(sw - PANEL_W, mx - dragOX));
-            sY = Math.max(0, Math.min(sh - pH, my - dragOY));
+            sX = Math.max(0, Math.min(sw - pw, mx - dragOX));
+            sY = Math.max(0, Math.min(sh - ph, my - dragOY));
             x = sX; y = sY;
         }
         if (!pr) dragging = false;
-        if (cl && over && !dragging) expanded = !expanded;
+        // ЛКМ по плееру — открыть/закрыть компактную модалку настроек
+        if (cl && over && !dragging) settingsOpen = !settingsOpen;
+        else if (cl && !over && !overPop) settingsOpen = false;
 
         int accent2 = withAlpha(accent, .7f);
 
         g.pose().pushMatrix();
         g.pose().translate(x, y);
-        g.pose().scale(SC, SC);
+        g.pose().scale(k, k);
         g.pose().translate(-x, -y);
         try {
             draw(g, x, y, PANEL_W, pH, accent, accent2, title, artist, source, pos, dur, dt, lh, lr);
         } finally {
             g.pose().popMatrix();
+        }
+
+        if (settingsOpen) {
+            renderPopover(g, x, y + ph + 4, sw, sh, mx, my, cl);
+        }
+    }
+
+    /** Вернуть плеер в исходную точку. */
+    public static void resetPosition() {
+        sX = 6f;
+        sY = 80f;
+    }
+
+    private static boolean inside(double mx, double my, float x, float y, float w, float h) {
+        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    }
+
+    // ── компактная модалка настроек плеера ───────────────────────────────
+    private static float popX, popY, popW = 132f, popH;
+
+    private static void renderPopover(GuiGraphicsExtractor g, float x, float y, int sw, int sh,
+                                      int mx, int my, boolean cl) {
+        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
+        String[][] rows = {
+                {"Субтитры", cfg.islandLyrics ? "вкл" : "выкл"},
+                {"Источник", cfg.islandSource ? "вкл" : "выкл"},
+                {"Обложка", cfg.islandCover ? "вкл" : "выкл"},
+                {"Масштаб", cfg.islandScale + "%"},
+                {"Сброс позиции", ""},
+                {"Скрыть плеер", ""},
+        };
+        float rowH = 13f, pad = 5f;
+        popW = 132f;
+        popH = rows.length * rowH + pad * 2;
+        popX = Math.max(2, Math.min(sw - popW - 2, x));
+        popY = Math.max(2, Math.min(sh - popH - 2, y));
+
+        ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector.roundRect(g, popX, popY, popW, popH, 6f, 0xF2141218);
+        ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector.outline(g, popX, popY, popW, popH, 6f, .5f, 0x33FFFFFF);
+
+        for (int i = 0; i < rows.length; i++) {
+            float ry = popY + pad + i * rowH;
+            boolean hov = inside(mx, my, popX + 2, ry, popW - 4, rowH);
+            if (hov) {
+                ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector.roundRect(g, popX + 2, ry, popW - 4, rowH, 4f, 0x1FFFFFFF);
+            }
+            if (cl && hov) {
+                popoverAction(i, cfg);
+            }
+            MtsdfTextRenderer.draw(g, Fonts.REGULAR, rows[i][0], popX + 7, ry + 3.5f, 7f, 0xE6FFFFFF);
+            if (!rows[i][1].isEmpty()) {
+                float vw = MtsdfTextRenderer.width(Fonts.REGULAR, rows[i][1], 7f);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, rows[i][1], popX + popW - 7 - vw, ry + 3.5f, 7f, 0xFFFF4FC3);
+            }
+        }
+    }
+
+    private static void popoverAction(int i, ElytrixConfig cfg) {
+        switch (i) {
+            case 0 -> cfg.islandLyrics = !cfg.islandLyrics;
+            case 1 -> cfg.islandSource = !cfg.islandSource;
+            case 2 -> cfg.islandCover = !cfg.islandCover;
+            case 3 -> {
+                int s = cfg.islandScale;
+                cfg.islandScale = s >= 130 ? 85 : (s >= 115 ? 130 : (s >= 100 ? 115 : (s >= 85 ? 100 : 85)));
+            }
+            case 4 -> resetPosition();
+            case 5 -> { cfg.musicIsland = false; settingsOpen = false; }
+            default -> { }
         }
     }
 
@@ -116,6 +197,7 @@ public final class MusicIsland {
             int ac, int ac2, String title, String artist, String source,
             long pos, long dur, float dt, float lh, boolean lyricsRow) {
         int txt = 0xFFFFFFFF;
+        ElytrixConfig cfg = ElytrixclientClient.CONFIG;
         bg(g, x, y, w, h, openT);
         String stamp = title + "|" + artist;
         if (!stamp.equals(lastTrack)) { lastTrack = stamp; trackFade = 0; }
@@ -124,15 +206,17 @@ public final class MusicIsland {
         float sl = (1f - trackFade) * 2.5f;
         float cx = x + PAD;
 
-        cover(g, cx, y + PAD, ac, ac2, dt);
-        cx += COV + 7f;
+        if (cfg.islandCover) {
+            cover(g, cx, y + PAD, ac, ac2, dt);
+            cx += COV + 7f;
+        }
         eq(g, x + w - PAD, y + PAD + 1, ac, dt);
         float dr = x + w - PAD;
         float tw = Math.max(10f, dr - cx - 16f);
         String st = title.isEmpty() ? "Ничего не играет" : title;
         scroll(g, W_TITLE, tKey, st, cx + sl, y + PAD + 1.5f, TITLE_SIZE, withAlpha(txt, ta), tw - sl, 18f, dt);
         String un = artist;
-        if (!source.isEmpty()) un = un.isEmpty() ? source : un + " - " + source;
+        if (cfg.islandSource && !source.isEmpty()) un = un.isEmpty() ? source : un + " - " + source;
         if (!un.isEmpty()) {
             scroll(g, W_SUB, aKey, un, cx + sl, y + PAD + 14f, ARTIST_SIZE, withAlpha(txt, .5f * ta),
                     dr - cx - sl, 14f, dt);

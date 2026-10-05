@@ -141,6 +141,7 @@ public class ElytrixScreen extends Screen {
         tabs.add(new Tab("Боты", UiIcon.BOTS, VIEW_CARDS, content.bots()));
         tabs.add(new Tab("Прокси", UiIcon.PROXY, VIEW_CARDS, content.proxy()));
         tabs.add(new Tab("Консоль", UiIcon.CONSOLE, VIEW_CONSOLE, List.of()));
+        tabs.add(new Tab("Визуалы", UiIcon.PALETTE, VIEW_CARDS, content.visuals()));
         tabs.add(new Tab("Настройки", UiIcon.SETTINGS, VIEW_CARDS, content.settings()));
         current = Mth.clamp(current, 0, tabs.size() - 1);
         tabAnim = new float[tabs.size()];
