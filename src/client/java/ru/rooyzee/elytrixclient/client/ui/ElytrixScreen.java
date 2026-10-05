@@ -83,7 +83,8 @@ public class ElytrixScreen extends Screen {
     private ThemesView themes;
     private float[] tabAnim = new float[0];
     private float[] tabHover = new float[0];
-    private int current;
+    /** Активная вкладка — static, чтобы при повторном открытии панели возвращаться в тот же раздел. */
+    private static int current;
 
     private float scroll;
     private float scrollTarget;
@@ -165,6 +166,8 @@ public class ElytrixScreen extends Screen {
 
     @Override
     public void onClose() {
+        // Модалка настроек модуля закрывается вместе с панелью.
+        ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.close();
         if (!closing) {
             UiSound.play(UiSound.Event.CLOSE);
         }
@@ -180,6 +183,13 @@ public class ElytrixScreen extends Screen {
             cfg.save();
         }
         this.minecraft.gui.setScreen(parent);
+    }
+
+    @Override
+    public void removed() {
+        // Если панель сменили другим экраном напрямую (без onClose) — модалку тоже закрыть.
+        ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.close();
+        super.removed();
     }
 
     private void markDirty() {
