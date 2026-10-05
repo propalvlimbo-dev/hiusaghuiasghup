@@ -181,6 +181,7 @@ public class OwnBot implements Runnable {
                         w.varInt(1);
                         w.bool(false);
                         w.bool(true);
+                        w.varInt(0); // particle status (есть в 26.2)
                     });
                     send(CFG_KNOWN, w -> w.varInt(0));
                 } else if (f.id == SL_DISCONNECT) {

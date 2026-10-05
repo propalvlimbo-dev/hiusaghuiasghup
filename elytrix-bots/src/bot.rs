@@ -311,6 +311,7 @@ fn handle(
                 write_varint(&mut b, 1)?;
                 b.push(0);
                 b.push(1);
+                write_varint(&mut b, 0)?; // particle status (есть в 26.2)
                 c.send(CFG_CLIENT_INFO, &b)?;
                 c.send(CFG_KNOWN, &varint_bytes(0))?;
             }
