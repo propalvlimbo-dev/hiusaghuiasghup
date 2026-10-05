@@ -65,7 +65,7 @@ public final class MusicIsland {
         String lyric = expanded ? lyricLine(pos) : "";
         boolean lk = expanded && Lyrics.has();
         LyricLayout lay = layout(lyric, PANEL_W - PAD * 2);
-        float wr = lay.lines().isEmpty() ? (lk ? 1f : 0f) : lay.rows();
+        float wr = lay.lines().isEmpty() ? (lk ? 1f : 0f) : lay.lines().size();
         lyricRows = lerp(lyricRows, wr, dt, 8f);
         lyricsRoom = lerp(lyricsRoom, expanded && lk ? 1f : 0f, dt, 8f);
         boolean lr = lyricsRoom > .01f;
@@ -266,6 +266,12 @@ public final class MusicIsland {
     private static float lerp(float c, float t, float dt, float sp) { return c + (t - c) * (1f - (float)Math.exp(-sp * dt)); }
     private static float cl01(float v) { return Math.max(0, Math.min(1, v)); }
     private static int withAlpha(int c, float a) { int al = (int)Math.max(0, Math.min(255, ((c >> 24) & 0xFF) * a)); return (al << 24) | (c & 0x00FFFFFF); }
-    private static int mix(int a, int b, float t) { t = cl01(t); return (int)(((1-t)*((a>>24)&0xFF)+t*((b>>24)&0xFF))<<24)|((int)((1-t)*((a>>16)&0xFF)+t*((b>>16)&0xFF))<<16)|((int)((1-t)*((a>>8)&0xFF)+t*((b>>8)&0xFF))<<8)|(int)((1-t)*(a&0xFF)+t*(b&0xFF)); }
+    private static int mix(int a, int b, float t) {
+        t = cl01(t);
+        int ra = (a >> 24) & 0xFF, ga = (a >> 8) & 0xFF, ba = a & 0xFF, aa = (a >> 24) & 0xFF;
+        int rb = (b >> 24) & 0xFF, gb = (b >> 8) & 0xFF, bb = b & 0xFF, ab = (b >> 24) & 0xFF;
+        return ((int)(aa + (ab - aa) * t) << 24) | ((int)(ra + (rb - ra) * t) << 16)
+                | ((int)(ga + (gb - ga) * t) << 8) | (int)(ba + (bb - ba) * t);
+    }
     public static void onClick(int mx, int my) {}
 }
