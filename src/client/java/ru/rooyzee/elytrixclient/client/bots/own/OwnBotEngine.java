@@ -73,7 +73,7 @@ public class OwnBotEngine {
                 String json = new String(data, h[0], sl, StandardCharsets.UTF_8);
                 Matcher m = Pattern.compile("\"version\"\\s*:\\s*\\{[^}]*\"protocol\"\\s*:\\s*(\\d+)").matcher(json);
                 if (m.find()) {
-                    return Integer.parseInt(m.group(1));
+                    return -Integer.parseInt(m.group(1)); // минус = узнали из status
                 }
             }
         } catch (Exception ignored) {
@@ -99,7 +99,12 @@ public class OwnBotEngine {
                 + " (protocol " + protocol + ")");
         Thread spawner = new Thread(() -> {
             int proto = probeProtocol(host, port, 3000);
-            log.add("[Боты] протокол сервера: " + proto);
+            if (proto < 0) {
+                log.add("[Боты] протокол сервера: " + (-proto) + " (из status-ping)");
+                proto = -proto;
+            } else {
+                log.add("[Боты] status не ответил, используем стандартный протокол " + proto);
+            }
             for (int i = 1; i <= s.count && running; i++) {
                 OwnBot bot = new OwnBot(s.prefix + i, host, port, proto, s, log);
                 bots.add(bot);

@@ -563,13 +563,76 @@ public class OwnBot implements Runnable {
 
         String component() {
             try {
-                int t = data[off++] & 0xFF;
-                if (t == 8) {
-                    return str();
-                }
-                return "(компонент)";
+                int[] h = {off};
+                int t = data[h[0]++] & 0xFF;
+                String r = nbtWalk(data, h, t, null, 0);
+                off = h[0];
+                return r == null || r.isEmpty() ? "(пусто)" : r;
             } catch (Exception e) {
-                return "(?)";
+                return "(не читается)";
+            }
+        }
+
+        static int u16at(byte[] d, int[] h) {
+            return ((d[h[0]++] & 0xFF) << 8) | (d[h[0]++] & 0xFF);
+        }
+
+        static int i32at(byte[] d, int[] h) {
+            int r = 0;
+            for (int i = 0; i < 4; i++) {
+                r = (r << 8) | (d[h[0]++] & 0xFF);
+            }
+            return r;
+        }
+
+        /** Ищет текст в NBT-компоненте: поле "text" или корневая строка. */
+        static String nbtWalk(byte[] d, int[] h, int type, String key, int depth) {
+            if (depth > 8) {
+                return null;
+            }
+            switch (type) {
+                case 1: h[0]++; return null;
+                case 2: h[0] += 2; return null;
+                case 3: h[0] += 4; return null;
+                case 4: h[0] += 8; return null;
+                case 5: h[0] += 4; return null;
+                case 6: h[0] += 8; return null;
+                case 7: h[0] += i32at(d, h); return null;
+                case 8: {
+                    int n = u16at(d, h);
+                    String r = new String(d, h[0], n, StandardCharsets.UTF_8);
+                    h[0] += n;
+                    return "text".equals(key) || (key == null && depth == 0) ? r : null;
+                }
+                case 9: {
+                    int et = d[h[0]++] & 0xFF;
+                    int n = i32at(d, h);
+                    for (int i = 0; i < n; i++) {
+                        String r = nbtWalk(d, h, et, null, depth + 1);
+                        if (r != null) {
+                            return r;
+                        }
+                    }
+                    return null;
+                }
+                case 10: {
+                    while (true) {
+                        int et = d[h[0]++] & 0xFF;
+                        if (et == 0) {
+                            return null;
+                        }
+                        int nl = u16at(d, h);
+                        String name = new String(d, h[0], nl, StandardCharsets.UTF_8);
+                        h[0] += nl;
+                        String r = nbtWalk(d, h, et, name, depth + 1);
+                        if (r != null) {
+                            return r;
+                        }
+                    }
+                }
+                case 11: h[0] += 4L * i32at(d, h); return null;
+                case 12: h[0] += 8L * i32at(d, h); return null;
+                default: return null;
             }
         }
 
