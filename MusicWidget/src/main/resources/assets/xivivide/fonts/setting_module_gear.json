@@ -1,0 +1,5 @@
+{"atlas":{"type":"sdf","distanceRange":16,"size":124,"width":160,"height":160,"yOrigin":"bottom"},
+ "metrics":{"emSize":1,"lineHeight":1,"ascender":1,"descender":0},
+ "glyphs":[{"unicode":65,"advance":1.0322580645,
+   "planeBounds":{"left":-0.1290322581,"bottom":-0.1451612903,"right":1.1612903226,"top":1.1451612903},
+   "atlasBounds":{"left":0,"bottom":0,"right":160,"top":160}}],"kerning":[]}
