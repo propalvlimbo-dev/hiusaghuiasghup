@@ -24,6 +24,10 @@
     {
       "config": "elytrixclient.client.mixins.json",
       "environment": "client"
+    },
+    {
+      "config": "delta.mixins.json",
+      "environment": "client"
     }
   ],
   "depends": {
