@@ -159,7 +159,15 @@ public class OwnBot implements Runnable {
                     log.add("[Бот " + name + "] сервер требует online-mode — встроенные боты работают только на offline-серверах");
                     return false;
                 } else if (f.id == SL_DISCONNECT) {
-                    status = "кик: " + f.component();
+                    String why = f.component();
+                    if (why == null || why.isEmpty() || why.startsWith("(")) {
+                        StringBuilder hex = new StringBuilder();
+                        for (int i = 0; i < Math.min(24, f.data.length); i++) {
+                            hex.append(String.format("%02X ", f.data[i]));
+                        }
+                        why = "(hex " + hex + ")";
+                    }
+                    status = "кик: " + why;
                     log.add("[Бот " + name + "] кик при входе: " + status);
                     return false;
                 } else if (f.id == SL_SUCCESS) {
@@ -602,7 +610,7 @@ public class OwnBot implements Runnable {
                     int n = u16at(d, h);
                     String r = new String(d, h[0], n, StandardCharsets.UTF_8);
                     h[0] += n;
-                    return "text".equals(key) || (key == null && depth == 0) ? r : null;
+                    return r;
                 }
                 case 9: {
                     int et = d[h[0]++] & 0xFF;
