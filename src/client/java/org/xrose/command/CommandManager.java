@@ -72,6 +72,8 @@ public final class CommandManager {
    }
 
    public boolean handleChat(String message) {
+      // Командная система xrose отключена: всё уходит в нашу (.cfg/.config).
+      return false;
       if (this.initialized && message != null && message.startsWith(this.prefix)) {
          String input = message.substring(this.prefix.length()).trim();
          if (input.isEmpty()) {

@@ -108,11 +108,12 @@ public final class XroseModal {
         try {
             org.xrose.utils.render.gui.Render2DUtil.rect(0, 0, sw, sh)
                     .color(0x66000000).blur(20f).draw();
+            org.xrose.utils.render.gui.Render2DUtil.flush();
         } catch (Throwable ignored) {
         }
 
-        UiVector.roundRect(g, px, py, pw, ph, 10f, 0xF2141218);
-        UiVector.outline(g, px, py, pw, ph, 10f, .5f, 0x33FFFFFF);
+        UiVector.roundRect(g, px, py, pw, ph, 12f, 0xB8141218);
+        UiVector.outline(g, px, py, pw, ph, 12f, .5f, 0x40FFFFFF);
         UiVector.rect(g, px + 8, py + 15f, pw - 16, 1f, (MenuKit.accent & 0xFFFFFF) | 0x66000000);
         MtsdfTextRenderer.draw(g, Fonts.MEDIUM, feature.getName(), px + pad, py + pad, 9f, 0xFFFFFFFF);
 
@@ -184,7 +185,7 @@ public final class XroseModal {
         switch (kind) {
             case 0 -> {
                 org.xrose.feature.setting.BooleanSetting bs = (org.xrose.feature.setting.BooleanSetting) row[1];
-                label(g, bs.getName(), ix, ry + 3.5f, 0xE6FFFFFF);
+                label(g, RuText.ru(bs.getName()), ix, ry + 3.5f, 0xE6FFFFFF);
                 float tx = px + pw - 22f, ty = ry + 3f;
                 UiVector.roundRect(g, tx, ty, 14, 8, 4f, bs.getValue() ? 0xFF4FC3FF : 0x40FFFFFF);
                 UiVector.roundRect(g, tx + (bs.getValue() ? 7 : 1), ty + 1, 6, 6, 3f, 0xFFFFFFFF);
@@ -192,7 +193,7 @@ public final class XroseModal {
             }
             case 1 -> {
                 org.xrose.feature.setting.NumberSetting ns = (org.xrose.feature.setting.NumberSetting) row[1];
-                label(g, ns.getName(), ix, ry + 3f, 0xE6FFFFFF);
+                label(g, RuText.ru(ns.getName()), ix, ry + 3f, 0xE6FFFFFF);
                 String v = ns.getDisplayValue();
                 MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
                         px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3f, 7f, 0xFFFF4FC3);
@@ -211,8 +212,8 @@ public final class XroseModal {
             }
             case 2 -> {
                 org.xrose.feature.setting.ModeSetting ms = (org.xrose.feature.setting.ModeSetting) row[1];
-                label(g, ms.getName(), ix, ry + 3.5f, 0xE6FFFFFF);
-                String v = ms.getValue();
+                label(g, RuText.ru(ms.getName()), ix, ry + 3.5f, 0xE6FFFFFF);
+                String v = RuText.ru(ms.getValue());
                 MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
                         px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
                 if (cl && hov) {
@@ -222,7 +223,7 @@ public final class XroseModal {
             }
             case 3 -> {
                 org.xrose.feature.setting.ColorSetting cs = (org.xrose.feature.setting.ColorSetting) row[1];
-                label(g, cs.getName(), ix, ry + 3.5f, 0xE6FFFFFF);
+                label(g, RuText.ru(cs.getName()), ix, ry + 3.5f, 0xE6FFFFFF);
                 UiVector.roundRect(g, px + pw - 22f, ry + 2.5f, 14, 9, 3f, cs.getValue() | 0xFF000000);
                 UiVector.outline(g, px + pw - 22f, ry + 2.5f, 14, 9, 3f, .5f, 0x33FFFFFF);
                 if (cl && hov) expColor = (expColor == cs) ? null : cs;
@@ -244,14 +245,14 @@ public final class XroseModal {
             }
             case 4 -> {
                 org.xrose.feature.setting.MultiSelectSetting mm = (org.xrose.feature.setting.MultiSelectSetting) row[1];
-                label(g, mm.getName() + "  ·  " + mm.getValue().size(), ix, ry + 3.5f, 0xE6FFFFFF);
+                label(g, RuText.ru(mm.getName()) + "  ·  " + mm.getValue().size(), ix, ry + 3.5f, 0xE6FFFFFF);
                 if (cl && hov) expMulti = (expMulti == mm) ? null : mm;
             }
             case 20 -> {
                 org.xrose.feature.setting.MultiSelectSetting mm = (org.xrose.feature.setting.MultiSelectSetting) row[1];
                 String opt = (String) row[3];
                 boolean sel = mm.isSelected(opt);
-                label(g, opt, ix, ry + 3.5f, sel ? 0xE6FFFFFF : 0xB3FFFFFF);
+                label(g, RuText.ru(opt), ix, ry + 3.5f, sel ? 0xE6FFFFFF : 0xB3FFFFFF);
                 float tx = px + pw - 22f, ty = ry + 3f;
                 UiVector.roundRect(g, tx, ty, 14, 8, 4f, sel ? 0xFF4FC3FF : 0x40FFFFFF);
                 UiVector.roundRect(g, tx + (sel ? 7 : 1), ty + 1, 6, 6, 3f, 0xFFFFFFFF);
@@ -259,7 +260,7 @@ public final class XroseModal {
             }
             case 5 -> {
                 org.xrose.feature.setting.BindSetting bd = (org.xrose.feature.setting.BindSetting) row[1];
-                label(g, bd.getName(), ix, ry + 3.5f, 0xE6FFFFFF);
+                label(g, RuText.ru(bd.getName()), ix, ry + 3.5f, 0xE6FFFFFF);
                 String v;
                 if (listenBind == bd) {
                     v = "...";
@@ -276,7 +277,7 @@ public final class XroseModal {
             }
             case 6 -> {
                 org.xrose.feature.setting.TextSetting ts = (org.xrose.feature.setting.TextSetting) row[1];
-                label(g, ts.getName(), ix, ry + 3.5f, 0xE6FFFFFF);
+                label(g, RuText.ru(ts.getName()), ix, ry + 3.5f, 0xE6FFFFFF);
                 String v = ts.getValue();
                 if (ts.isSecret()) v = "•".repeat(v.length());
                 if (v.isEmpty()) v = "...";
@@ -294,14 +295,14 @@ public final class XroseModal {
             }
             case 8 -> {
                 org.xrose.feature.setting.InputBindSetting ib = (org.xrose.feature.setting.InputBindSetting) row[1];
-                label(g, ib.getName(), ix, ry + 3.5f, 0xE6FFFFFF);
+                label(g, RuText.ru(ib.getName()), ix, ry + 3.5f, 0xE6FFFFFF);
                 String v = listenInput == ib ? "..."
                         : (ib.isBound() ? keyName(ib.getValue()) : "нет");
                 MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
                         px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
                 if (cl && hov) listenInput = ib;
             }
-            default -> label(g, ((org.xrose.feature.setting.Setting<?>) row[1]).getName(), ix, ry + 3.5f, 0xE6FFFFFF);
+            default -> label(g, RuText.ru(((org.xrose.feature.setting.Setting<?>) row[1]).getName()), ix, ry + 3.5f, 0xE6FFFFFF);
         }
         return ry + rh;
     }

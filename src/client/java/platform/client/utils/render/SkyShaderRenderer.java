@@ -75,6 +75,10 @@ public final class SkyShaderRenderer {
     }
 
     public void render(String mode, float speed, float scale, float intensity, float alpha) {
+        render(mode, speed, scale, intensity, alpha, 0);
+    }
+
+    public void render(String mode, float speed, float scale, float intensity, float alpha, int colorOverride) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || RenderSystem.tryGetDevice() == null) {
 
@@ -95,7 +99,7 @@ public final class SkyShaderRenderer {
         float resH = (float) mainTarget.height;
 
 
-        int themeInt = Delta.h().d().o().a(ThemeInfo.PRIMARY).a();
+        int themeInt = colorOverride != 0 ? colorOverride : Delta.h().d().o().a(ThemeInfo.PRIMARY).a();
         float cr = ((themeInt >> 16) & 0xFF) / 255f;
         float cg = ((themeInt >> 8) & 0xFF) / 255f;
         float cb = (themeInt & 0xFF) / 255f;

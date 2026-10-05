@@ -9,6 +9,8 @@ import org.xrose.feature.FeatureManager;
 import org.xrose.feature.impl.misc.NameProtectFeature;
 
 public final class NameProtectUtil {
+   /** Обновляется каждый тик: активны ли NameProtect / StreamerMode / AutoRegister. */
+   public static volatile boolean hooksActive = false;
    private static final String FEATURE_NAME = "NameProtect";
 
    private NameProtectUtil() {
@@ -16,6 +18,9 @@ public final class NameProtectUtil {
 
    public static String protect(String text) {
       if (text != null && !text.isEmpty()) {
+         if (!hooksActive) {
+            return text;
+         }
          try {
             ru.rooyzee.elytrixclient.client.features.misc.AutoRegister.onDrawnText(text);
          } catch (Throwable ignored) {

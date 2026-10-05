@@ -22,6 +22,7 @@ public final class EmbeddedGate {
     }
 
     public static void tick(Minecraft mc) {
+        updateHooks();
         if (done) {
             return;
         }
@@ -35,6 +36,39 @@ public final class EmbeddedGate {
         done = true;
         disableDelta();
         disableXrose();
+    }
+
+    /** Дешёвый флаг: нужны ли построчные хуки текста (иначе protect() — мгновенный return). */
+    private static void updateHooks() {
+        try {
+            boolean np = false;
+            for (org.xrose.feature.Feature f : org.xrose.feature.FeatureManager.INSTANCE.getFeatures(org.xrose.feature.FeatureCategory.MISC)) {
+                if (f instanceof org.xrose.feature.impl.misc.NameProtectFeature n && n.isEnabled()) {
+                    np = true;
+                    break;
+                }
+            }
+            boolean sm = false;
+            platform.client.Delta delta = platform.client.Delta.h();
+            if (delta != null && delta.d() != null && delta.d().t() != null) {
+                for (platform.api.module.Module mod : delta.d().t().d()) {
+                    if (mod != null && "Streamer Mode".equals(mod.j())) {
+                        sm = mod.m();
+                        break;
+                    }
+                }
+            }
+            boolean ar = false;
+            for (ru.rooyzee.elytrixclient.client.features.render.VisualModule vm
+                    : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
+                if (vm instanceof ru.rooyzee.elytrixclient.client.features.misc.AutoRegister a && a.enabled()) {
+                    ar = true;
+                    break;
+                }
+            }
+            org.xrose.utils.text.NameProtectUtil.hooksActive = np || sm || ar;
+        } catch (Throwable ignored) {
+        }
     }
 
     private static void disableDelta() {

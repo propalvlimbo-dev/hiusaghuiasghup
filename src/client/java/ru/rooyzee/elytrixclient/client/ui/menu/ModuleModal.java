@@ -90,11 +90,12 @@ public final class ModuleModal {
         try {
             org.xrose.utils.render.gui.Render2DUtil.rect(0, 0, sw, sh)
                     .color(0x66000000).blur(20f).draw();
+            org.xrose.utils.render.gui.Render2DUtil.flush();
         } catch (Throwable ignored) {
         }
 
-        UiVector.roundRect(g, px, py, pw, ph, 10f, 0xF2141218);
-        UiVector.outline(g, px, py, pw, ph, 10f, .5f, 0x33FFFFFF);
+        UiVector.roundRect(g, px, py, pw, ph, 12f, 0xB8141218);
+        UiVector.outline(g, px, py, pw, ph, 12f, .5f, 0x40FFFFFF);
         UiVector.rect(g, px + 8, py + 15f, pw - 16, 1f, (MenuKit.accent & 0xFFFFFF) | 0x66000000);
         MtsdfTextRenderer.draw(g, Fonts.MEDIUM, mod.j(), px + pad, py + pad, 9f, 0xFFFFFFFF);
 

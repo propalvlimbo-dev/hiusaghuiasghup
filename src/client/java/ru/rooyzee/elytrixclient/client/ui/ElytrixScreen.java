@@ -362,6 +362,7 @@ public class ElytrixScreen extends Screen {
         try {
             org.xrose.utils.render.gui.Render2DUtil.rect(0, 0, graphics.guiWidth(), graphics.guiHeight())
                     .color(0x55000000).blur(22f).draw();
+            org.xrose.utils.render.gui.Render2DUtil.flush();
         } catch (Throwable ignored) {
         }
 

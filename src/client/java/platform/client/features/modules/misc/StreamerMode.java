@@ -61,10 +61,10 @@ public class StreamerMode extends Module {
     }
 
     public String a(String text) {
-        String result = text.replaceAll("(?i)" + aM_.getUser().getName(), "Protected");
+        String result = text.replaceAll("(?i)" + aM_.getUser().getName(), "ElytriX");
         if (this.c.c().booleanValue()) {
             for (FriendConstructor friend : Delta.h().d().e().a()) {
-                result = Pattern.compile(friend.a(), 82).matcher(result).replaceAll("Protected");
+                result = Pattern.compile(friend.a(), 82).matcher(result).replaceAll("ElytriX");
             }
         }
         if (this.d.c().booleanValue()) {

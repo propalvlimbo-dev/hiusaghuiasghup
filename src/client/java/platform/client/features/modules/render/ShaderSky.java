@@ -5,6 +5,8 @@ import platform.client.Delta;
 import platform.api.module.Module;
 import platform.api.module.ModuleRegister;
 import platform.client.utils.render.SkyShaderRenderer;
+import platform.api.module.setting.BooleanSetting;
+import platform.api.module.setting.ColorSetting;
 import platform.api.module.setting.ModeSetting;
 import platform.api.module.setting.SliderSetting;
 import lombok.Getter;
@@ -19,10 +21,12 @@ public class ShaderSky extends Module {
     public final SliderSetting scale = new SliderSetting("Размер", 5.0f, 1.0f, 20.0f, 0.5f);
     public final SliderSetting intensity = new SliderSetting("Интенсивность", 0.01f, 0.001f, 0.05f, 0.001f);
     public final SliderSetting alpha = new SliderSetting("Прозрачность", 1.0f, 0.3f, 1.0f, 0.05f);
+    public final BooleanSetting ownColor = new BooleanSetting("Свой цвет неба", false);
+    public final ColorSetting color = new ColorSetting("Цвет неба", 0xFF4FC3FF);
 
     public ShaderSky() {
         instance = this;
-        a(rezhim, speed, scale, intensity, alpha);
+        a(rezhim, speed, scale, intensity, alpha, ownColor, color);
     }
 
     public static boolean check() {
@@ -38,7 +42,8 @@ public class ShaderSky extends Module {
                 speed.c().floatValue(),
                 scale.c().floatValue(),
                 intensity.c().floatValue(),
-                alpha.c().floatValue()
+                alpha.c().floatValue(),
+                ownColor.c().booleanValue() ? color.c().intValue() : 0
         );
     }
 

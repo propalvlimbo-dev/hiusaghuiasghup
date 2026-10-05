@@ -20,6 +20,7 @@ public final class Visuals {
 
     static {
         register(new FullBright());
+        register(new ru.rooyzee.elytrixclient.client.features.misc.Optimizations());
         register(new ru.rooyzee.elytrixclient.client.features.misc.AutoRegister());
     }
 

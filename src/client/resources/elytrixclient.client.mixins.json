@@ -13,7 +13,8 @@
     "AbstractWidgetMixin",
     "HudMixin",
     "AttackHookMixin",
-    "WorldRenderHookMixin"
+    "WorldRenderHookMixin",
+    "ElytrixMoveMixin"
   ],
   "injectors": {
     "defaultRequire": 1
