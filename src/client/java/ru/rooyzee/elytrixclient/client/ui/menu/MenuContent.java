@@ -129,6 +129,14 @@ public final class MenuContent {
                 .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v)
                         .when(() -> cfg.botMode != 1))
                 .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
+                .add(toggle("Автопрыжки", () -> cfg.botAutoJump, v -> cfg.botAutoJump = v)
+                        .describe("Живое поведение: боты периодически прыгают, как auto-jump в SoulFire"))
+                .add(toggle("Реждойн после кика", () -> cfg.botRejoin, v -> cfg.botRejoin = v)
+                        .describe("После кика бот сам перезайдёт через задержку (auto-reconnect как в SoulFire)"))
+                .add(new MenuRow.Slider("Задержка реждойна", 1000, 60000, 500, " мс", () -> cfg.botRejoinDelay, v -> {
+                    cfg.botRejoinDelay = v;
+                    dirty.run();
+                }).when(() -> cfg.botRejoin))
                 .add(new MenuRow.Header("Чат и авторизация"))
                 .add(toggle("Авторегистрация", () -> cfg.botAutoReg, v -> cfg.botAutoReg = v))
                 .add(toggle("Автовход", () -> cfg.botAutoLogin, v -> cfg.botAutoLogin = v))
@@ -166,6 +174,10 @@ public final class MenuContent {
                         st.autoReg = cfg.botAutoReg;
                         st.autoLogin = cfg.botAutoLogin;
                         st.mode = cfg.botMode;
+                        st.autoJump = cfg.botAutoJump;
+                        st.useProxy = cfg.botUseProxy;
+                        st.rejoin = cfg.botRejoin;
+                        st.rejoinDelayMs = cfg.botRejoinDelay;
                         st.password = cfg.botPassword;
                         st.spam = cfg.bmSpam;
                         st.spamMessage = cfg.bmSpamMessage;
@@ -184,13 +196,53 @@ public final class MenuContent {
 
     public List<MenuCard> proxy() {
         List<MenuCard> list = new ArrayList<>();
-        list.add(new MenuCard("Прокси")
-                .badge(() -> "0", 0)
-                .add(new MenuRow.Info("В списке", () -> "пусто", 0))
-                .add(new MenuRow.Info("Где задаются", () -> "SoulFire", 0)));
-        list.add(new MenuCard("Подсказка")
-                .add(new MenuRow.Info("Импорт", () -> "scripts/proxy-parser.py", 0))
-                .add(new MenuRow.Info("Проверка", () -> "в SoulFire", 0)));
+        list.add(new MenuCard("Прокси для ботов")
+                .badge(() -> String.valueOf(ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.proxyCount()), 0)
+                .add(new MenuRow.Header("Источник"))
+                .add(new MenuRow.Text("Файл со списком", 200, () -> cfg.botProxyFile, v -> {
+                    cfg.botProxyFile = v;
+                    dirty.run();
+                }).describe("txt-файл: по одной прокси на строку. Если путь не абсолютный — ищется в .minecraft/elytrix/"))
+                .add(new MenuRow.Button(() -> "Перечитать файл", MenuRow.Button.Kind.SECONDARY, () -> {
+                    ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.loadProxies(cfg.botProxyFile,
+                            ru.rooyzee.elytrixclient.client.ElytrixclientClient.LOG);
+                }))
+                .add(new MenuRow.Info("В списке", () -> ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.proxyCount()
+                        + " шт", 0))
+                .add(new MenuRow.Header("Использование"))
+                .add(toggle("Боты через прокси", () -> cfg.botUseProxy, v -> cfg.botUseProxy = v)
+                        .describe("Выкл — боты заходят с твоего IP; вкл — каждый бот берёт следующую прокси по кругу"))
+                .add(new MenuRow.Info("Режим", () -> cfg.botUseProxy
+                        ? "прокси (" + ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.proxyCount() + ")"
+                        : "твой IP", 0)));
+    private MenuCard hudCard() {
+        var w = platform.client.ui.widget.WatermarkWidget.INSTANCE;
+        MenuCard c = new MenuCard("Инфо-панель")
+                .badge(() -> w != null ? "вкл" : "выкл", 0);
+        if (w == null) {
+            c.add(new MenuRow.Info("Панель", () -> "выключена в модулях", 0));
+            return c;
+        }
+        c.add(new MenuRow.Header("Строки панели"))
+                .add(toggle("FPS", () -> w.i.c(), v -> w.i.a(v)))
+                .add(toggle("Пинг игрока", () -> w.j.c(), v -> w.j.a(v)))
+                .add(toggle("Время", () -> w.k.c(), v -> w.k.a(v)))
+                .add(toggle("Логин", () -> w.l.c(), v -> w.l.a(v)))
+                .add(toggle("Координаты", () -> w.m.c(), v -> w.m.a(v)))
+                .add(toggle("TPS", () -> w.n.c(), v -> w.n.a(v)))
+                .add(toggle("Нагрузка MC", () -> w.o.c(), v -> w.o.a(v)))
+                .add(toggle("Боты", () -> w.p.c(), v -> w.p.a(v)))
+                .add(new MenuRow.Header("Вид"))
+                .add(toggle("Разделять элементы", () -> w.h.c(), v -> w.h.a(v)))
+                .add(toggle("Боковое отображение", () -> w.g.c(), v -> w.g.a(v)));
+        return c;
+    }
+
+        list.add(new MenuCard("Формат строк")
+                .add(new MenuRow.Info("Без логина", () -> "ip:port", 0))
+                .add(new MenuRow.Info("С логином", () -> "ip:port:login:pass", 0))
+                .add(new MenuRow.Info("Протоколы", () -> "SOCKS5 и HTTP", 0))
+                .add(new MenuRow.Info("Раздача", () -> "по кругу на бота", 0)));
         return list;
     }
 
@@ -299,6 +351,7 @@ public final class MenuContent {
     /** Misc: RP Spoofs / Streamer Mode (delta), NameProtect (xrose), AutoRegister (наш). */
     public List<MenuCard> misc() {
         List<MenuCard> list = new ArrayList<>();
+        list.add(hudCard());
         platform.client.Delta delta = platform.client.Delta.h();
         if (delta != null && delta.d() != null && delta.d().t() != null) {
             for (platform.api.module.Module mod : delta.d().t().d()) {

@@ -52,6 +52,8 @@ public class OwnBot implements Runnable {
     private double groundY;
     private boolean haveGround;
     private double velY;
+    private long nextJumpAt;
+    private final BotProxy proxy;
     private boolean havePos;
     private int entityId = -1;
 
@@ -72,6 +74,11 @@ public class OwnBot implements Runnable {
         this.protocol = protocol;
         this.settings = settings;
         this.log = log;
+        this.proxy = settings.useProxy ? OwnBotEngine.nextProxy() : null;
+    }
+
+    public String proxyLabel() {
+        return proxy == null ? "локальный IP" : proxy.host + ":" + proxy.port;
     }
 
     public String status() {
@@ -96,8 +103,13 @@ public class OwnBot implements Runnable {
     public void run() {
         alive = true;
         try {
-            socket = new Socket(host, port);
-            socket.setSoTimeout(30000);
+            if (proxy != null) {
+                log.add("[Бот " + name + "] подключаюсь через прокси " + proxy);
+                socket = proxy.connect(host, port, 30000);
+            } else {
+                socket = new Socket(host, port);
+                socket.setSoTimeout(30000);
+            }
             in = socket.getInputStream();
             out = socket.getOutputStream();
 
@@ -339,13 +351,19 @@ public class OwnBot implements Runnable {
             yaw = rnd.nextFloat() * 360f;
             pitch = -20f + rnd.nextFloat() * 60f;
         }
-        // Физика: гравитация до земли (после спавна/телепорта бот «падает», а не висит)
-        if (haveGround && y > groundY + 0.001) {
-            velY = Math.max(velY - 0.08, -0.6);
-            y = Math.max(groundY, y + velY);
-            if (y <= groundY + 0.001) {
-                y = groundY;
-                velY = 0;
+        // Физика как у живого игрока (SoulFire auto-jump): падение на землю + периодические прыжки
+        if (haveGround) {
+            if (settings.autoJump && velY == 0 && y <= groundY + 0.001 && now >= nextJumpAt) {
+                nextJumpAt = now + 4000 + rnd.nextInt(9000);
+                velY = 0.42;
+            }
+            if (velY != 0 || y > groundY + 0.001) {
+                y += velY;
+                velY -= 0.08;
+                if (y <= groundY) {
+                    y = groundY;
+                    velY = 0;
+                }
             }
         }
         if (havePos) {

@@ -26,6 +26,50 @@ public class OwnBotEngine {
     public static volatile double followX, followZ;
     public static volatile boolean followActive;
 
+    // ── Пул прокси для ботов ──────────────────────────────────────────────
+    private static volatile java.util.List<BotProxy> proxies = java.util.List.of();
+    private static final java.util.concurrent.atomic.AtomicInteger proxyIdx =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /** Читает txt с прокси (ip:port или ip:port:user:pass). Возвращает число загруженных. */
+    public static synchronized int loadProxies(String path, LogBuffer log) {
+        java.nio.file.Path f = java.nio.file.Path.of(path);
+        if (!f.isAbsolute()) {
+            try {
+                f = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
+                        .resolve("elytrix").resolve(path);
+            } catch (Throwable ignored) {
+            }
+        }
+        java.util.List<BotProxy> list = new java.util.ArrayList<>();
+        try {
+            for (String line : java.nio.file.Files.readAllLines(f, java.nio.charset.StandardCharsets.UTF_8)) {
+                BotProxy pr = BotProxy.parse(line);
+                if (pr != null) {
+                    list.add(pr);
+                }
+            }
+            proxies = list;
+            log.add("[Прокси] загружено " + list.size() + " из " + f.getFileName());
+        } catch (Exception e) {
+            log.add("[Прокси] не удалось прочитать " + f + ": " + e.getMessage());
+        }
+        return list.size();
+    }
+
+    public static int proxyCount() {
+        return proxies.size();
+    }
+
+    /** Следующий прокси по кругу (round-robin на бота). */
+    public static BotProxy nextProxy() {
+        java.util.List<BotProxy> list = proxies;
+        if (list.isEmpty()) {
+            return null;
+        }
+        return list.get(Math.floorMod(proxyIdx.getAndIncrement(), list.size()));
+    }
+
     public OwnBotEngine(LogBuffer log) {
         this.log = log;
     }
@@ -110,9 +154,25 @@ public class OwnBotEngine {
                 log.add("[Боты] status не ответил, используем стандартный протокол " + proto);
             }
             for (int i = 1; i <= s.count && running; i++) {
-                OwnBot bot = new OwnBot(s.prefix + i, host, port, proto, s, log);
-                bots.add(bot);
-                Thread t = new Thread(bot, "elytrix-ownbot-" + i);
+                final String name = s.prefix + i;
+                Thread t = new Thread(() -> {
+                    while (running) {
+                        OwnBot bot = new OwnBot(name, host, port, proto, s, log);
+                        bots.add(bot);
+                        bot.run();
+                        bots.remove(bot);
+                        if (!running || !s.rejoin || !bot.isAlive()) {
+                            break;
+                        }
+                        log.add("[Бот " + name + "] кик (" + bot.status() + ") — реждойн через "
+                                + s.rejoinDelayMs + " мс");
+                        try {
+                            Thread.sleep(s.rejoinDelayMs);
+                        } catch (InterruptedException e) {
+                            return;
+                        }
+                    }
+                }, "elytrix-ownbot-" + i);
                 t.setDaemon(true);
                 t.start();
                 try {

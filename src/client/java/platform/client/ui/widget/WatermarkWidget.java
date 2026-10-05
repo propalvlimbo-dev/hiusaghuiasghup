@@ -25,19 +25,23 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 public class WatermarkWidget extends Widget implements Interface {
     private float f;
     private final AnimationUtil bossOffset = new AnimationUtil();
-    private final BooleanSetting g;
-    private final BooleanSetting h;
-    private final BooleanSetting i;
-    private final BooleanSetting j;
-    private final BooleanSetting k;
-    private final BooleanSetting l;
-    private final BooleanSetting m;
-    private final BooleanSetting n;
-    private final BooleanSetting o;
-    private final BooleanSetting p;
+    public final BooleanSetting g;
+    public final BooleanSetting h;
+    public final BooleanSetting i;
+    public final BooleanSetting j;
+    public final BooleanSetting k;
+    public final BooleanSetting l;
+    public final BooleanSetting m;
+    public final BooleanSetting n;
+    public final BooleanSetting o;
+    public final BooleanSetting p;
+
+    /** Инстанс для быстрых настроек из меню (вкладка Misc). */
+    public static volatile WatermarkWidget INSTANCE;
 
     public WatermarkWidget() {
         super(new DragInfo("Инфо-панель", 0.0f, 0.0f, 0.0f, 0.0f));
+        INSTANCE = this;
         this.g = new BooleanSetting("Боковое отображение", false);
         this.h = new BooleanSetting("Разделять элементы", false);
         this.i = new BooleanSetting("Частота кадров", true);
@@ -46,7 +50,7 @@ public class WatermarkWidget extends Widget implements Interface {
         this.l = new BooleanSetting("Логин в клиенте", true);
         this.m = new BooleanSetting("Координаты", true);
         this.n = new BooleanSetting("Задержка сервера", true);
-        this.o = new BooleanSetting("MSPT", true);
+        this.o = new BooleanSetting("Нагрузка MC", true);
         this.p = new BooleanSetting("Боты", true);
         j().a(this);
         j().a(2);
@@ -198,17 +202,46 @@ public class WatermarkWidget extends Widget implements Interface {
         return (String[][]) sections.toArray(new String[0][]);
     }
 
+    /** Нагрузка майнкрафта на железо: CPU-время процесса / (ядра * реальное время), в %. */
+    private long prevCpuNanos, prevWallNanos;
+    private float loadPct = -1f;
+    private long loadSampleAt;
+
+    private String mcLoad() {
+        long now = System.currentTimeMillis();
+        if (now - loadSampleAt > 500) {
+            loadSampleAt = now;
+            try {
+                java.lang.management.OperatingSystemMXBean os =
+                        java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+                if (os instanceof com.sun.management.OperatingSystemMXBean sun) {
+                    long cpu = sun.getProcessCpuTime();
+                    long wall = System.nanoTime();
+                    if (prevCpuNanos != 0 && wall > prevWallNanos) {
+                        int cores = Runtime.getRuntime().availableProcessors();
+                        float p = (cpu - prevCpuNanos) * 100f / ((wall - prevWallNanos) * cores);
+                        p = Math.max(0f, Math.min(100f, p * 100f));
+                        loadPct = loadPct < 0 ? p : loadPct * 0.6f + p * 0.4f;
+                    }
+                    prevCpuNanos = cpu;
+                    prevWallNanos = wall;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return loadPct < 0 ? "нагрузка —" : String.format("нагрузка %.0f%%", loadPct);
+    }
+
     private String[][] l() {
         List<String[]> sections = new ArrayList<>();
         if (this.m.c().booleanValue() && aM_.player != null) {
             sections.add(new String[]{"b", "x " + ((int) aM_.player.getX()) + " y " + ((int) aM_.player.getY()) + " z " + ((int) aM_.player.getZ())});
         }
         if (this.n.c().booleanValue()) {
-            sections.add(new String[]{"g", String.format("%.1f TPS сервера", ru.rooyzee.elytrixclient.client.ElytrixclientClient.serverTps)});
+            sections.add(new String[]{"g", String.format("%.1f TPS", ru.rooyzee.elytrixclient.client.ElytrixclientClient.serverTps)});
         }
         if (this.o.c().booleanValue()) {
-            float srv = ru.rooyzee.elytrixclient.client.features.ServerMspt.mspt;
-            sections.add(new String[]{"e", srv >= 0f ? String.format("%.2f MSPT", srv) : "MSPT —"});
+            sections.add(new String[]{"e", mcLoad()});
         }
         if (this.p.c().booleanValue()) {
             var rd = ru.rooyzee.elytrixclient.client.ElytrixclientClient.RUST_BOTS;
