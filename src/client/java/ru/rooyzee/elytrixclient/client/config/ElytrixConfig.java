@@ -66,10 +66,6 @@ public class ElytrixConfig {
     public int soundSet = 0;
     /** Громкость звуков меню, % (0…100). */
     public int soundVolume = 70;
-    /** Своя музыка из папки config/elytrixclient/music вместо ванильной. */
-    public boolean customMusic = false;
-    /** Громкость своей музыки, % (умножается на ползунок «Музыка» игры). */
-    public int musicVolume = 100;
     /** Фон главного меню (MenuBackgrounds.NAMES), 0 — хакерский. */
     public int menuBackground = 0;
     /** Семейство шрифтов интерфейса: 0 — Google Sans, 1 — Google Sans Flex, 2 — SF Pro (Fonts.FAMILY_NAMES). */

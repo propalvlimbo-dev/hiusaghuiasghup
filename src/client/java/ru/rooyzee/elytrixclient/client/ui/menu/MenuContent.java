@@ -7,7 +7,6 @@ import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixLoader;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixQuality;
 import ru.rooyzee.elytrixclient.client.ui.UiSound;
-import ru.rooyzee.elytrixclient.client.music.CustomMusic;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiWidget;
 
@@ -210,55 +209,23 @@ public final class MenuContent {
         return list;
     }
 
-    /** Вкладка «Визуалы»: плеер MusicIsland, HUD-визуалы из delta-26.2 и своя музыка. */
+    /** Вкладка «Визуалы»: компактный плеер MusicIsland и папка визуальных модулей delta-26.2. */
     public List<MenuCard> visuals() {
         List<MenuCard> list = new ArrayList<>();
         list.add(new MenuCard("MusicIsland")
                 .badge(() -> cfg.musicIsland ? "вкл" : "выкл", 0)
                 .add(toggle("Показывать плеер", () -> cfg.musicIsland, v -> cfg.musicIsland = v))
-                .add(toggle("Субтитры", () -> cfg.islandLyrics, v -> cfg.islandLyrics = v)
-                        .when(() -> cfg.musicIsland))
-                .add(toggle("Источник", () -> cfg.islandSource, v -> cfg.islandSource = v)
-                        .when(() -> cfg.musicIsland))
-                .add(toggle("Обложка", () -> cfg.islandCover, v -> cfg.islandCover = v)
-                        .when(() -> cfg.musicIsland))
-                .add(new MenuRow.Slider("Масштаб", 80, 130, 5, "%", () -> cfg.islandScale, v -> {
-                    cfg.islandScale = v;
-                    dirty.run();
-                }).when(() -> cfg.musicIsland))
-                .add(new MenuRow.Button("Открыть настройки плеера", MenuRow.Button.Kind.SECONDARY,
+                .add(new MenuRow.Button("Настройки плеера", MenuRow.Button.Kind.SECONDARY,
                         () -> ru.rooyzee.elytrixclient.client.ui.MusicIsland.settingsOpen = true)
-                        .when(() -> cfg.musicIsland))
-                .add(new MenuRow.Button("Сбросить позицию", MenuRow.Button.Kind.SECONDARY,
-                        ru.rooyzee.elytrixclient.client.ui.MusicIsland::resetPosition)
                         .when(() -> cfg.musicIsland)));
 
-        list.add(new MenuCard("Визуалы")
-                .add(toggle("Инфо-панель (delta)", () -> cfg.hudWatermark, v -> cfg.hudWatermark = v))
-                .add(toggle("Размывать фон за панелью", () -> cfg.blurBackground, v -> cfg.blurBackground = v))
-                .add(toggle("Хакерский фон меню", () -> cfg.hackerBackground, v -> cfg.hackerBackground = v))
-                .add(new MenuRow.Mode("Качество эффектов", ElytrixQuality.NAMES, () -> cfg.effectsQuality, i -> {
-                    cfg.effectsQuality = i;
-                    dirty.run();
-                })));
-
-        list.add(new MenuCard("Музыка")
-                .badge(() -> cfg.customMusic ? CustomMusic.trackCount() + " треков" : "", 0)
-                .add(toggle("Своя музыка из папки", () -> cfg.customMusic, v -> {
-                    cfg.customMusic = v;
-                    if (!v) {
-                        CustomMusic.stop();
-                    }
-                }))
-                .add(new MenuRow.Info("Сейчас", CustomMusic::nowPlaying, 0).when(() -> cfg.customMusic))
-                .add(new MenuRow.Slider("Громкость музыки", 0, 100, 5, "%", () -> cfg.musicVolume, v -> {
-                    cfg.musicVolume = v;
-                    dirty.run();
-                }).when(() -> cfg.customMusic))
-                .add(new MenuRow.Button("Открыть папку с музыкой", MenuRow.Button.Kind.SECONDARY, CustomMusic::openFolder))
-                .add(new MenuRow.Button("Следующий трек", MenuRow.Button.Kind.SECONDARY, CustomMusic::next)
-                        .when(() -> cfg.customMusic && CustomMusic.trackCount() > 0))
-                .add(new MenuRow.Info("Формат", () -> ".ogg / .mp3", 0)));
+        MenuCard vis = new MenuCard("Визуалы");
+        vis.add(toggle("Инфо-панель (delta)", () -> cfg.hudWatermark, v -> cfg.hudWatermark = v));
+        for (ru.rooyzee.elytrixclient.client.features.render.VisualModule m
+                : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
+            vis.add(toggle(m.name(), m::enabled, m::setEnabled));
+        }
+        list.add(vis);
         return list;
     }
 

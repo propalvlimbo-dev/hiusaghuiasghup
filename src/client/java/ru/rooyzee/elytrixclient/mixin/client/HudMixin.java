@@ -43,6 +43,7 @@ public abstract class HudMixin {
         MtsdfTextRenderer.beginFrame();
         MusicIsland.render(g, sw, sh, mx, my);
         DeltaHud.render(g, sw, sh);
+        ru.rooyzee.elytrixclient.client.features.render.Visuals.renderHud(g, sw, sh);
         MtsdfTextRenderer.flush(g);
     }
 }

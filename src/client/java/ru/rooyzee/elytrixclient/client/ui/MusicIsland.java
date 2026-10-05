@@ -53,7 +53,7 @@ public final class MusicIsland {
     private static float lyricsRoom, lyricRows, sungWidth, progress, beat;
     private static long lastNanos;
     private static String lastTrack = "", lastLine = "", prevLine = "";
-    private static boolean wasPressed, dragging, expanded = true;
+    private static boolean wasPressed, wasMiddle, dragging, expanded = true;
     /** Компактная модалка настроек плеера (открывается ЛКМ по плееру). */
     public static boolean settingsOpen = false;
     private static float dragOX, dragOY;
@@ -75,7 +75,6 @@ public final class MusicIsland {
         if (!enabled) { settingsOpen = false; return; }
 
         int accent = UiTheme.accent(cfg.accentIndex);
-        expanded = cfg.islandLyrics;
 
         String title = MediaSession.title(), artist = MediaSession.artist(), source = MediaSession.source();
         long pos = MediaSession.positionMs(), dur = MediaSession.durationMs();
@@ -96,10 +95,14 @@ public final class MusicIsland {
 
         float x = sX, y = sY;
         boolean overPop = settingsOpen && inside(mx, my, popX, popY, popW, popH);
-        boolean over = !settingsOpen && mx >= x && mx <= x + pw && my >= y && my <= y + ph;
+        boolean overIsland = mx >= x && mx <= x + pw && my >= y && my <= y + ph;
+        boolean over = !settingsOpen && overIsland;
         boolean pr = org.lwjgl.glfw.GLFW.glfwGetMouseButton(
                 org.lwjgl.glfw.GLFW.glfwGetCurrentContext(), 0) == 1;
         boolean cl = pr && !wasPressed; wasPressed = pr;
+        boolean pm = org.lwjgl.glfw.GLFW.glfwGetMouseButton(
+                org.lwjgl.glfw.GLFW.glfwGetCurrentContext(), 2) == 1;
+        boolean cm = pm && !wasMiddle; wasMiddle = pm;
         if (pr && over && !dragging) { dragging = true; dragOX = mx - x; dragOY = my - y; }
         if (pr && dragging) {
             sX = Math.max(0, Math.min(sw - pw, mx - dragOX));
@@ -107,9 +110,11 @@ public final class MusicIsland {
             x = sX; y = sY;
         }
         if (!pr) dragging = false;
-        // ЛКМ по плееру — открыть/закрыть компактную модалку настроек
-        if (cl && over && !dragging) settingsOpen = !settingsOpen;
-        else if (cl && !over && !overPop) settingsOpen = false;
+        // ЛКМ по плееру — развернуть/свернуть субтитры
+        if (cl && over && !dragging) expanded = !expanded;
+        // Средняя кнопка (колесо) по плееру — компактная модалка настроек
+        if (cm && overIsland) settingsOpen = !settingsOpen;
+        else if ((cl || cm) && !overIsland && !overPop) settingsOpen = false;
 
         int accent2 = withAlpha(accent, .7f);
 
@@ -180,7 +185,7 @@ public final class MusicIsland {
 
     private static void popoverAction(int i, ElytrixConfig cfg) {
         switch (i) {
-            case 0 -> cfg.islandLyrics = !cfg.islandLyrics;
+            case 0 -> { cfg.islandLyrics = !cfg.islandLyrics; expanded = cfg.islandLyrics; }
             case 1 -> cfg.islandSource = !cfg.islandSource;
             case 2 -> cfg.islandCover = !cfg.islandCover;
             case 3 -> {
@@ -259,17 +264,18 @@ public final class MusicIsland {
     }
 
     private static void eq(GuiGraphicsExtractor g, float right, float top, int ac, float dt) {
-        float bw = 2.1f, gap = 1.8f, mh = 9f, bot = top + mh;
+        // Единый стиль: тонкие скруглённые столбики в цвет акцента (как прогресс-бар),
+        // без случайной белизны — плавно «дышат» в такт.
+        float bw = 1.6f, gap = 2.4f, mh = 9f, bot = top + mh;
         double s = System.currentTimeMillis() / 1000.0;
         beat = lerp(beat, MediaSession.playing() ? 1f : 0f, dt, 5f);
         for (int i = 0; i < 4; i++) {
             double ph = s * (2.6 + i * .47) + i * 1.7;
             double sl = Math.sin(s * (1.1 + i * .19) + i);
-            float lv = (float)Math.max(.08, Math.min(1, .5 + .35 * Math.sin(ph) + .15 * sl));
-            float bh = Math.max(2.1f, mh * (.18f + .82f * lv * beat));
+            float lv = (float) Math.max(.1, Math.min(1, .5 + .35 * Math.sin(ph) + .15 * sl));
+            float bh = Math.max(1.6f, mh * (.16f + .84f * lv * beat));
             float bx = right - bw - i * (bw + gap);
-            int col = withAlpha(mix(withAlpha(0xFFFFFFFF, 1f), withAlpha(ac, 1f), lv), (.45f + .45f * lv) * openT);
-            UiVector.roundRect(g, bx, bot - bh, bw, bh, bw / 2, col);
+            UiVector.roundRect(g, bx, bot - bh, bw, bh, bw / 2, withAlpha(ac, (.35f + .6f * lv) * openT));
         }
     }
 
