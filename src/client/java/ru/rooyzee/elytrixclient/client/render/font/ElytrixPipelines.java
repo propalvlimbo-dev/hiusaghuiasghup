@@ -17,13 +17,10 @@ import java.util.Optional;
 
 /**
  * Кастомные RenderPipeline для ElytrixClient.
- * Без snippet — как delta делает для NOISE_HANDS/ATMO.
+ * PROJECTION layout = DynamicTransforms (ProjMat, ModelViewMat, ColorModulator).
+ * SAMPLER0 layout = текстура шрифта.
  */
 public final class ElytrixPipelines {
-
-    private static final BindGroupLayout SAMPLER0_LAYOUT = BindGroupLayout.builder()
-            .withSampler("Sampler0")
-            .build();
 
     private static RenderPipeline textPipeline;
     private static boolean initFailed = false;
@@ -36,7 +33,8 @@ public final class ElytrixPipelines {
                     .withLocation(Identifier.fromNamespaceAndPath("elytrixclient", "pipeline/text"))
                     .withVertexShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/text"))
                     .withFragmentShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/text"))
-                    .withBindGroupLayout(SAMPLER0_LAYOUT)
+                    .withBindGroupLayout(BindGroupLayouts.PROJECTION) // DynamicTransforms (ProjMat, ModelViewMat)
+                    .withBindGroupLayout(BindGroupLayouts.SAMPLER0)    // Sampler0 для текстуры
                     .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
                     .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
                     .withVertexBinding(0, ElytrixVertexFormats.UI)
