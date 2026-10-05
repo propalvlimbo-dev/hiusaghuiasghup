@@ -52,6 +52,7 @@ public class OwnBot implements Runnable {
     private boolean havePos;
     private int entityId = -1;
 
+    private int logFirst;
     private long regAt = -1, loginAt = -1;
     private boolean regSent, loginSent;
     private long nextChatAt;
@@ -151,6 +152,14 @@ public class OwnBot implements Runnable {
         switch (state) {
             case "handshake":
             case "login": {
+                if (logFirst < 3) {
+                    logFirst++;
+                    StringBuilder hx = new StringBuilder();
+                    for (int i = 0; i < Math.min(32, f.data.length); i++) {
+                        hx.append(String.format("%02X ", f.data[i]));
+                    }
+                    log.add("[Бот " + name + "] login-пакет id=" + f.id + " off=" + f.off + " hex=" + hx);
+                }
                 if (f.id == SL_COMPRESSION) {
                     threshold = f.v();
                     compression = true;
@@ -170,7 +179,7 @@ public class OwnBot implements Runnable {
                     status = "кик: " + why;
                     log.add("[Бот " + name + "] кик при входе: " + status);
                     return false;
-                } else if (f.id == SL_SUCCESS) {
+                } else if (f.id == SL_SUCCESS || elytrix$looksLikeSuccess(f)) {
                     send(L_ACK, w -> {
                     });
                     state = "config";
@@ -321,6 +330,21 @@ public class OwnBot implements Runnable {
             nextChatAt = now + settings.spamDelayMin + rnd.nextInt(Math.max(1, settings.spamDelayMax - settings.spamDelayMin));
             sendChat(settings.spamMessage, now);
         }
+    }
+
+    /** Фолбэк: пакет содержит наш ник после 16-байтного uuid — это Login Success, даже если id неожиданный. */
+    private boolean elytrix$looksLikeSuccess(OwnBot.Frame f) {
+        byte[] nb = name.getBytes(StandardCharsets.UTF_8);
+        outer:
+        for (int i = 0; i <= f.data.length - nb.length; i++) {
+            for (int j = 0; j < nb.length; j++) {
+                if (f.data[i + j] != nb[j]) {
+                    continue outer;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private void sendPosRot() throws IOException {
