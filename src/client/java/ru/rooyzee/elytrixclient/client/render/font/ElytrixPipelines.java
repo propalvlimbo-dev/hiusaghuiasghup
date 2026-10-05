@@ -7,17 +7,23 @@ import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.blaze3d.shaders.UniformType;
 import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
 import java.lang.reflect.Field;
+import java.util.Optional;
 
 /**
  * Кастомные RenderPipeline для ElytrixClient.
- * Lazy init — не крашит игру если reflection не сработает.
+ * Без snippet — как delta делает для NOISE_HANDS/ATMO.
  */
 public final class ElytrixPipelines {
+
+    private static final BindGroupLayout SAMPLER0_LAYOUT = BindGroupLayout.builder()
+            .withSampler("Sampler0")
+            .build();
 
     private static RenderPipeline textPipeline;
     private static boolean initFailed = false;
@@ -26,40 +32,25 @@ public final class ElytrixPipelines {
         if (initFailed) return RenderPipelines.GUI_TEXTURED;
         if (textPipeline != null) return textPipeline;
         try {
-            textPipeline = builder("text", true).build();
+            textPipeline = RenderPipeline.builder()
+                    .withLocation(Identifier.fromNamespaceAndPath("elytrixclient", "pipeline/text"))
+                    .withVertexShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/text"))
+                    .withFragmentShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/text"))
+                    .withBindGroupLayout(SAMPLER0_LAYOUT)
+                    .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+                    .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+                    .withVertexBinding(0, ElytrixVertexFormats.UI)
+                    .withPrimitiveTopology(PrimitiveTopology.QUADS)
+                    .withCull(false)
+                    .build();
             System.out.println("[Elytrix] MTSDF pipeline registered OK");
         } catch (Exception e) {
             System.err.println("[Elytrix] MTSDF pipeline failed: " + e);
+            e.printStackTrace();
             initFailed = true;
             return RenderPipelines.GUI_TEXTURED;
         }
         return textPipeline;
-    }
-
-    private static RenderPipeline.Snippet getGuiSnippet() {
-        try {
-            Field f = RenderPipelines.class.getDeclaredField("GUI_SNIPPET");
-            f.setAccessible(true);
-            return (RenderPipeline.Snippet) f.get(null);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get GUI_SNIPPET via reflection", e);
-        }
-    }
-
-    private static RenderPipeline.Builder builder(String name, boolean sampled) {
-        RenderPipeline.Builder builder = RenderPipeline.builder(getGuiSnippet())
-                .withLocation(Identifier.fromNamespaceAndPath("elytrixclient", "pipeline/" + name))
-                .withVertexShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/" + name))
-                .withFragmentShader(Identifier.fromNamespaceAndPath("elytrixclient", "core/" + name))
-                .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
-                .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
-                .withVertexBinding(0, ElytrixVertexFormats.UI)
-                .withPrimitiveTopology(PrimitiveTopology.QUADS)
-                .withCull(false);
-        if (sampled) {
-            builder.withBindGroupLayout(BindGroupLayouts.SAMPLER0);
-        }
-        return builder;
     }
 
     private ElytrixPipelines() {}
