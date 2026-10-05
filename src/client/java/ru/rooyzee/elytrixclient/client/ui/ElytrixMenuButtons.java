@@ -209,6 +209,49 @@ public final class ElytrixMenuButtons {
         }
     }
 
+    /** Псевдо-пункт меню (Аккаунты/Сеть) — тот же стиль, что у родных кнопок. */
+    public static void item(GuiGraphicsExtractor g, float x, float y, String label,
+                            UiIcon icon, boolean hovered, int index) {
+        State s = PSEUDO.computeIfAbsent(index, k -> {
+            State st = new State();
+            st.index = index;
+            st.icon = icon;
+            return st;
+        });
+        long now = Util.getMillis();
+        float dt = s.last == 0 ? 0f : Math.min(0.1f, (now - s.last) / 1000f);
+        s.last = now;
+        s.hover += (((hovered ? 1f : 0f)) - s.hover) * (1f - (float) Math.exp(-dt * 14f));
+        float t = s.hover;
+        float in = appear(s);
+        float alpha = in;
+        int accent = UiTheme.accent(ElytrixclientClient.CONFIG.accentIndex);
+        float bx = x - (1f - in) * 14f;
+        float w = ITEM_W, h = ITEM_H;
+
+        if (t > 0.01f) {
+            float pw = w * (0.35f + 0.65f * t);
+            UiVector.shadow(g, bx, y, pw, h, 7f, 5f, UiTheme.withAlpha(accent, 0.18f * t * alpha), 10);
+            UiVector.roundRectGradient(g, bx, y, pw, h, 7f,
+                    UiTheme.withAlpha(UiTheme.mix(0x33FFFFFF, accent, 0.35f), 0.75f * t * alpha),
+                    UiTheme.withAlpha(UiTheme.mix(0x1AFFFFFF, accent, 0.25f), 0.75f * t * alpha));
+            UiVector.outline(g, bx, y, pw, h, 7f, 0.5f, UiTheme.withAlpha(0x33FFFFFF, t * alpha));
+            float bh = 9f * t;
+            UiVector.roundRect(g, bx + 3f, y + h / 2f - bh / 2f, 1.6f, bh, 0.8f, UiTheme.withAlpha(accent, t * alpha));
+        }
+        if (icon != null) {
+            int ic = UiTheme.mix(0xFFB9B3C2, 0xFFFFFFFF, t);
+            icon.draw(g, Math.round(bx + 9 + 2f * t), Math.round(y + (h - 10) / 2f), 10,
+                    UiTheme.withAlpha(ic, alpha));
+        }
+        Minecraft mc = Minecraft.getInstance();
+        int col = UiTheme.withAlpha(UiTheme.mix(0xFFD6D0DE, 0xFFFFFFFF, t), alpha);
+        String shown = MenuKit.trim(mc.font, label, MenuKit.TITLE, (int) w - 32);
+        MenuKit.text(g, mc.font, shown, bx + 25 + 3f * t, MenuKit.ty(MenuKit.TITLE, y + h / 2f), col, MenuKit.TITLE);
+    }
+
+    private static final Map<Integer, State> PSEUDO = new java.util.HashMap<>();
+
     public static void label(GuiGraphicsExtractor g, AbstractButton b) {
         Minecraft mc = Minecraft.getInstance();
         State s = STATES.get(b);

@@ -44,17 +44,12 @@ public abstract class TitleScreenMixin extends Screen {
         }
         int left = ElytrixMenuButtons.left();
         int y = ElytrixMenuButtons.stackBottom() + 6;
-        elytrix$drawItem(g, left, y, "Аккаунты", mx, my);
-        elytrix$drawItem(g, left, y + ElytrixMenuButtons.ITEM_H + 3, "Сеть", mx, my);
-    }
-
-    private void elytrix$drawItem(GuiGraphicsExtractor g, int x, int y, String label, int mx, int my) {
-        boolean hov = mx >= x && mx <= x + ElytrixMenuButtons.ITEM_W && my >= y && my <= y + ElytrixMenuButtons.ITEM_H;
-        ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector.roundRect(g, x, y,
-                ElytrixMenuButtons.ITEM_W, ElytrixMenuButtons.ITEM_H, 6f, hov ? 0x33FFFFFF : 0x14FFFFFF);
-        ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer.draw(
-                g, ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, label, x + 8, y + 6, 8f,
-                hov ? 0xFFFFFFFF : 0xCCFFFFFF);
+        boolean hovAcc = mx >= left && mx <= left + ElytrixMenuButtons.ITEM_W && my >= y && my <= y + ElytrixMenuButtons.ITEM_H;
+        boolean hovNet = mx >= left && mx <= left + ElytrixMenuButtons.ITEM_W
+                && my >= y + ElytrixMenuButtons.ITEM_H + 3 && my <= y + 2 * ElytrixMenuButtons.ITEM_H + 3;
+        ElytrixMenuButtons.item(g, left, y, "Аккаунты", ru.rooyzee.elytrixclient.client.ui.kit.UiIcon.USER, hovAcc, 10);
+        ElytrixMenuButtons.item(g, left, y + ElytrixMenuButtons.ITEM_H + 3, "Сеть",
+                ru.rooyzee.elytrixclient.client.ui.kit.UiIcon.GLOBE, hovNet, 11);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 0)
