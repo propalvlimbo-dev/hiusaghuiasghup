@@ -2,8 +2,8 @@ package ru.rooyzee.elytrixclient.client.features.render;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import ru.rooyzee.elytrixclient.client.features.render.modules.ArmorHud;
 import ru.rooyzee.elytrixclient.client.features.render.modules.FullBright;
+import ru.rooyzee.elytrixclient.client.features.render.modules.Particles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +18,7 @@ public final class Visuals {
 
     static {
         register(new FullBright());
-        register(new ArmorHud());
+        register(new Particles());
     }
 
     private Visuals() {
