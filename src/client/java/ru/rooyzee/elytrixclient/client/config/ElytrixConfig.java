@@ -36,6 +36,7 @@ public class ElytrixConfig {
     public boolean botAutoReg = false;
     public boolean botAutoLogin = false;
     public String botPassword = "elytrix123";
+    public String rustBotsPath = "elytrix-bots.exe";
 
     // ---------- SoulFire ----------
     /** cli — запускать SoulFireCLI.jar как процесс и писать команды ему в stdin; mcp — дёргать HTTP API (MCP). */

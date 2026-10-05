@@ -82,9 +82,16 @@ public final class MenuContent {
     public List<MenuCard> bots() {
         List<MenuCard> list = new ArrayList<>();
         var ob = ElytrixclientClient.OWN_BOTS;
+        var rd = ElytrixclientClient.RUST_BOTS;
 
         list.add(new MenuCard("Боты")
-                .badge(() -> ob.status(), 0)
+                .badge(() -> ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg) || rd.isRunning()
+                        ? "rust: " + rd.statusLine()
+                        : "встроенные: " + ob.status(), 0)
+                .add(new MenuRow.Text("Путь к rust-ботам", 200, () -> cfg.rustBotsPath, v -> {
+                    cfg.rustBotsPath = v;
+                    dirty.run();
+                }))
                 .add(new MenuRow.Text("Адрес сервера", 200, () -> cfg.botAddress, v -> {
                     cfg.botAddress = v;
                     dirty.run();
@@ -119,10 +126,13 @@ public final class MenuContent {
                 .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v))
                 .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
                 .add(toggle("Движение", () -> cfg.bmMovement, v -> cfg.bmMovement = v))
-                .add(new MenuRow.Button(() -> ob.isRunning() ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
+                .add(new MenuRow.Button(() -> (rd.isRunning() || ob.isRunning()) ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
                         MenuRow.Button.Kind.PRIMARY, () -> {
-                    if (ob.isRunning()) {
+                    if (rd.isRunning() || ob.isRunning()) {
+                        rd.stop();
                         ob.stop();
+                    } else if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg)) {
+                        rd.start(cfg);
                     } else {
                         ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings st =
                                 new ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings();
