@@ -20,468 +20,252 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * MusicWidget — точная копия MusicWidget из Xivivide, адаптированная под ElytrixClient.
- * Источник: MusicWidget/src/main/java/platform/client/ui/widget/MusicWidget.java
- *
- * Читает трек из Windows Media Session (Spotify, YouTube и т.д.).
- * Показывает обложку, название, исполнителя, эквалайзер, субтитры, прогресс-бар.
- * Клик по виджету — раскрытие/сворачивание. Перетаскивание.
+ * MusicWidget — портирован из Xivivide MusicWidget.java.
+ * Использует ElytrixClient TTF шрифты (Inter) вместо MSDF.
+ * PANEL_WIDTH=164, SCALE=0.85, COVER=33 — как в сурцах.
  */
 public final class MusicIsland {
     private MusicIsland() {}
 
-    /* ══ константы (из сурцов) ══ */
-    private static final float PANEL_WIDTH = 164.0f;
-    private static final float SCALE = 0.85f;
-    private static final float PADDING = 6.0f;
-    private static final float COVER = 33.0f;
-    private static final float LYRIC_SIZE = 8.5f;
-    private static final float LYRIC_ROW = 11.0f;
+    private static final float PANEL_W = 164.0f;
+    private static final float SC = 0.85f;
+    private static final float PAD = 6.0f;
+    private static final float COV = 33.0f;
+    private static final float LSIZE = 8.0f;
+    private static final float LROW = 11.0f;
 
-    /* ══ состояние ══ */
     private static float sX = 6f, sY = 80f;
     private static float openT, trackFade, coverFade, lineFade;
-    private static float lyricsRoom, lyricRows;
-    private static float sungWidth, progress, beat;
-    private static long lastFrameNanos;
-    private static String lastTrack = "", lastLineShown = "", previousLine = "";
-    private static boolean wasPressed, dragging;
-    private static float dragOffX, dragOffY;
-    private static LyricLayout currentLayout;
-    private static boolean expanded = true; // показываем по умолчанию
-    private static float expandT = 1f;
-    private static float hoverT;
+    private static float lyricsRoom, lyricRows, sungWidth, progress, beat;
+    private static long lastNanos;
+    private static String lastTrack = "", lastLine = "", prevLine = "";
+    private static boolean wasPressed, dragging, expanded = true;
+    private static float dragOX, dragOY;
+    private static LyricLayout curLayout;
+    private static final java.util.Map<Object, float[]> SCROLL = new java.util.WeakHashMap<>();
+    private static final Object tKey = new Object(), aKey = new Object();
 
     public static void render(GuiGraphicsExtractor g, int sw, int sh, int mx, int my) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
-
         MediaSession.keepAlive();
-        boolean wantOpen = MediaSession.present();
+        boolean want = MediaSession.present();
         long now = Util.getMillis();
-        float dt = lastFrameNanos == 0 ? 0.016f : Math.min(0.05f, (now - lastFrameNanos) / 1000f);
-        lastFrameNanos = now;
-
-        openT += ((wantOpen ? 1f : 0f) - openT) * (1f - (float) Math.exp(-5f * dt));
-        if (openT < 0.005f && !wantOpen) { openT = 0; return; }
+        float dt = lastNanos == 0 ? .016f : Math.min(.05f, (now - lastNanos) / 1000f);
+        lastNanos = now;
+        openT += ((want ? 1f : 0f) - openT) * (1f - (float) Math.exp(-5f * dt));
+        if (openT < .005f && !want) { openT = 0; return; }
 
         ElytrixConfig cfg = ElytrixclientClient.CONFIG;
         int accent = UiTheme.accent(cfg != null ? cfg.accentIndex : 0);
-        int accentTwo = UiTheme.withAlpha(accent, 0.7f);
 
-        String title = MediaSession.title();
-        String artist = MediaSession.artist();
-        String source = MediaSession.source();
-        long position = MediaSession.positionMs();
-        long duration = MediaSession.durationMs();
-
+        String title = MediaSession.title(), artist = MediaSession.artist(), source = MediaSession.source();
+        long pos = MediaSession.positionMs(), dur = MediaSession.durationMs();
         Lyrics.ensure(artist, title);
+        String lyric = expanded ? lyricLine(pos) : "";
+        boolean lk = expanded && Lyrics.has();
+        LyricLayout lay = layout(lyric, PANEL_W - PAD * 2);
+        float wr = lay.lines().isEmpty() ? (lk ? 1f : 0f) : lay.rows();
+        lyricRows = lerp(lyricRows, wr, dt, 8f);
+        lyricsRoom = lerp(lyricsRoom, expanded && lk ? 1f : 0f, dt, 8f);
+        boolean lr = lyricsRoom > .01f;
+        float lh = (LROW * lyricRows + 3f) * lyricsRoom;
+        float pH = PAD * 2 + COV + lh + 13f;
 
-        /* ══ размеры карточки (из сурцов) ══ */
-        String lyric = expanded ? lyricLine(position) : "";
-        boolean lyricsKnown = expanded && Lyrics.has();
-        LyricLayout layout = lyricLayout(lyric, PANEL_WIDTH - PADDING * 2.0f);
-        float wantedRows = layout.lines().isEmpty() ? (lyricsKnown ? 1.0f : 0.0f) : layout.rows();
-        lyricRows = lerp(lyricRows, wantedRows, dt, 8f);
-        lyricsRoom = lerp(lyricsRoom, expanded && lyricsKnown ? 1.0f : 0.0f, dt, 8f);
-        boolean lyricsRow = lyricsRoom > 0.01f;
-        float lyricsHeight = (LYRIC_ROW * lyricRows + 3.0f) * lyricsRoom;
-        float panelHeight = PADDING * 2.0f + COVER + lyricsHeight + 13.0f;
-
-        /* ══ drag ══ */
         float x = sX, y = sY;
-        boolean over = mx >= x && mx <= x + PANEL_WIDTH && my >= y && my <= y + panelHeight;
-        boolean pressed = org.lwjgl.glfw.GLFW.glfwGetMouseButton(
+        boolean over = mx >= x && mx <= x + PANEL_W && my >= y && my <= y + pH;
+        boolean pr = org.lwjgl.glfw.GLFW.glfwGetMouseButton(
                 org.lwjgl.glfw.GLFW.glfwGetCurrentContext(), 0) == 1;
-        boolean clicked = pressed && !wasPressed;
-        wasPressed = pressed;
-
-        if (pressed && over && !dragging) {
-            dragging = true;
-            dragOffX = mx - x;
-            dragOffY = my - y;
-        }
-        if (pressed && dragging) {
-            sX = Math.max(0, Math.min(sw - PANEL_WIDTH, mx - dragOffX));
-            sY = Math.max(0, Math.min(sh - panelHeight, my - dragOffY));
+        boolean cl = pr && !wasPressed; wasPressed = pr;
+        if (pr && over && !dragging) { dragging = true; dragOX = mx - x; dragOY = my - y; }
+        if (pr && dragging) {
+            sX = Math.max(0, Math.min(sw - PANEL_W, mx - dragOX));
+            sY = Math.max(0, Math.min(sh - pH, my - dragOY));
             x = sX; y = sY;
         }
-        if (!pressed) dragging = false;
+        if (!pr) dragging = false;
+        if (cl && over && !dragging) expanded = !expanded;
 
-        /* клик — свернуть/развернуть субтитры */
-        if (clicked && over && !dragging) {
-            expanded = !expanded;
-        }
+        int accent2 = withAlpha(accent, .7f);
 
-        hoverT = lerp(hoverT, over ? 1f : 0f, dt, 12f);
-
-        /* ══ рендер с масштабом (из сурцов) ══ */
         g.pose().pushMatrix();
         g.pose().translate(x, y);
-        g.pose().scale(SCALE, SCALE);
+        g.pose().scale(SC, SC);
         g.pose().translate(-x, -y);
-        try {
-            drawCard(g, mc.font, x, y, PANEL_WIDTH, panelHeight, accent, accentTwo,
-                    title, artist, source, position, duration, dt, lyricsHeight);
-        } finally {
-            g.pose().popMatrix();
-        }
+        try { draw(g, mc.font, x, y, PANEL_W, pH, accent, accent2, title, artist, source, pos, dur, dt, lh); }
+        finally { g.pose().popMatrix(); }
     }
 
-    /* ════════════════════════════════════════════════════ */
-    private static void drawCard(GuiGraphicsExtractor g, Font font, float x, float y,
-            float panelWidth, float panelHeight, int accent, int accentTwo,
-            String title, String artist, String source, long position, long duration, float dt,
-            float lyricsHeight) {
-
-        /* ── фон карточки (из сурцов) ── */
-        drawBackground(g, x, y, panelWidth, panelHeight, true, openT);
-
-        /* ── fade при смене трека ── */
+    private static void draw(GuiGraphicsExtractor g, Font f, float x, float y, float w, float h,
+            int ac, int ac2, String title, String artist, String source,
+            long pos, long dur, float dt, float lh) {
+        int txt = 0xFFFFFFFF;
+        bg(g, x, y, w, h, openT);
         String stamp = title + "|" + artist;
-        if (!stamp.equals(lastTrack)) {
-            lastTrack = stamp;
-            trackFade = 0.0f;
-        }
-        trackFade = lerp(trackFade, 1.0f, dt, 6f);
-        int text = 0xFFFFFFFF;
-        float trackAlpha = openT * (0.25f + 0.75f * trackFade);
-        float trackSlide = (1.0f - trackFade) * 2.5f;
+        if (!stamp.equals(lastTrack)) { lastTrack = stamp; trackFade = 0; }
+        trackFade = lerp(trackFade, 1f, dt, 6f);
+        float ta = openT * (.25f + .75f * trackFade);
+        float sl = (1f - trackFade) * 2.5f;
+        float cx = x + PAD;
 
-        float contentX = x + PADDING;
+        cover(g, cx, y + PAD, ac, ac2, dt);
+        cx += COV + 7f;
+        eq(g, x + w - PAD, y + PAD + 1, ac, dt);
+        float dr = x + w - PAD;
+        float tw = Math.max(10f, dr - cx - 16f);
+        String st = title.isEmpty() ? "Ничего не играет" : title;
+        scroll(g, f, tKey, st, cx + sl, y + PAD + 1.5f, withAlpha(txt, ta), tw - sl, true, 18f, dt);
+        String un = artist;
+        if (!source.isEmpty()) un = un.isEmpty() ? source : un + " - " + source;
+        if (!un.isEmpty()) scroll(g, f, aKey, un, cx + sl, y + PAD + 14f, withAlpha(txt, .5f * ta), dr - cx - sl, true, 14f, dt);
 
-        /* ── обложка ── */
-        drawCover(g, contentX, y + PADDING, accent, accentTwo, dt);
-        contentX += COVER + 7.0f;
+        float ry = y + PAD + COV;
+        if (lr) { lyrics(g, f, curLayout, x + PAD, ry + 2, pos, txt, openT * lyricsRoom); ry += lh; }
+        bar(g, f, x + PAD, ry + 3, w - PAD * 2, pos, dur, ac, ac2, txt, dt);
+    }
+    private static boolean lr;
 
-        /* ── эквалайзер ── */
-        float dotsRight = x + panelWidth - PADDING;
-        drawEqualizer(g, dotsRight, y + PADDING + 1.0f, accent, text, dt);
-
-        /* ── название (прокручиваемое) ── */
-        float titleWidth = Math.max(10.0f, dotsRight - contentX - 16.0f);
-        float delta = dt;
-        String shownTitle = title.isEmpty() ? "Ничего не играет" : title;
-        drawScrollText(g, font, shownTitle, contentX + trackSlide, y + PADDING + 1.5f,
-                9.0f, withAlpha(text, trackAlpha), titleWidth - trackSlide, true, 18.0f, delta);
-
-        /* ── исполнитель + источник ── */
-        String under = artist;
-        if (!source.isEmpty()) {
-            under = under.isEmpty() ? source : under + " - " + source;
-        }
-        if (!under.isEmpty()) {
-            drawScrollText(g, font, under, contentX + trackSlide, y + PADDING + 14.0f,
-                    7.0f, withAlpha(text, 0.5f * trackAlpha), dotsRight - contentX - trackSlide,
-                    true, 14.0f, delta);
-        }
-
-        /* ── субтитры ── */
-        float rowY = y + PADDING + COVER;
-        if (lyricsRoom > 0.01f && currentLayout != null) {
-            drawLyrics(g, font, currentLayout, x + PADDING, rowY + 2.0f, LYRIC_ROW, position, text,
-                    openT * lyricsRoom);
-            rowY += lyricsHeight;
-        }
-
-        /* ── прогресс-бар ── */
-        drawProgress(g, font, x + PADDING, rowY + 3.0f, panelWidth - PADDING * 2.0f,
-                position, duration, accent, accentTwo, text, dt);
+    private static void bg(GuiGraphicsExtractor g, float x, float y, float w, float h, float a) {
+        if (a <= .01f) return;
+        UiVector.roundRect(g, x, y, w, h, 5f, withAlpha(0xFF0B0B16, .88f * a));
+        UiVector.outline(g, x, y, w, h, 5f, .5f, withAlpha(0xFFFFFFFF, .12f * a));
     }
 
-    /* ══ фон карточки (из сурцов Widget.drawBackground) ══ */
-    private static void drawBackground(GuiGraphicsExtractor g, float x, float y,
-            float width, float height, boolean glow, float animation) {
-        if (animation <= 0.01f) return;
-        int bg = withAlpha(0xFF0B0B16, 0.88f * animation);
-        UiVector.roundRect(g, x, y, width, height, 5.0f, bg);
-        UiVector.outline(g, x, y, width, height, 5.0f, 0.5f,
-                withAlpha(0xFFFFFFFF, 0.12f * animation));
-    }
-
-    /* ══ обложка (из сурцов MusicWidget.drawCover) ══ */
-    private static void drawCover(GuiGraphicsExtractor g, float x, float y,
-            int accent, int accentTwo, float dt) {
-        Identifier cover = CoverTexture.get();
-        coverFade = lerp(coverFade, cover != null ? 1.0f : 0.0f, dt, 6f);
-
-        if (cover != null && coverFade > 0.99f) {
-            g.blit(RenderPipelines.GUI_TEXTURED, cover,
-                    (int) x, (int) y, 0f, 0f,
-                    (int) COVER, (int) COVER,
-                    (int) COVER, (int) COVER,
-                    (int) COVER, (int) COVER, -1);
-            UiVector.outline(g, x, y, COVER, COVER, 5.0f, 0.5f,
-                    withAlpha(0xFFFFFFFF, 0.16f * openT));
+    private static void cover(GuiGraphicsExtractor g, float x, float y, int ac, int ac2, float dt) {
+        Identifier c = CoverTexture.get();
+        coverFade = lerp(coverFade, c != null ? 1f : 0f, dt, 6f);
+        if (c != null && coverFade > .99f) {
+            g.blit(RenderPipelines.GUI_TEXTURED, c, (int)x, (int)y, 0, 0, (int)COV, (int)COV, (int)COV, (int)COV, (int)COV, (int)COV, -1);
+            UiVector.outline(g, x, y, COV, COV, 5f, .5f, withAlpha(0xFFFFFFFF, .16f * openT));
             return;
         }
-
-        /* градиентный фон с волной (из сурцов) */
-        float wave = (float) (0.5d + 0.5d * Math.sin(System.currentTimeMillis() / 1600.0d));
-        int first = mix(withAlpha(accent, 1.0f), withAlpha(accentTwo, 1.0f), wave);
-        int second = mix(withAlpha(accentTwo, 1.0f), withAlpha(accent, 1.0f), wave);
-        UiVector.roundRectBilinear(g, x, y, COVER, COVER, 6.0f, 6.0f, 6.0f, 6.0f,
-                withAlpha(first, openT), withAlpha(second, openT),
-                withAlpha(second, openT), withAlpha(first, openT));
-        UiVector.outline(g, x, y, COVER, COVER, 6.0f, 0.5f,
-                withAlpha(0xFFFFFFFF, 0.16f * openT));
-
-        if (cover != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, cover,
-                    (int) x, (int) y, 0f, 0f,
-                    (int) COVER, (int) COVER,
-                    (int) COVER, (int) COVER,
-                    (int) COVER, (int) COVER,
-                    withAlpha(-1, openT * coverFade));
-        }
-
-        /* нота (из сурцов) */
-        float pulse = MediaSession.playing()
-                ? 1.0f + 0.08f * (float) Math.sin(System.currentTimeMillis() / 320.0d) : 1.0f;
-        int ink = withAlpha(0xFFFFFFFF, 0.92f * openT);
-        float cx = x + COVER / 2.0f;
-        float cy = y + COVER / 2.0f;
-        float head = 5.5f * pulse;
-        UiVector.roundRect(g, cx - 7.0f, cy + 2.0f, head, head * 0.8f, head / 2.0f, ink);
-        UiVector.roundRect(g, cx + 1.5f, cy + 0.5f, head, head * 0.8f, head / 2.0f, ink);
-        UiVector.roundRect(g, cx - 3.0f, cy - 6.0f, 1.2f, 9.0f, 0.6f, ink);
-        UiVector.roundRect(g, cx + 5.5f, cy - 7.5f, 1.2f, 9.0f, 0.6f, ink);
-        UiVector.roundRect(g, cx - 3.0f, cy - 7.5f, 9.7f, 1.6f, 0.8f, ink);
+        float w = (float)(.5 + .5 * Math.sin(System.currentTimeMillis() / 1600.0));
+        int c1 = mix(withAlpha(ac, 1f), withAlpha(ac2, 1f), w);
+        int c2 = mix(withAlpha(ac2, 1f), withAlpha(ac, 1f), w);
+        UiVector.roundRectBilinear(g, x, y, COV, COV, 6f, 6f, 6f, 6f, withAlpha(c1, openT), withAlpha(c2, openT), withAlpha(c2, openT), withAlpha(c1, openT));
+        UiVector.outline(g, x, y, COV, COV, 6f, .5f, withAlpha(0xFFFFFFFF, .16f * openT));
+        if (c != null) g.blit(RenderPipelines.GUI_TEXTURED, c, (int)x, (int)y, 0, 0, (int)COV, (int)COV, (int)COV, (int)COV, (int)COV, (int)COV, withAlpha(-1, openT * coverFade));
+        CoverArt.ensure(MediaSession.artist(), MediaSession.title());
+        float pulse = MediaSession.playing() ? 1f + .08f * (float)Math.sin(System.currentTimeMillis() / 320.0) : 1f;
+        int ink = withAlpha(0xFFFFFFFF, .92f * openT);
+        float mx = x + COV / 2, my = y + COV / 2, hd = 5.5f * pulse;
+        UiVector.roundRect(g, mx - 7, my + 2, hd, hd * .8f, hd / 2, ink);
+        UiVector.roundRect(g, mx + 1.5f, my + .5f, hd, hd * .8f, hd / 2, ink);
+        UiVector.roundRect(g, mx - 3, my - 6, 1.2f, 9, .6f, ink);
+        UiVector.roundRect(g, mx + 5.5f, my - 7.5f, 1.2f, 9, .6f, ink);
+        UiVector.roundRect(g, mx - 3, my - 7.5f, 9.7f, 1.6f, .8f, ink);
     }
 
-    /* ══ эквалайзер (из сурцов MusicWidget.drawEqualizer) ══ */
-    private static void drawEqualizer(GuiGraphicsExtractor g, float right, float top,
-            int accent, int text, float dt) {
-        float barWidth = 2.1f;
-        float gap = 1.8f;
-        float maxHeight = 9.0f;
-        float bottom = top + maxHeight;
-        double seconds = System.currentTimeMillis() / 1000.0d;
-        beat = lerp(beat, MediaSession.playing() ? 1.0f : 0.0f, dt, 5f);
-        for (int index = 0; index < 4; index++) {
-            double phase = seconds * (2.6d + index * 0.47d) + index * 1.7d;
-            double slow = Math.sin(seconds * (1.1d + index * 0.19d) + index);
-            float level = (float) Math.max(0.08, Math.min(1.0,
-                    0.5d + 0.35d * Math.sin(phase) + 0.15d * slow));
-            float height = Math.max(2.1f, maxHeight * (0.18f + 0.82f * level * beat));
-            float barX = right - barWidth - index * (barWidth + gap);
-            int color = withAlpha(mix(withAlpha(text, 1.0f), withAlpha(accent, 1.0f), level),
-                    (0.45f + 0.45f * level) * openT);
-            UiVector.roundRect(g, barX, bottom - height, barWidth, height, barWidth / 2.0f, color);
+    private static void eq(GuiGraphicsExtractor g, float right, float top, int ac, float dt) {
+        float bw = 2.1f, gap = 1.8f, mh = 9f, bot = top + mh;
+        double s = System.currentTimeMillis() / 1000.0;
+        beat = lerp(beat, MediaSession.playing() ? 1f : 0f, dt, 5f);
+        for (int i = 0; i < 4; i++) {
+            double ph = s * (2.6 + i * .47) + i * 1.7;
+            double sl = Math.sin(s * (1.1 + i * .19) + i);
+            float lv = (float)Math.max(.08, Math.min(1, .5 + .35 * Math.sin(ph) + .15 * sl));
+            float bh = Math.max(2.1f, mh * (.18f + .82f * lv * beat));
+            float bx = right - bw - i * (bw + gap);
+            int col = withAlpha(mix(withAlpha(0xFFFFFFFF, 1f), withAlpha(ac, 1f), lv), (.45f + .45f * lv) * openT);
+            UiVector.roundRect(g, bx, bot - bh, bw, bh, bw / 2, col);
         }
     }
 
-    /* ══ субтитры (из сурцов MusicWidget.drawLyrics) ══ */
-    private static void drawLyrics(GuiGraphicsExtractor g, Font font, LyricLayout layout,
-            float x, float y, float rowHeight, long position, int text, float alpha) {
-        if (layout.lines().isEmpty()) return;
-        String key = String.join("\n", layout.lines());
-        if (!key.equals(lastLineShown)) {
-            previousLine = lastLineShown;
-            lastLineShown = key;
-            lineFade = 0.0f;
-            sungWidth = clamp01(Lyrics.progress(position)) * totalWidth(font, layout);
-        }
-        lineFade = lerp(lineFade, 1.0f, 1f / 60f, 6f);
-        float ease = lineFade * lineFade * (3.0f - 2.0f * lineFade);
-
-        if (!previousLine.isEmpty() && ease < 0.999f) {
-            String leaving = previousLine.split("\n")[0];
-            drawText(g, font, leaving, x, y - 2.0f * ease, layout.size,
-                    withAlpha(text, 0.3f * alpha * (1.0f - ease)));
-        }
-
-        float total = totalWidth(font, layout);
-        float sung = clamp01(Lyrics.progress(position)) * total;
+    private static void lyrics(GuiGraphicsExtractor g, Font f, LyricLayout lay, float x, float y, long pos, int txt, float a) {
+        if (lay.lines().isEmpty()) return;
+        String key = String.join("\n", lay.lines());
+        if (!key.equals(lastLine)) { prevLine = lastLine; lastLine = key; lineFade = 0; sungWidth = cl01(Lyrics.progress(pos)) * tw(f, lay); }
+        lineFade = lerp(lineFade, 1f, 1f / 60f, 6f);
+        float e = lineFade * lineFade * (3f - 2f * lineFade);
+        if (!prevLine.isEmpty() && e < .999f) txt(f, g, prevLine.split("\n")[0], x, y - 2f * e, lay.size, withAlpha(txt, .3f * a * (1f - e)));
+        float total = tw(f, lay), sung = cl01(Lyrics.progress(pos)) * total;
         sungWidth = lerp(sungWidth, sung, 1f / 60f, 25f);
-        float lift = (1.0f - ease) * 2.5f;
-        float fade = alpha * ease;
-
-        float consumed = 0.0f;
-        for (int row = 0; row < layout.lines().size(); row++) {
-            String line = layout.lines().get(row);
-            float lineWidth = textWidth(font, line, layout.size);
-            float lit = clamp01(sungWidth - consumed);
-            lit = Math.min(lit, lineWidth);
+        float lift = (1f - e) * 2.5f, fade = a * e, consumed = 0;
+        for (int r = 0; r < lay.lines().size(); r++) {
+            String ln = lay.lines().get(r);
+            float lw = twS(f, ln, lay.size), lit = cl01(sungWidth - consumed); lit = Math.min(lit, lw);
             int cut = 0;
-            while (cut < line.length() && textWidth(font, line.substring(0, cut + 1), layout.size) <= lit) {
-                cut++;
-            }
-            String done = line.substring(0, cut);
-            String left = line.substring(cut);
-            float rowY = y + row * rowHeight + lift;
-            drawText(g, font, done, x, rowY, layout.size, withAlpha(text, fade));
-            drawText(g, font, left, x + textWidth(font, done, layout.size), rowY, layout.size,
-                    withAlpha(text, 0.35f * fade));
-            consumed += lineWidth;
+            while (cut < ln.length() && twS(f, ln.substring(0, cut + 1), lay.size) <= lit) cut++;
+            String done = ln.substring(0, cut), left = ln.substring(cut);
+            float ry = y + r * LROW + lift;
+            txt(f, g, done, x, ry, lay.size, withAlpha(txt, fade));
+            txt(f, g, left, x + twS(f, done, lay.size), ry, lay.size, withAlpha(txt, .35f * fade));
+            consumed += lw;
         }
     }
 
-    /* ══ прогресс-бар (из сурцов MusicWidget.drawProgress) ══ */
-    private static void drawProgress(GuiGraphicsExtractor g, Font font, float x, float y, float width,
-            long position, long duration, int accent, int accentTwo, int text, float dt) {
-        float target = duration > 0 ? clamp01(position / (float) duration) : 0.0f;
-        progress = Math.abs(target - progress) < 0.0015f ? target : lerp(progress, target, dt, 15f);
-
-        String elapsed = time(position);
-        String left = duration > 0 ? "-" + time(Math.max(0, duration - position)) : "--:--";
-        float timeSize = 6.0f;
-        float elapsedWidth = textWidth(font, elapsed, timeSize);
-        float leftWidth = textWidth(font, left, timeSize);
-        float barX = x + elapsedWidth + 8.0f;
-        float barWidth = Math.max(10.0f, width - elapsedWidth - leftWidth - 16.0f);
-
-        drawText(g, font, elapsed, x, y - 1.0f, timeSize, withAlpha(text, 0.45f * openT));
-        drawText(g, font, left, x + width - leftWidth, y - 1.0f, timeSize, withAlpha(text, 0.45f * openT));
-        UiVector.roundRect(g, barX, y + 1.5f, barWidth, 3.0f, 1.5f, withAlpha(text, 0.16f * openT));
-
-        float filled = barWidth * progress;
-        if (filled > 0.5f) {
-            float breath = 0.88f + 0.12f * (float) Math.sin(System.currentTimeMillis() / 900.0d);
-            int start = withAlpha(accent, openT * breath);
-            int end = withAlpha(accentTwo, openT);
-            UiVector.roundRectBilinear(g, barX, y + 1.5f, filled, 3.0f, 1.5f, 1.5f, 1.5f, 1.5f,
-                    start, end, start, end);
-            UiVector.roundRect(g, barX + filled - 2.25f, y + 0.5f, 4.5f, 4.5f, 2.25f,
-                    withAlpha(0xFFFFFFFF, openT));
+    private static void bar(GuiGraphicsExtractor g, Font f, float x, float y, float w,
+            long pos, long dur, int ac, int ac2, int txt, float dt) {
+        float tgt = dur > 0 ? cl01(pos / (float)dur) : 0;
+        progress = Math.abs(tgt - progress) < .0015f ? tgt : lerp(progress, tgt, dt, 15f);
+        String el = time(pos), lt = dur > 0 ? "-" + time(Math.max(0, dur - pos)) : "--:--";
+        float ew = twS(f, el, 6f), lw = twS(f, lt, 6f);
+        float bx = x + ew + 8, bw = Math.max(10f, w - ew - lw - 16);
+        txt(f, g, el, x, y - 1, 6f, withAlpha(txt, .45f * openT));
+        txt(f, g, lt, x + w - lw, y - 1, 6f, withAlpha(txt, .45f * openT));
+        UiVector.roundRect(g, bx, y + 1.5f, bw, 3, 1.5f, withAlpha(txt, .16f * openT));
+        float fl = bw * progress;
+        if (fl > .5f) {
+            float br = .88f + .12f * (float)Math.sin(System.currentTimeMillis() / 900.0);
+            UiVector.roundRectBilinear(g, bx, y + 1.5f, fl, 3, 1.5f, 1.5f, 1.5f, 1.5f,
+                    withAlpha(ac, openT * br), withAlpha(ac2, openT), withAlpha(ac, openT * br), withAlpha(ac2, openT));
+            UiVector.roundRect(g, bx + fl - 2.25f, y + .5f, 4.5f, 4.5f, 2.25f, withAlpha(0xFFFFFFFF, openT));
         }
     }
 
-    /* ══ прокручиваемый текст (из сурцов Font.a с scroll) ══ */
-    private static final java.util.Map<Object, float[]> SCROLL_STATES = new java.util.WeakHashMap<>();
-    private static Object titleScrollKey = new Object();
-    private static Object artistScrollKey = new Object();
+    /* ══ ТЕКСТ через UiText (Inter TTF) ══ */
+    private static void txt(Font f, GuiGraphicsExtractor g, String t, float x, float y, float sz, int col) {
+        if (t == null || t.isEmpty()) return;
+        UiText.draw(g, f, t, (int)x, (int)y, col, UiText.FACE, false);
+    }
 
-    private static void drawScrollText(GuiGraphicsExtractor g, Font font, String text,
-            float x, float y, float size, int color, float maxWidth,
-            boolean isHovered, float speed, float delta) {
-        if (text == null || text.isEmpty() || maxWidth <= 0) return;
-        float textW = textWidth(font, text, size);
-        Object key = y < 100 ? titleScrollKey : artistScrollKey; // простая дедукция
-        if (textW <= maxWidth) {
-            SCROLL_STATES.remove(key);
-            drawText(g, font, text, x, y, size, color);
-            return;
-        }
-        float[] s = SCROLL_STATES.computeIfAbsent(key, k -> new float[]{0.0f, 1.0f});
-        float maxOffset = textW - maxWidth;
-        float dt = Math.max(0, Math.min(delta, 0.05f));
-        if (isHovered) {
+    private static float twS(Font f, String t, float sz) { return t == null ? 0 : f.width(t); }
+    private static float tw(Font f, LyricLayout l) { float t = 0; for (String s : l.lines()) t += f.width(s); return Math.max(1f, t); }
+
+    /* ══ прокрутка (из сурцов Font.a scroll) ══ */
+    private static void scroll(GuiGraphicsExtractor g, Font f, Object key, String text,
+            float x, float y, int color, float maxW, boolean hover, float speed, float delta) {
+        if (text == null || text.isEmpty() || maxW <= 0) return;
+        float tw = f.width(text);
+        if (tw <= maxW) { SCROLL.remove(key); txt(f, g, text, x, y, 0, color); return; }
+        float[] s = SCROLL.computeIfAbsent(key, k -> new float[]{0, 1});
+        float maxOff = tw - maxW, dt = Math.max(0, Math.min(delta, .05f));
+        if (hover) {
             s[0] += s[1] * speed * dt;
-            if (s[0] >= maxOffset) { s[0] = maxOffset; s[1] = -1.0f; }
-            else if (s[0] <= 0) { s[0] = 0; s[1] = 1.0f; }
-        } else {
-            s[0] += (0 - s[0]) * Math.min(1, dt * 12f);
-            if (s[0] < 0.3f) { s[0] = 0; s[1] = 1.0f; }
-        }
-        /* clip */
+            if (s[0] >= maxOff) { s[0] = maxOff; s[1] = -1; }
+            else if (s[0] <= 0) { s[0] = 0; s[1] = 1; }
+        } else { s[0] += (0 - s[0]) * Math.min(1, dt * 12f); if (s[0] < .3f) { s[0] = 0; s[1] = 1; } }
         int sw = g.guiWidth(), sh = g.guiHeight();
-        int x0 = Math.max(0, (int) (x - 1));
-        int y0 = Math.max(0, (int) (y - size * 0.5f));
-        int x1 = Math.min(sw, (int) Math.ceil(x + maxWidth + 1));
-        int y1 = Math.min(sh, (int) Math.ceil(y + size * 1.5f + 0.5f));
-        if (x1 > x0 && y1 > y0) {
-            g.enableScissor(x0, y0, x1, y1);
-            drawText(g, font, text, x - s[0], y, size, color);
-            g.disableScissor();
-        }
+        int x0 = Math.max(0, (int)(x - 1)), y0 = Math.max(0, (int)(y - 5));
+        int x1 = Math.min(sw, (int)Math.ceil(x + maxW + 1)), y1 = Math.min(sh, (int)Math.ceil(y + 15));
+        if (x1 > x0 && y1 > y0) { g.enableScissor(x0, y0, x1, y1); txt(f, g, text, x - s[0], y, 0, color); g.disableScissor(); }
     }
 
-    /* ══ вспомогательные рисование ══ */
-
-    private static void drawText(GuiGraphicsExtractor g, Font font, String text,
-            float x, float y, float size, int color) {
-        if (text == null || text.isEmpty()) return;
-        UiText.draw(g, font, text, (int) x, (int) y, color, UiText.FACE, false);
-    }
-
-    private static float textWidth(Font font, String text, float size) {
-        if (text == null || text.isEmpty()) return 0;
-        return font.width(text) * (size / 9.0f);
-    }
-
-    /* ══ LyricLayout (из сурцов) ══ */
-    private record LyricLayout(float size, List<String> lines) {
-        float rows() { return lines.size(); }
-    }
-
-    private static LyricLayout lyricLayout(String raw, float width) {
-        if (raw.isEmpty() || width <= 0) {
-            currentLayout = new LyricLayout(LYRIC_SIZE, List.of());
-            return currentLayout;
-        }
+    /* ══ LyricLayout ══ */
+    private record LyricLayout(float size, List<String> lines) {}
+    private static LyricLayout layout(String raw, float width) {
+        if (raw.isEmpty() || width <= 0) { curLayout = new LyricLayout(LSIZE, List.of()); return curLayout; }
         Minecraft mc = Minecraft.getInstance();
-        if (mc == null) {
-            currentLayout = new LyricLayout(LYRIC_SIZE, List.of());
-            return currentLayout;
+        if (mc == null) { curLayout = new LyricLayout(LSIZE, List.of()); return curLayout; }
+        Font f = mc.font;
+        if (f.width(raw) <= width) { curLayout = new LyricLayout(LSIZE, List.of(raw)); return curLayout; }
+        StringBuilder a = new StringBuilder(), b = new StringBuilder();
+        for (String w : raw.split(" ")) {
+            StringBuilder t = b.isEmpty() ? a : b;
+            String c = t.isEmpty() ? w : t + " " + w;
+            if (t == a && f.width(c) > width) { b.append(w); continue; }
+            t.setLength(0); t.append(c);
         }
-        Font font = mc.font;
-        for (float size = LYRIC_SIZE; size >= LYRIC_SIZE - 0.5f; size -= 0.5f) {
-            if (textWidth(font, raw, size) <= width) {
-                currentLayout = new LyricLayout(size, List.of(raw));
-                return currentLayout;
-            }
-        }
-        float size = LYRIC_SIZE - 0.5f;
-        StringBuilder first = new StringBuilder();
-        StringBuilder second = new StringBuilder();
-        for (String word : raw.split(" ")) {
-            StringBuilder target = second.isEmpty() ? first : second;
-            String candidate = target.isEmpty() ? word : target + " " + word;
-            if (target == first && textWidth(font, candidate, size) > width) {
-                second.append(word);
-                continue;
-            }
-            target.setLength(0);
-            target.append(candidate);
-        }
-        if (second.isEmpty()) {
-            currentLayout = new LyricLayout(size, List.of(first.toString()));
-            return currentLayout;
-        }
-        while (size > 4.0f && textWidth(font, second.toString(), size) > width) {
-            size -= 0.25f;
-        }
-        currentLayout = new LyricLayout(size, List.of(first.toString(), second.toString()));
-        return currentLayout;
+        if (b.isEmpty()) { curLayout = new LyricLayout(LSIZE, List.of(a.toString())); return curLayout; }
+        curLayout = new LyricLayout(LSIZE, List.of(a.toString(), b.toString()));
+        return curLayout;
     }
 
-    private static float totalWidth(Font font, LyricLayout layout) {
-        float total = 0;
-        for (String line : layout.lines()) total += textWidth(font, line, layout.size);
-        return Math.max(1.0f, total);
-    }
-
-    private static String lyricLine(long position) {
-        Lyrics.Line line = Lyrics.current(position);
-        return line == null ? "" : line.text();
-    }
-
-    private static String time(long millis) {
-        long seconds = Math.max(0, millis / 1000L);
-        return String.format(Locale.US, "%d:%02d", seconds / 60L, seconds % 60L);
-    }
-
-    /* ══ математика ══ */
-    private static float lerp(float cur, float target, float dt, float speed) {
-        return cur + (target - cur) * (1f - (float) Math.exp(-speed * dt));
-    }
-    private static float clamp01(float v) { return Math.max(0, Math.min(1, v)); }
-
-    private static int withAlpha(int color, float a) {
-        int alpha = (int) Math.max(0, Math.min(255, ((color >> 24) & 0xFF) * a));
-        return (alpha << 24) | (color & 0x00FFFFFF);
-    }
-    private static int mix(int a, int b, float t) {
-        t = clamp01(t);
-        int ra = (a >> 16) & 0xFF, ga = (a >> 8) & 0xFF, ba = a & 0xFF, aa = (a >> 24) & 0xFF;
-        int rb = (b >> 16) & 0xFF, gb = (b >> 8) & 0xFF, bb = b & 0xFF, ab = (b >> 24) & 0xFF;
-        int r = (int) (ra + (rb - ra) * t);
-        int gr = (int) (ga + (gb - ga) * t);
-        int bl = (int) (ba + (bb - ba) * t);
-        int al = (int) (aa + (ab - aa) * t);
-        return (al << 24) | (r << 16) | (gr << 8) | bl;
-    }
-
+    private static String lyricLine(long p) { Lyrics.Line l = Lyrics.current(p); return l == null ? "" : l.text(); }
+    private static String time(long ms) { long s = Math.max(0, ms / 1000); return String.format(Locale.US, "%d:%02d", s / 60, s % 60); }
+    private static float lerp(float c, float t, float dt, float sp) { return c + (t - c) * (1f - (float)Math.exp(-sp * dt)); }
+    private static float cl01(float v) { return Math.max(0, Math.min(1, v)); }
+    private static int withAlpha(int c, float a) { int al = (int)Math.max(0, Math.min(255, ((c >> 24) & 0xFF) * a)); return (al << 24) | (c & 0x00FFFFFF); }
+    private static int mix(int a, int b, float t) { t = cl01(t); return (int)(((1-t)*((a>>24)&0xFF)+t*((b>>24)&0xFF))<<24)|((int)((1-t)*((a>>16)&0xFF)+t*((b>>16)&0xFF))<<16)|((int)((1-t)*((a>>8)&0xFF)+t*((b>>8)&0xFF))<<8)|(int)((1-t)*(a&0xFF)+t*(b&0xFF)); }
     public static void onClick(int mx, int my) {}
 }
