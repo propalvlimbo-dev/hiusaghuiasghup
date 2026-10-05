@@ -214,10 +214,15 @@ public final class MusicIsland {
         }
     }
 
-    /* ══ ТЕКСТ через UiText (Inter TTF) — рабочий ══ */
+    /* ══ ТЕКСТ через MtsdfTextRenderer (MTSDF + UiText fallback) ══ */
     private static void txt(Font f, GuiGraphicsExtractor g, String t, float x, float y, float sz, int col) {
         if (t == null || t.isEmpty()) return;
-        UiText.draw(g, f, t, (int)x, (int)y, col, UiText.FACE, false);
+        try {
+            MtsdfTextRenderer.draw(g, f, t, x, y, sz, col);
+        } catch (Throwable e) {
+            // MTSDF pipeline упал — fallback на UiText
+            UiText.draw(g, f, t, (int) x, (int) y, col, UiText.FACE, false);
+        }
     }
 
     private static float twS(Font f, String t, float sz) { return t == null ? 0 : f.width(t); }
