@@ -30,8 +30,8 @@ public final class NetworkScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor g, int mx, int my, float dt) {
-        super.render(g, mx, my, dt);
+    public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float partialTick) {
+        UiVector.rect(g, 0, 0, width, height, 0xAA000000);
         ElytrixConfig cfg = ElytrixclientClient.CONFIG;
 
         try {
