@@ -37,17 +37,47 @@ public abstract class TitleScreenMixin extends Screen {
     }
 
     /** Убираем надпись копирайта внизу справа и маленькие иконки (язык и т.д.). */
-    @Inject(method = "init", at = @At("TAIL"), require = 0)
-    private void elytrix$extraButtons(CallbackInfo ci) {
-        int y = this.height - 26;
-        this.addWidget(net.minecraft.client.gui.components.Button.builder(
-                        net.minecraft.network.chat.Component.literal("Аккаунты"),
-                        b -> this.minecraft.gui.setScreen(new platform.client.ui.screen.AltScreen()))
-                .bounds(this.width - 178, y, 84, 20).build());
-        this.addWidget(net.minecraft.client.gui.components.Button.builder(
-                        net.minecraft.network.chat.Component.literal("Сеть"),
-                        b -> this.minecraft.gui.setScreen(new ru.rooyzee.elytrixclient.client.ui.NetworkScreen((net.minecraft.client.gui.screens.Screen) (Object) this)))
-                .bounds(this.width - 90, y, 84, 20).build());
+    @Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
+    private void elytrix$accountButtons(GuiGraphicsExtractor g, int mx, int my, float a, CallbackInfo ci) {
+        if (!ElytrixMenuButtons.active()) {
+            return;
+        }
+        int left = ElytrixMenuButtons.left();
+        int y = ElytrixMenuButtons.stackBottom() + 6;
+        elytrix$drawItem(g, left, y, "Аккаунты", mx, my);
+        elytrix$drawItem(g, left, y + ElytrixMenuButtons.ITEM_H + 3, "Сеть", mx, my);
+    }
+
+    private void elytrix$drawItem(GuiGraphicsExtractor g, int x, int y, String label, int mx, int my) {
+        boolean hov = mx >= x && mx <= x + ElytrixMenuButtons.ITEM_W && my >= y && my <= y + ElytrixMenuButtons.ITEM_H;
+        ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector.roundRect(g, x, y,
+                ElytrixMenuButtons.ITEM_W, ElytrixMenuButtons.ITEM_H, 6f, hov ? 0x33FFFFFF : 0x14FFFFFF);
+        ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer.draw(
+                g, ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, label, x + 8, y + 6, 8f,
+                hov ? 0xFFFFFFFF : 0xCCFFFFFF);
+    }
+
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 0)
+    private void elytrix$accountClick(MouseButtonEvent event, boolean doubleClick,
+                                      org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir) {
+        if (!ElytrixMenuButtons.active()) {
+            return;
+        }
+        int mx = (int) event.x();
+        int my = (int) event.y();
+        int left = ElytrixMenuButtons.left();
+        int y = ElytrixMenuButtons.stackBottom() + 6;
+        boolean inAcc = mx >= left && mx <= left + ElytrixMenuButtons.ITEM_W && my >= y && my <= y + ElytrixMenuButtons.ITEM_H;
+        boolean inNet = mx >= left && mx <= left + ElytrixMenuButtons.ITEM_W
+                && my >= y + ElytrixMenuButtons.ITEM_H + 3 && my <= y + 2 * ElytrixMenuButtons.ITEM_H + 3;
+        if (inAcc) {
+            cir.setReturnValue(true);
+            this.minecraft.gui.setScreen(new platform.client.ui.screen.AltScreen());
+        } else if (inNet) {
+            cir.setReturnValue(true);
+            this.minecraft.gui.setScreen(new ru.rooyzee.elytrixclient.client.ui.NetworkScreen(
+                    (net.minecraft.client.gui.screens.Screen) (Object) this));
+        }
     }
 
     @Inject(method = "init", at = @At("TAIL"), require = 0)

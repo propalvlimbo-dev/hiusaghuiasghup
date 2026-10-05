@@ -51,6 +51,7 @@ public final class ElytrixMenuButtons {
     private static long openedAt;
     private static int left = 32;
     private static int stackTop = 80;
+    private static int stackBottom = 200;
 
     public static boolean active() {
         if (!ElytrixclientClient.CONFIG.hackerBackground) {
@@ -62,6 +63,10 @@ public final class ElytrixMenuButtons {
 
     public static int left() {
         return left;
+    }
+
+    public static int stackBottom() {
+        return stackBottom;
     }
 
     public static int logoY() {
@@ -136,6 +141,7 @@ public final class ElytrixMenuButtons {
             s.danger = "menu.quit".equals(k);
             y += ITEM_H + GAP;
         }
+        stackBottom = y;
         // Маленькие иконки (язык, доступность и т.д.) — скрыты по запросу пользователя
         for (AbstractButton b : icons) {
             b.setPosition(-9999, -9999);

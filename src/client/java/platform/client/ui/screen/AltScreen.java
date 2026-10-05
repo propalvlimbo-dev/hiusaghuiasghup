@@ -64,7 +64,9 @@ public class AltScreen extends Screen {
         int w = aM_.getWindow().getGuiScaledWidth();
         int h2 = aM_.getWindow().getGuiScaledHeight();
         float f = (EasingList.s.ease(fMin) * 0.2f) + 1.05f;
-        MainScreen.a(context, w, h2, (int) dA, (int) dA2, f);
+        ru.rooyzee.elytrixclient.client.ui.MenuBackgrounds.render(context, w, h2,
+                ru.rooyzee.elytrixclient.client.ui.ElytrixBackground.time(),
+                ru.rooyzee.elytrixclient.client.ui.kit.UiTheme.accent(ru.rooyzee.elytrixclient.client.ElytrixclientClient.CONFIG.accentIndex), 1.0F);
         float f2 = (w - 190.0f) * 0.5f;
         float f3 = (h2 - 250.0f) * 0.5f;
         a(context, w, f2, f3, fMin);
