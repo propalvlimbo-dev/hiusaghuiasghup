@@ -31,9 +31,16 @@ public abstract class MenuRow {
     protected float h = 16;
     protected float hoverT;
     private BooleanSupplier visible = () -> true;
+    private String desc;
 
     protected MenuRow(String label) {
         this.label = label;
+    }
+
+    /** Описание, всплывающее при наведении (что делает функция). */
+    public MenuRow describe(String description) {
+        this.desc = description;
+        return this;
     }
 
     /** Показывать строку только при условии. */
@@ -69,6 +76,17 @@ public abstract class MenuRow {
         hoverT = approach(hoverT, hover(mx, my) ? 1f : 0f, 16f, dt);
         if (hoverT > 0.01f) {
             fill(g, x + 4, y + 1, w - 8, h - 2, 4, UiTheme.withAlpha(text(), 0.045f * hoverT));
+        }
+        if (desc != null && hoverT > .5f) {
+            float tw = ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer
+                    .width(ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, desc, 7f);
+            float tx = (float) mx + 10f, ty = (float) my + 12f;
+            ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector
+                    .roundRect(g, tx, ty, tw + 12f, 15f, 4f, 0xF2141218);
+            ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector
+                    .outline(g, tx, ty, tw + 12f, 15f, 4f, .5f, 0x33FFFFFF);
+            ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer
+                    .draw(g, ru.rooyzee.elytrixclient.client.render.font.Fonts.REGULAR, desc, tx + 6f, ty + 4f, 7f, 0xE6FFFFFF);
         }
     }
 
