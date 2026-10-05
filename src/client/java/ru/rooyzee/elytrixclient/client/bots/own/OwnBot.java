@@ -49,6 +49,9 @@ public class OwnBot implements Runnable {
 
     private double x, y, z;
     private float yaw, pitch;
+    private double groundY;
+    private boolean haveGround;
+    private double velY;
     private boolean havePos;
     private int entityId = -1;
 
@@ -254,6 +257,9 @@ public class OwnBot implements Runnable {
                     yaw = nyaw;
                     pitch = npitch;
                     havePos = true;
+                    groundY = y;
+                    haveGround = true;
+                    velY = 0;
                     send(P_CONFIRM_TP, w -> w.varInt(tpId));
                     sendPosRot();
                 } else if (f.id == SP_LOGIN) {
@@ -302,7 +308,8 @@ public class OwnBot implements Runnable {
             sendChat("/login " + settings.password, now);
             log.add("[Бот " + name + "] автовход");
         }
-        if (settings.movement) {
+        if (settings.mode == 2) {
+            // «гулять»: случайные прогулки как раньше
             if (now >= nextWalkChangeAt) {
                 nextWalkChangeAt = now + 2000 + rnd.nextInt(4000);
                 walking = rnd.nextBoolean();
@@ -315,10 +322,31 @@ public class OwnBot implements Runnable {
                 z += walkDirZ * 0.09;
                 yaw = (float) Math.toDegrees(Math.atan2(walkDirX, -walkDirZ));
             }
+        } else if (settings.mode == 1 && OwnBotEngine.followActive) {
+            // «за мной»: идёт к игроку клиента, как follow в SoulFire
+            double dx = OwnBotEngine.followX - x;
+            double dz = OwnBotEngine.followZ - z;
+            double dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist > 1.5) {
+                double sp = Math.min(0.13, 0.06 + dist * 0.004);
+                x += dx / dist * sp;
+                z += dz / dist * sp;
+                yaw = (float) Math.toDegrees(Math.atan2(dx, -dz));
+                pitch = 10f;
+            }
         } else if (settings.rotation && now >= nextTurnAt) {
             nextTurnAt = now + 1500 + rnd.nextInt(3000);
             yaw = rnd.nextFloat() * 360f;
             pitch = -20f + rnd.nextFloat() * 60f;
+        }
+        // Физика: гравитация до земли (после спавна/телепорта бот «падает», а не висит)
+        if (haveGround && y > groundY + 0.001) {
+            velY = Math.max(velY - 0.08, -0.6);
+            y = Math.max(groundY, y + velY);
+            if (y <= groundY + 0.001) {
+                y = groundY;
+                velY = 0;
+            }
         }
         if (havePos) {
             sendPosRot();

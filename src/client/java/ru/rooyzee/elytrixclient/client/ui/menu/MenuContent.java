@@ -96,6 +96,7 @@ public final class MenuContent {
                 .badge(() -> ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg) || rd.isRunning()
                         ? "rust: " + rd.statusLine()
                         : "встроенные: " + ob.status(), 0)
+                .add(new MenuRow.Header("Подключение"))
                 .add(new MenuRow.Text("Путь к rust-ботам", 200, () -> cfg.rustBotsPath, v -> {
                     cfg.rustBotsPath = v;
                     dirty.run();
@@ -120,6 +121,15 @@ public final class MenuContent {
                     cfg.ownBotPrefix = v;
                     dirty.run();
                 }))
+                .add(new MenuRow.Header("Поведение"))
+                .add(new MenuRow.Mode("Режим", new String[]{"стоит", "за мной", "гулять"}, () -> cfg.botMode, v -> {
+                    cfg.botMode = v;
+                    dirty.run();
+                }).describe("стоит — бот на месте; за мной — следует за тобой, как follow в SoulFire; гулять — случайные прогулки"))
+                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v)
+                        .when(() -> cfg.botMode != 1))
+                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
+                .add(new MenuRow.Header("Чат и авторизация"))
                 .add(toggle("Авторегистрация", () -> cfg.botAutoReg, v -> cfg.botAutoReg = v))
                 .add(toggle("Автовход", () -> cfg.botAutoLogin, v -> cfg.botAutoLogin = v))
                 .add(new MenuRow.Text("Пароль", 160, () -> cfg.botPassword, v -> {
@@ -139,9 +149,6 @@ public final class MenuContent {
                     cfg.botSpamMax = v;
                     dirty.run();
                 }).when(() -> cfg.bmSpam))
-                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v))
-                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
-                .add(toggle("Движение", () -> cfg.bmMovement, v -> cfg.bmMovement = v))
                 .add(new MenuRow.Button(() -> (rd.isRunning() || ob.isRunning()) ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
                         MenuRow.Button.Kind.PRIMARY, () -> {
                     if (rd.isRunning() || ob.isRunning()) {
@@ -158,6 +165,7 @@ public final class MenuContent {
                         st.prefix = cfg.ownBotPrefix;
                         st.autoReg = cfg.botAutoReg;
                         st.autoLogin = cfg.botAutoLogin;
+                        st.mode = cfg.botMode;
                         st.password = cfg.botPassword;
                         st.spam = cfg.bmSpam;
                         st.spamMessage = cfg.bmSpamMessage;

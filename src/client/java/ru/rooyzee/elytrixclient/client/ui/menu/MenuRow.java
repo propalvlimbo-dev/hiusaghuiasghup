@@ -130,6 +130,25 @@ public abstract class MenuRow {
     public void blur() {
     }
 
+    /** Маленький заголовок подраздела настроек внутри карточки. */
+    public static final class Header extends MenuRow {
+        public Header(String label) {
+            super(label);
+        }
+
+        @Override
+        public void layout(Font font, float x, float y, float w) {
+            super.layout(font, x, y, w);
+            h = 24;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
+            text(g, font, label, x + 10, ty(SMALL, y + h / 2f - 2f), accent, SMALL);
+            fill(g, x + 10, y + h - 6, w - 20, 1, 0.5f, UiTheme.withAlpha(text(), 0.08f));
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════
     //  Тумблер
     // ═════════════════════════════════════════════════════════════════════

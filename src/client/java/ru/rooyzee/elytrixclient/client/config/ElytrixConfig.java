@@ -27,6 +27,9 @@ public class ElytrixConfig {
     public boolean bmSpam = false;
     public int botSpamMin = 3000;
     public int botSpamMax = 6000;
+    /** 0 = стоит, 1 = за мной, 2 = гулять. */
+    public int botMode = 0;
+    public boolean msptProbe = true;
     public String bmSpamMessage = "Please do not spam!";
     public boolean bmRotation = true;
     public boolean bmSwing = true;

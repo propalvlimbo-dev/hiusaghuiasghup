@@ -22,6 +22,10 @@ public class OwnBotEngine {
     private final List<OwnBot> bots = new CopyOnWriteArrayList<>();
     private volatile boolean running;
 
+    /** Координаты игрока клиента (обновляет тик клиента) — цель для режима «за мной». */
+    public static volatile double followX, followZ;
+    public static volatile boolean followActive;
+
     public OwnBotEngine(LogBuffer log) {
         this.log = log;
     }

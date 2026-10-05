@@ -34,6 +34,7 @@ public class WatermarkWidget extends Widget implements Interface {
     private final BooleanSetting m;
     private final BooleanSetting n;
     private final BooleanSetting o;
+    private final BooleanSetting p;
 
     public WatermarkWidget() {
         super(new DragInfo("Инфо-панель", 0.0f, 0.0f, 0.0f, 0.0f));
@@ -46,10 +47,11 @@ public class WatermarkWidget extends Widget implements Interface {
         this.m = new BooleanSetting("Координаты", true);
         this.n = new BooleanSetting("Задержка сервера", true);
         this.o = new BooleanSetting("MSPT", true);
+        this.p = new BooleanSetting("Боты", true);
         j().a(this);
         j().a(2);
         this.bossOffset.b(5.0f);
-        addSettings(this.g, this.h, this.i, this.j, this.k, this.l, this.m, this.n, this.o);
+        addSettings(this.g, this.h, this.i, this.j, this.k, this.l, this.m, this.n, this.o, this.p);
     }
 
     @Override
@@ -202,10 +204,20 @@ public class WatermarkWidget extends Widget implements Interface {
             sections.add(new String[]{"b", "x " + ((int) aM_.player.getX()) + " y " + ((int) aM_.player.getY()) + " z " + ((int) aM_.player.getZ())});
         }
         if (this.n.c().booleanValue()) {
-            sections.add(new String[]{"g", String.format("%.1f TPS", ru.rooyzee.elytrixclient.client.ElytrixclientClient.serverTps)});
+            sections.add(new String[]{"g", String.format("%.1f TPS сервера", ru.rooyzee.elytrixclient.client.ElytrixclientClient.serverTps)});
         }
         if (this.o.c().booleanValue()) {
-            sections.add(new String[]{"e", String.format("%.2f MSPT клиента", ru.rooyzee.elytrixclient.client.ElytrixclientClient.mspt)});
+            float srv = ru.rooyzee.elytrixclient.client.features.ServerMspt.mspt;
+            sections.add(new String[]{"e", srv >= 0f ? String.format("%.2f MSPT", srv) : "MSPT —"});
+        }
+        if (this.p.c().booleanValue()) {
+            var rd = ru.rooyzee.elytrixclient.client.ElytrixclientClient.RUST_BOTS;
+            var ob = ru.rooyzee.elytrixclient.client.ElytrixclientClient.OWN_BOTS;
+            String bots = (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon
+                    .available(ru.rooyzee.elytrixclient.client.ElytrixclientClient.CONFIG) || rd.isRunning())
+                    ? "rust: " + rd.statusLine()
+                    : "боты: " + ob.status();
+            sections.add(new String[]{"i", bots});
         }
         return (String[][]) sections.toArray(new String[0][]);
     }

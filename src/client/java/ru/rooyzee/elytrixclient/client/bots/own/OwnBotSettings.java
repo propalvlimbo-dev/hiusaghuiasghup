@@ -8,6 +8,8 @@ public class OwnBotSettings {
     public String prefix = "ElytrixBot_";
     public boolean spam;
     public String spamMessage = "Elytrix on top!";
+    /** 0 = стоит, 1 = за мной (следует за игроком клиента), 2 = гулять. */
+    public int mode = 0;
     public int spamDelayMin = 150;
     public int spamDelayMax = 250;
     public boolean rotation = true;
