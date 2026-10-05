@@ -26,21 +26,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ItemInHandRenderer.class)
 public abstract class ItemInHandRendererMixin {
 
-    @ModifyExpressionValue(method = {"submitHandsWithItems"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getXRot(F)F"))
-    private float delta$armPitch(float xRot) {
-        return Delta.h().d().k().b() == RotationProcessor.a.IDLE || aM_.player == null ? xRot : Look.c();
-    }
-
-    @ModifyExpressionValue(method = {"submitHandsWithItems"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getViewXRot(F)F"))
-    private float delta$handPitch(float viewXRot, @Local(argsOnly = true) float frameInterp) {
-        return Delta.h().d().k().b() == RotationProcessor.a.IDLE || aM_.player == null ? viewXRot : Mth.lerp(frameInterp, aM_.player.xBobO, aM_.player.xBob);
-    }
-
-    @ModifyExpressionValue(method = {"submitHandsWithItems"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getViewYRot(F)F"))
-    private float delta$handYaw(float viewYRot, @Local(argsOnly = true) float frameInterp) {
-        return Delta.h().d().k().b() == RotationProcessor.a.IDLE || aM_.player == null ? viewYRot : Mth.lerp(frameInterp, aM_.player.yBobO, aM_.player.yBob);
-    }
-
     @Inject(method = {"submitArmWithItem"}, at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER))
     private void delta$onSubmitArm(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand, float attack, net.minecraft.world.item.ItemStack itemStack, float inverseArmHeight, PoseStack poseStack, net.minecraft.client.renderer.SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
         EventManager.a((IEvent) new HandViewEvent(poseStack, itemStack, hand));
