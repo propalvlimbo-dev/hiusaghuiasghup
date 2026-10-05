@@ -19,7 +19,7 @@ public final class ModuleModal {
     private static boolean wasPressed;
     private static float px, py, pw, ph;
 
-    private static Object drag;          // SliderSetting или ColorDrag
+    private static Object drag;
     private static platform.api.module.setting.ColorSetting expColor;
     private static platform.api.module.setting.MultiModeSetting expMulti;
     private static platform.api.module.setting.BindSetting listenBind;
@@ -55,7 +55,6 @@ public final class ModuleModal {
         boolean cl = pr && !wasPressed;
         wasPressed = pr;
 
-        // захват клавиши для bind
         if (listenBind != null) {
             for (int k = 32; k < 340; k++) {
                 if (GLFW.glfwGetKey(GLFW.glfwGetCurrentContext(), k) == 1) {
@@ -65,7 +64,6 @@ public final class ModuleModal {
                 }
             }
         }
-        // ввод строки
         if (focusString != null) {
             pollString(focusString);
         }
@@ -73,11 +71,12 @@ public final class ModuleModal {
             drag = null;
         }
 
-        // высота считается в два прохода: сначала соберём структуру
         List<Object[]> rows = buildRows();
-        float rowH = 14f, pad = 6f;
-        pw = 176f;
-        ph = pad * 2 + 16f + rows.size() * rowH + 4f;
+        float pad = 6f;
+        pw = 190f;
+        float content = 0;
+        for (Object[] r : rows) content += (Float) r[2];
+        ph = pad * 2 + 16f + content + 4f;
         px = (sw - pw) / 2f;
         py = (sh - ph) / 2f;
 
@@ -103,27 +102,32 @@ public final class ModuleModal {
 
         float ry = py + pad + 16f;
         for (Object[] row : rows) {
-            ry = drawRow(g, row, ry, rowH, mx, my, pr, cl);
+            ry = drawRow(g, row, ry, mx, my, pr, cl);
         }
     }
 
-    /** Собрать список строк: [kind, setting] с учётом раскрытий. */
     private static List<Object[]> buildRows() {
         List<Object[]> rows = new ArrayList<>();
         for (platform.api.module.setting.Setting<?> s : mod.e()) {
             if (s == null || (s.e() != null && !s.e().get())) {
                 continue;
             }
-            rows.add(new Object[]{kindOf(s), s});
+            rows.add(new Object[]{kindOf(s), s, heightOf(kindOf(s))});
             if (s instanceof platform.api.module.setting.ColorSetting cs && expColor == cs) {
-                rows.add(new Object[]{10, cs}); rows.add(new Object[]{11, cs}); rows.add(new Object[]{12, cs});
+                rows.add(new Object[]{10, cs, 14f});
+                rows.add(new Object[]{11, cs, 14f});
+                rows.add(new Object[]{12, cs, 14f});
             } else if (s instanceof platform.api.module.setting.MultiModeSetting mm && expMulti == mm) {
                 for (platform.api.module.setting.BooleanSetting b : mm.c()) {
-                    rows.add(new Object[]{20, b});
+                    rows.add(new Object[]{20, b, 14f});
                 }
             }
         }
         return rows;
+    }
+
+    private static float heightOf(int kind) {
+        return kind == 1 ? 20f : 14f;
     }
 
     private static int kindOf(platform.api.module.setting.Setting<?> s) {
@@ -138,109 +142,110 @@ public final class ModuleModal {
         return 8;
     }
 
-    private static float drawRow(GuiGraphicsExtractor g, Object[] row, float ry, float rowH,
+    private static float drawRow(GuiGraphicsExtractor g, Object[] row, float ry,
                                  int mx, int my, boolean pr, boolean cl) {
         int kind = (Integer) row[0];
         Object o = row[1];
+        float rh = (Float) row[2];
         boolean sub = kind >= 10;
-        float ix = px + (sub ? 14 : 8);
-        boolean hov = in(mx, my, px + 3, ry, pw - 6, rowH);
+        float ix = px + (sub ? 16 : 8);
+        boolean hov = in(mx, my, px + 3, ry, pw - 6, rh);
         if (hov && !sub) {
-            UiVector.roundRect(g, px + 3, ry, pw - 6, rowH, 4f, 0x14FFFFFF);
+            UiVector.roundRect(g, px + 3, ry, pw - 6, rh, 4f, 0x14FFFFFF);
         }
 
         switch (kind) {
             case 0, 20 -> {
                 platform.api.module.setting.BooleanSetting bs = (platform.api.module.setting.BooleanSetting) o;
-                label(g, bs.i(), ix, ry, sub ? 0xB3FFFFFF : 0xE6FFFFFF);
-                float tx = px + pw - 20f, ty = ry + 3f;
-                float t = bs.c() ? 1f : 0f;
+                label(g, bs.i(), ix, ry + 3.5f, sub ? 0xB3FFFFFF : 0xE6FFFFFF);
+                float tx = px + pw - 22f, ty = ry + 3f;
                 UiVector.roundRect(g, tx, ty, 14, 8, 4f, bs.c() ? 0xFF4FC3FF : 0x40FFFFFF);
                 UiVector.roundRect(g, tx + (bs.c() ? 7 : 1), ty + 1, 6, 6, 3f, 0xFFFFFFFF);
                 if (cl && hov) bs.a(!bs.c());
             }
             case 1 -> {
                 platform.api.module.setting.SliderSetting ss = (platform.api.module.setting.SliderSetting) o;
-                label(g, ss.i(), ix, ry, 0xE6FFFFFF);
-                float tw2 = 46f, tx = px + pw - 8 - tw2, ty = ry + 6f;
-                UiVector.roundRect(g, tx, ty, tw2, 2.5f, 1.2f, 0x40FFFFFF);
-                float frac = (ss.c() - ss.a) / Math.max(1e-5f, ss.b - ss.a);
-                UiVector.roundRect(g, tx, ty, Math.max(2.5f, tw2 * frac), 2.5f, 1.2f, 0xFF4FC3FF);
+                label(g, ss.i(), ix, ry + 3f, 0xE6FFFFFF);
                 String v = String.valueOf(ss.c());
-                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v, px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 6.5f), ry + 1f, 6.5f, 0xFFFF4FC3);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
+                        px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3f, 7f, 0xFFFF4FC3);
+                float tx = px + 8, tw2 = pw - 16, ty = ry + 13f;
+                UiVector.roundRect(g, tx, ty, tw2, 3f, 1.5f, 0x40FFFFFF);
+                float frac = clamp01((ss.c() - ss.a) / Math.max(1e-5f, ss.b - ss.a));
+                UiVector.roundRect(g, tx, ty, Math.max(3f, tw2 * frac), 3f, 1.5f, 0xFF4FC3FF);
+                UiVector.roundRect(g, tx + tw2 * frac - 1.5f, ty - 1.5f, 6, 6, 3f, 0xFFFFFFFF);
                 if ((cl && hov) || drag == ss) {
                     drag = ss;
-                    float f = clamp01((mx - tx) / tw2);
-                    float val = ss.a + f * (ss.b - ss.a);
+                    float val = ss.a + clamp01((mx - tx) / tw2) * (ss.b - ss.a);
                     val = Math.round(val / ss.c) * ss.c;
                     ss.a(clamp(val, ss.a, ss.b));
                 }
             }
             case 2 -> {
                 platform.api.module.setting.ModeSetting ms = (platform.api.module.setting.ModeSetting) o;
-                label(g, ms.i(), ix, ry, 0xE6FFFFFF);
+                label(g, ms.i(), ix, ry + 3.5f, 0xE6FFFFFF);
                 String v = ms.c();
-                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v, px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
+                        px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
                 if (cl && hov) {
                     List<String> modes = ms.k();
-                    int i = (modes.indexOf(ms.c()) + 1) % modes.size();
-                    ms.a(modes.get(i));
+                    ms.a(modes.get((modes.indexOf(ms.c()) + 1) % modes.size()));
                 }
             }
             case 3 -> {
                 platform.api.module.setting.ColorSetting cs = (platform.api.module.setting.ColorSetting) o;
-                label(g, cs.i(), ix, ry, 0xE6FFFFFF);
-                int c = cs.c();
-                UiVector.roundRect(g, px + pw - 20f, ry + 2.5f, 12, 9, 3f, c | 0xFF000000);
-                UiVector.outline(g, px + pw - 20f, ry + 2.5f, 12, 9, 3f, .5f, 0x33FFFFFF);
+                label(g, cs.i(), ix, ry + 3.5f, 0xE6FFFFFF);
+                UiVector.roundRect(g, px + pw - 22f, ry + 2.5f, 14, 9, 3f, cs.c() | 0xFF000000);
+                UiVector.outline(g, px + pw - 22f, ry + 2.5f, 14, 9, 3f, .5f, 0x33FFFFFF);
                 if (cl && hov) expColor = (expColor == cs) ? null : cs;
             }
             case 10, 11, 12 -> {
                 platform.api.module.setting.ColorSetting cs = (platform.api.module.setting.ColorSetting) o;
                 int ch = kind - 10;
-                String nm = ch == 0 ? "R" : ch == 1 ? "G" : "B";
-                label(g, nm, ix, ry, 0xB3FFFFFF);
-                int c = cs.c();
-                int val = (c >> (16 - ch * 8)) & 0xFF;
-                float tw2 = 60f, tx = px + pw - 8 - tw2, ty = ry + 6f;
+                label(g, ch == 0 ? "R" : ch == 1 ? "G" : "B", ix, ry + 3.5f, 0xB3FFFFFF);
+                int val = (cs.c() >> (16 - ch * 8)) & 0xFF;
+                float tx = px + 30, tw2 = pw - 30 - 34, ty = ry + 6f;
                 UiVector.roundRect(g, tx, ty, tw2, 2.5f, 1.2f, 0x40FFFFFF);
                 UiVector.roundRect(g, tx, ty, tw2 * (val / 255f), 2.5f, 1.2f, 0xFF4FC3FF);
-                ColorDrag cd = new ColorDrag(cs, ch);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, String.valueOf(val),
+                        px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, String.valueOf(val), 6.5f), ry + 3f, 6.5f, 0xB3FFFFFF);
                 if ((cl && hov) || (drag instanceof ColorDrag d && d.c == cs && d.ch == ch)) {
-                    drag = cd;
-                    int nv = (int) (clamp01((mx - tx) / tw2) * 255);
-                    setC(cs, ch, nv);
+                    drag = new ColorDrag(cs, ch);
+                    setC(cs, ch, (int) (clamp01((mx - tx) / tw2) * 255));
                 }
             }
             case 4 -> {
                 platform.api.module.setting.MultiModeSetting mm = (platform.api.module.setting.MultiModeSetting) o;
-                label(g, mm.i() + " (" + mm.c().size() + ")", ix, ry, 0xE6FFFFFF);
+                label(g, mm.i() + "  ·  " + mm.c().size(), ix, ry + 3.5f, 0xE6FFFFFF);
                 if (cl && hov) expMulti = (expMulti == mm) ? null : mm;
             }
             case 5 -> {
                 platform.api.module.setting.BindSetting bd = (platform.api.module.setting.BindSetting) o;
-                label(g, bd.i(), ix, ry, 0xE6FFFFFF);
+                label(g, bd.i(), ix, ry + 3.5f, 0xE6FFFFFF);
                 String v = listenBind == bd ? "..." : keyName(bd.c());
-                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v, px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
+                        px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
                 if (cl && hov) listenBind = bd;
             }
             case 6 -> {
                 platform.api.module.setting.StringSetting st = (platform.api.module.setting.StringSetting) o;
-                label(g, st.i(), ix, ry, 0xE6FFFFFF);
+                label(g, st.i(), ix, ry + 3.5f, 0xE6FFFFFF);
                 String v = st.c();
-                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v, px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, v,
+                        px + pw - 8 - MtsdfTextRenderer.width(Fonts.MEDIUM, v, 7f), ry + 3.5f, 7f, 0xFFFF4FC3);
                 if (cl && hov) focusString = (focusString == st) ? null : st;
             }
             case 7 -> {
                 platform.api.module.setting.ButtonSetting bt = (platform.api.module.setting.ButtonSetting) o;
-                UiVector.roundRect(g, px + 8, ry + 1.5f, pw - 16, rowH - 3, 4f, hov ? 0x33FFFFFF : 0x1FFFFFFF);
+                UiVector.roundRect(g, px + 8, ry + 1.5f, pw - 16, rh - 3, 4f, hov ? 0x33FFFFFF : 0x1FFFFFFF);
                 String nm = bt.i();
-                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, nm, px + 8 + (pw - 16 - MtsdfTextRenderer.width(Fonts.MEDIUM, nm, 7f)) / 2, ry + 3.5f, 7f, 0xE6FFFFFF);
+                MtsdfTextRenderer.draw(g, Fonts.MEDIUM, nm,
+                        px + 8 + (pw - 16 - MtsdfTextRenderer.width(Fonts.MEDIUM, nm, 7f)) / 2, ry + 3.5f, 7f, 0xE6FFFFFF);
                 if (cl && hov) bt.k();
             }
-            default -> label(g, ((platform.api.module.setting.Setting<?>) o).i(), ix, ry, 0xE6FFFFFF);
+            default -> label(g, ((platform.api.module.setting.Setting<?>) o).i(), ix, ry + 3.5f, 0xE6FFFFFF);
         }
-        return ry + rowH;
+        return ry + rh;
     }
 
     private static void setC(platform.api.module.setting.ColorSetting cs, int ch, int nv) {
@@ -267,8 +272,8 @@ public final class ModuleModal {
         }
     }
 
-    private static void label(GuiGraphicsExtractor g, String s, float x, float ry, int color) {
-        MtsdfTextRenderer.draw(g, Fonts.REGULAR, s, x, ry + 3.5f, 7f, color);
+    private static void label(GuiGraphicsExtractor g, String s, float x, float y, int color) {
+        MtsdfTextRenderer.draw(g, Fonts.REGULAR, s, x, y, 7f, color);
     }
 
     private static float clamp01(float v) {
