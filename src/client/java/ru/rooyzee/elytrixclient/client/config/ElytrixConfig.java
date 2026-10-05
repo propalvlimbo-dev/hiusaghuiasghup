@@ -29,6 +29,7 @@ public class ElytrixConfig {
     public boolean bmRotation = true;
     public boolean bmSwing = true;
     public boolean bmMovement = true;
+    public String ownBotPrefix = "ElytrixBot_";
     public boolean bmJumping = true;
     public boolean bmPhysics = true;
 

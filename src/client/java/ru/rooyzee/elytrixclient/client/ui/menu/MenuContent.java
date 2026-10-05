@@ -83,6 +83,7 @@ public final class MenuContent {
         List<MenuCard> list = new ArrayList<>();
         var bm = ElytrixclientClient.BOTMARK;
         var sf = ElytrixclientClient.SOULFIRE;
+        var ob = ElytrixclientClient.OWN_BOTS;
 
         list.add(new MenuCard("BotMark")
                 .badge(() -> bm.isRunning() ? "работает" : "стоп", 0)
@@ -108,6 +109,33 @@ public final class MenuContent {
                         bm.stop();
                     } else {
                         bm.start(cfg);
+                    }
+                })));
+
+        list.add(new MenuCard("Встроенные боты")
+                .badge(() -> ob.status(), 0)
+                .add(new MenuRow.Text("Префикс ников", 160, () -> cfg.ownBotPrefix, v -> {
+                    cfg.ownBotPrefix = v;
+                    dirty.run();
+                }))
+                .add(new MenuRow.Button(() -> ob.isRunning() ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
+                        MenuRow.Button.Kind.PRIMARY, () -> {
+                    if (ob.isRunning()) {
+                        ob.stop();
+                    } else {
+                        ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings st =
+                                new ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings();
+                        st.count = cfg.botmarkCount;
+                        st.delayMs = cfg.botmarkDelay;
+                        st.timeoutMs = cfg.botmarkTimeout;
+                        st.prefix = cfg.ownBotPrefix;
+                        st.spam = cfg.bmSpam;
+                        st.spamMessage = cfg.bmSpamMessage;
+                        st.rotation = cfg.bmRotation;
+                        st.swing = cfg.bmSwing;
+                        st.movement = cfg.bmMovement;
+                        String[] hp = cfg.target().split(":");
+                        ob.start(hp[0], hp.length > 1 ? Integer.parseInt(hp[1]) : 25565, 776, st);
                     }
                 })));
 

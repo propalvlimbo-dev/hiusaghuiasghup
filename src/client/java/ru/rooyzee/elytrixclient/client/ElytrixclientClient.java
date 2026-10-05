@@ -29,6 +29,7 @@ public class ElytrixclientClient implements ClientModInitializer {
     public static final LogBuffer LOG = new LogBuffer();
     public static final BotMarkRunner BOTMARK = new BotMarkRunner(LOG);
     public static final SoulFireController SOULFIRE = new SoulFireController(LOG);
+    public static final ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine OWN_BOTS = new ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine(LOG);
 
     /** Панель открывается правым Ctrl (см. настройки интерфейса). */
     private static final int PANEL_KEY = GLFW.GLFW_KEY_RIGHT_CONTROL;

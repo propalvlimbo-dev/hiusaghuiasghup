@@ -1,0 +1,16 @@
+package ru.rooyzee.elytrixclient.client.bots.own;
+
+/** Параметры запуска встроенных ботов (зеркалят карточку поведения). */
+public class OwnBotSettings {
+    public int count = 1;
+    public int delayMs = 200;
+    public int timeoutMs = 5000;
+    public String prefix = "ElytrixBot_";
+    public boolean spam;
+    public String spamMessage = "Elytrix on top!";
+    public int spamDelayMin = 150;
+    public int spamDelayMax = 250;
+    public boolean rotation = true;
+    public boolean swing = true;
+    public boolean movement = true;
+}
