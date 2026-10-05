@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixBackground;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixScreen;
+import ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer;
 import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 
@@ -31,7 +32,9 @@ public abstract class ScreenMixin {
     @Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
     private void elytrix$musicIsland(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
         if (!((Object) this instanceof ElytrixScreen)) {
+            MtsdfTextRenderer.beginFrame();
             MusicIsland.render(graphics, this.width, this.height, mouseX, mouseY);
+            MtsdfTextRenderer.flush(graphics);
         }
     }
 }
