@@ -580,6 +580,7 @@ public class ElytrixScreen extends Screen {
         for (MenuCard card : cards) {
             card.render(g, font, mx, my, dt);
         }
+        ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.render(g, (int) W, (int) H, mx, my, dt);
         if (footer != null) {
             // неприметная текстовая ссылка внизу раздела
             float fw = width(font, footer, SMALL);
@@ -627,6 +628,11 @@ public class ElytrixScreen extends Screen {
         double mx = lx(event.x());
         double my = ly(event.y());
         int button = event.button();
+
+        // Открытая модалка настроек модуля перехватывает весь ввод.
+        if (ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.isOpen()) {
+            return true;
+        }
 
         if (!inside(mx, my, 0, 0, W, H)) {
             searching = false;

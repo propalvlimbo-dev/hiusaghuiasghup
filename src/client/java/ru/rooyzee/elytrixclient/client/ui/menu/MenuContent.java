@@ -219,47 +219,24 @@ public final class MenuContent {
                         () -> ru.rooyzee.elytrixclient.client.ui.MusicIsland.settingsOpen = true)
                         .when(() -> cfg.musicIsland)));
 
-        MenuCard vis = new MenuCard("Визуалы");
-        vis.add(toggle("Инфо-панель (delta)", () -> cfg.hudWatermark, v -> cfg.hudWatermark = v));
+        list.add(new MenuCard("Инфо-панель")
+                .add(toggle("Показывать", () -> cfg.hudWatermark, v -> cfg.hudWatermark = v)));
+        // Каждая функция визуалов — отдельная карточка со своим окном настроек (как MusicIsland).
         platform.client.Delta delta = platform.client.Delta.h();
         if (delta != null && delta.d() != null && delta.d().t() != null) {
             for (platform.api.module.Module mod : delta.d().t().d()) {
                 if (mod == null || mod.l() != platform.api.module.Category.Render) {
                     continue;
                 }
-                addDeltaModule(vis, mod);
+                list.add(new MenuCard(mod.j())
+                        .badge(() -> mod.m() ? "вкл" : "выкл", 0)
+                        .add(new MenuRow.Toggle("Включить", mod::m, mod::a).describe(mod.k()))
+                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY,
+                                () -> ru.rooyzee.elytrixclient.client.ui.menu.ModuleModal.open(mod))
+                                .describe(mod.k())));
             }
         }
-        list.add(vis);
         return list;
-    }
-
-    /** Модуль delta + его настройки (как в родном GUI delta): тумблер и раскрытые настройки. */
-    private void addDeltaModule(MenuCard card, platform.api.module.Module mod) {
-        card.add(new MenuRow.Toggle(mod.j(), mod::m, mod::a).describe(mod.k()));
-        for (platform.api.module.setting.Setting<?> s : mod.e()) {
-            if (s == null) {
-                continue;
-            }
-            java.util.function.Supplier<Boolean> sv = s.e();
-            java.util.function.BooleanSupplier show = () -> mod.m() && (sv == null || sv.get());
-            if (s instanceof platform.api.module.setting.BooleanSetting bs) {
-                card.add(new MenuRow.Toggle(bs.i(), () -> bs.c(), v -> bs.a(v)).when(show));
-            } else if (s instanceof platform.api.module.setting.SliderSetting ss) {
-                int mn = (int) Math.floor(ss.a), mx2 = (int) Math.ceil(ss.b);
-                int st = Math.max(1, (int) ss.c);
-                card.add(new MenuRow.Slider(ss.i(), mn, mx2, st, "",
-                        () -> Math.round(ss.c()), v -> ss.a((float) v)).when(show));
-            } else if (s instanceof platform.api.module.setting.ModeSetting ms) {
-                java.util.List<String> modes = ms.k();
-                String[] arr = modes.toArray(new String[0]);
-                if (arr.length > 0) {
-                    card.add(new MenuRow.Mode(ms.i(), arr,
-                            () -> Math.max(0, modes.indexOf(ms.c())),
-                            i -> ms.a(modes.get(i))).when(show));
-                }
-            }
-        }
     }
 
     private MenuRow toggle(String label, java.util.function.BooleanSupplier get,
