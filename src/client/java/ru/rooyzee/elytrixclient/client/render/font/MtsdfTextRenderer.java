@@ -37,12 +37,17 @@ public final class MtsdfTextRenderer {
         if (text == null || text.isEmpty()) return;
         ensureFonts();
         if (regularFont != null) {
-            regularFont.draw(g, text, x, y, size, color);
-        } else {
-            // Fallback если шрифт не загружен
-            ru.rooyzee.elytrixclient.client.ui.kit.UiText.draw(g, mcFont, text, (int) x, (int) y, color,
-                    ru.rooyzee.elytrixclient.client.ui.kit.UiText.FACE, false);
+            try {
+                regularFont.draw(g, text, x, y, size, color);
+                return;
+            } catch (Exception e) {
+                System.err.println("[Elytrix] MTSDF draw failed: " + e);
+                fontFailed = true;
+            }
         }
+        // Fallback если шрифт не загружен
+        ru.rooyzee.elytrixclient.client.ui.kit.UiText.draw(g, mcFont, text, (int) x, (int) y, color,
+                ru.rooyzee.elytrixclient.client.ui.kit.UiText.FACE, false);
     }
 
     /** Ширина текста через MtsdfFont. */
