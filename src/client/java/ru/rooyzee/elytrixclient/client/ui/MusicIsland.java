@@ -12,6 +12,7 @@ import ru.rooyzee.elytrixclient.client.media.CoverArt;
 import ru.rooyzee.elytrixclient.client.media.CoverTexture;
 import ru.rooyzee.elytrixclient.client.media.Lyrics;
 import ru.rooyzee.elytrixclient.client.media.MediaSession;
+import ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
 import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
@@ -213,14 +214,14 @@ public final class MusicIsland {
         }
     }
 
-    /* ══ ТЕКСТ через UiText (Inter TTF) ══ */
+    /* ══ ТЕКСТ через MtsdfTextRenderer (MTSDF + UiText fallback) ══ */
     private static void txt(Font f, GuiGraphicsExtractor g, String t, float x, float y, float sz, int col) {
         if (t == null || t.isEmpty()) return;
-        UiText.draw(g, f, t, (int)x, (int)y, col, UiText.FACE, false);
+        MtsdfTextRenderer.draw(g, f, t, x, y, sz, col);
     }
 
-    private static float twS(Font f, String t, float sz) { return t == null ? 0 : f.width(t); }
-    private static float tw(Font f, LyricLayout l) { float t = 0; for (String s : l.lines()) t += f.width(s); return Math.max(1f, t); }
+    private static float twS(Font f, String t, float sz) { return t == null ? 0 : MtsdfTextRenderer.widthFallback(f, t); }
+    private static float tw(Font f, LyricLayout l) { float t = 0; for (String s : l.lines()) t += MtsdfTextRenderer.widthFallback(f, s); return Math.max(1f, t); }
 
     /* ══ прокрутка (из сурцов Font.a scroll) ══ */
     private static void scroll(GuiGraphicsExtractor g, Font f, Object key, String text,

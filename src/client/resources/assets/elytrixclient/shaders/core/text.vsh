@@ -2,7 +2,7 @@
 
 #moj_import <minecraft:dynamictransforms.glsl>
 #moj_import <minecraft:projection.glsl>
-#moj_import <xrose:ui_common.glsl>
+#moj_import <elytrixclient:ui_common.glsl>
 
 in vec3 Position;
 in vec4 Color;

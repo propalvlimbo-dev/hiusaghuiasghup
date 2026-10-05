@@ -56,28 +56,14 @@ public final class MtsdfTextRenderer {
     public static MtsdfFont medium() { return mediumFont; }
 
     /**
-     * Рисует текст. Если MTSDF шрифт загружен — через GuiElementRenderState.
-     * Иначе fallback на UiText.
+     * Рисует текст через UiText (Inter TTF). MtsdfFont — только для измерения.
+     * Когда кастомный snippet с text.fsh будет зарегистрирован —
+     * заменить на MtsdfTextState + кастомный pipeline.
      */
     public static void draw(GuiGraphicsExtractor g, Font mcFont, String text,
                             float x, float y, float size, int color) {
         if (text == null || text.isEmpty()) return;
-
-        if (regularFont == null || fontTextureId == null) {
-            UiText.draw(g, mcFont, text, (int) x, (int) y, color, UiText.FACE, false);
-            return;
-        }
-
-        Matrix3x2fc pose = new org.joml.Matrix3x2f(g.pose());
-        int textW = (int) regularFont.measureWidth(text, size) + 4;
-        int textH = (int) regularFont.lineHeight(size) + 4;
-        ScreenRectangle bounds = new ScreenRectangle((int) x, (int) y, textW, textH)
-                .transformMaxBounds(pose);
-
-        ((ru.rooyzee.elytrixclient.mixin.client.GuiGraphicsExtractorAccessor) g)
-                .elytrix$guiRenderState()
-                .addGuiElement(new MtsdfTextState(pose, regularFont, text,
-                        x, y, size, color, bounds));
+        UiText.draw(g, mcFont, text, (int) x, (int) y, color, UiText.FACE, false);
     }
 
     /** Ширина текста через MtsdfFont. */

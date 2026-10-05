@@ -1,8 +1,8 @@
 #version 330
 
 #moj_import <minecraft:dynamictransforms.glsl>
-#moj_import <xrose:ui_common.glsl>
-#moj_import <xrose:ui_fragment.glsl>
+#moj_import <elytrixclient:ui_common.glsl>
+#moj_import <elytrixclient:ui_fragment.glsl>
 
 uniform sampler2D Sampler0;
 
