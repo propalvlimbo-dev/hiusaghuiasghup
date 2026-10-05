@@ -46,20 +46,8 @@ public final class CommandManager {
 
    public void initialize() {
       if (!this.initialized) {
-         List.of(
-               new HelpCommand(this),
-               new PrefixCommand(this),
-               new BindCommand(),
-               new FriendCommand(),
-               new AhCommand(),
-               new MacroCommand(this),
-               new GpsCommand(),
-               new BlockEspCommand(),
-               new ConfigCommand(),
-               new NbtParserCommand(),
-               new RctCommand(),
-               new StaffCommand()
-            )
+         // Команды xrose отключены: единая командная система — наша (.config/.cfg).
+         List.<ClientCommand>of()
             .forEach(this::register);
          this.store.load(this);
          this.initialized = true;

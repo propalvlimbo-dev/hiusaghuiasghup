@@ -211,11 +211,11 @@ public final class MenuContent {
 
     /** Вкладка «Визуалы»: компактный плеер MusicIsland и папка визуальных модулей delta-26.2. */
     /** Кураторский список визуалов: только то, что выбрал пользователь. */
-    private static final java.util.Set<String> VISUAL_DELTA = java.util.Set.of(
+    public static final java.util.Set<String> VISUAL_DELTA = java.util.Set.of(
             "ShaderSky", "Hands Shader", "Aspect Ratio", "Interface", "Item Physic", "Jump Circles", "See Invisibles");
-    private static final java.util.Set<String> VISUAL_XROSE = java.util.Set.of(
+    public static final java.util.Set<String> VISUAL_XROSE = java.util.Set.of(
             "BlockOutline", "Removals", "Chams", "AtmoDawnFog");
-    private static final java.util.Set<String> MISC_DELTA = java.util.Set.of("RP Spoofs", "Streamer Mode");
+    public static final java.util.Set<String> MISC_DELTA = java.util.Set.of("RP Spoofs", "Streamer Mode");
 
     public List<MenuCard> visuals() {
         List<MenuCard> list = new ArrayList<>();

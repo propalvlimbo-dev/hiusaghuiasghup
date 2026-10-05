@@ -58,7 +58,8 @@ public class CommandProcessor extends BaseProcessor {
     @Override
     @Compile
     public void setup() {
-        a(this.e, this.f, this.g, this.h, this.i, new AHCommand(), new MacrosCommand(), new FriendCommand(), new StaffCommand(), new WardenCommand(), new ConfigCommand(), new platform.client.features.commands.ConfigAliasCommand(), new BindCommand(), new VClipCommand(), new HClipCommand(), new CCCommand());
+        // Пользователю нужны только конфиги — остальные команды delta не регистрируем.
+        a(new ConfigCommand(), new platform.client.features.commands.ConfigAliasCommand());
     }
 
     static {

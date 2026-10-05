@@ -70,6 +70,7 @@ public class ElytrixclientClient implements ClientModInitializer {
             mspt = mspt * 0.8f + (dt / 1_000_000f) * 0.2f;
             WindowIcon.tick(client);
             ru.rooyzee.elytrixclient.client.features.render.Visuals.tick(client);
+            ru.rooyzee.elytrixclient.client.features.EmbeddedGate.tick(client);
 
             if (!CONFIG.panelKey) {
                 panelKeyHeld = false;
