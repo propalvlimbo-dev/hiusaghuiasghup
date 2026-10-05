@@ -37,6 +37,12 @@ public class ElytrixclientClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // Инициализация перенесённого ядра delta-26.2 (рендер-модули, события, шейдеры).
+        try {
+            new platform.client.Delta();
+        } catch (Throwable t) {
+            System.err.println("[Elytrix] Delta init failed: " + t);
+        }
         // Тема и тумблер анимаций из конфига — до первого кадра.
         UiTheme.applyPreset(CONFIG.themeIndex);
         UiWidget.ANIMATIONS = CONFIG.animations;
