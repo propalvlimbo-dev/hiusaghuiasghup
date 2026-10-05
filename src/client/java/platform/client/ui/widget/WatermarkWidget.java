@@ -45,7 +45,7 @@ public class WatermarkWidget extends Widget implements Interface {
         this.l = new BooleanSetting("Логин в клиенте", true);
         this.m = new BooleanSetting("Координаты", true);
         this.n = new BooleanSetting("Задержка сервера", true);
-        this.o = new BooleanSetting("Скорость игрока", true);
+        this.o = new BooleanSetting("MSPT", true);
         j().a(this);
         j().a(2);
         this.bossOffset.b(5.0f);
@@ -92,8 +92,8 @@ public class WatermarkWidget extends Widget implements Interface {
         float cursor = x + startPadding;
         float textY = y + ((this.d - Fonts.e.a(this.e)) / 2.0f) + textYOffset;
         if (logo) {
-            Fonts.a.a(context, "a", cursor, y + ((this.d - Fonts.a.a(logoSize)) / 2.0f), logoSize, primaryColor);
-            float cursor2 = cursor + Fonts.a.a("a", logoSize) + logoGap;
+            Fonts.e.a(context, "e", cursor, y + ((this.d - Fonts.e.a(logoSize)) / 2.0f), logoSize, primaryColor);
+            float cursor2 = cursor + Fonts.e.a("e", logoSize) + logoGap;
             drawSeparator(context, cursor2, y, this.d, 1.0f);
             cursor = cursor2 + 1.0f + sectionGap;
         }
@@ -113,9 +113,9 @@ public class WatermarkWidget extends Widget implements Interface {
         float cursor = x;
         float textY = y + ((this.d - Fonts.e.a(this.e)) / 2.0f) + textYOffset;
         if (logo) {
-            float logoWidth = (startPadding * 2.0f) + Fonts.a.a("a", logoSize);
+            float logoWidth = (startPadding * 2.0f) + Fonts.e.a("e", logoSize);
             drawBackground(context, cursor, y, logoWidth, this.d, true, 1.0f);
-            Fonts.a.a(context, "a", cursor + startPadding, y + ((this.d - Fonts.a.a(logoSize)) / 2.0f), logoSize, primaryColor);
+            Fonts.e.a(context, "e", cursor + startPadding, y + ((this.d - Fonts.e.a(logoSize)) / 2.0f), logoSize, primaryColor);
             cursor += logoWidth + sectionGap;
         }
         for (String[] section : sections) {
@@ -132,7 +132,7 @@ public class WatermarkWidget extends Widget implements Interface {
         if (this.h.c().booleanValue()) {
             float width = 0.0f;
             if (logo) {
-                width = (startPadding * 2.0f) + Fonts.a.a("a", logoSize) + sectionGap;
+                width = (startPadding * 2.0f) + Fonts.e.a("e", logoSize) + sectionGap;
             }
             for (String[] section : sections) {
                 width += (startPadding * 2.0f) + Fonts.a.a(section[0], iconSize) + iconTextGap + Fonts.e.a(section[1], this.e) + sectionGap;
@@ -141,7 +141,7 @@ public class WatermarkWidget extends Widget implements Interface {
         }
         float width2 = startPadding;
         if (logo) {
-            width2 = width2 + Fonts.a.a("a", logoSize) + logoGap + 1.0f + sectionGap;
+            width2 = width2 + Fonts.e.a("e", logoSize) + logoGap + 1.0f + sectionGap;
         }
         for (int idx = 0; idx < sections.length; idx++) {
             if (idx > 0) {
@@ -205,7 +205,7 @@ public class WatermarkWidget extends Widget implements Interface {
             sections.add(new String[]{"g", "20.0 TPS"});
         }
         if (this.o.c().booleanValue()) {
-            sections.add(new String[]{"e", String.format("%.2f BPS", ServerUtil.c())});
+            sections.add(new String[]{"e", String.format("%.2f MSPT", ru.rooyzee.elytrixclient.client.ElytrixclientClient.mspt)});
         }
         return (String[][]) sections.toArray(new String[0][]);
     }

@@ -219,13 +219,35 @@ public final class MenuContent {
                         () -> ru.rooyzee.elytrixclient.client.ui.MusicIsland.settingsOpen = true)
                         .when(() -> cfg.musicIsland)));
 
-        list.add(new MenuCard("Инфо-панель")
-                .add(toggle("Показывать", () -> cfg.hudWatermark, v -> cfg.hudWatermark = v)));
+        // Наши визуалы (features/render): партиклы в воздухе и партиклы на ударе — перенос xroses.
+        for (ru.rooyzee.elytrixclient.client.features.render.VisualModule vm
+                : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
+            MenuCard card = new MenuCard(vm.name())
+                    .badge(() -> vm.enabled() ? "вкл" : "выкл", 0)
+                    .add(toggle("Включить", vm::enabled, vm::setEnabled));
+            if (vm instanceof ru.rooyzee.elytrixclient.client.features.render.modules.Particles wp) {
+                card.add(new MenuRow.Mode("Тип", ru.rooyzee.elytrixclient.client.features.render.modules.Particles.SHAPES,
+                                () -> wp.shape, v -> wp.shape = v))
+                        .add(new MenuRow.Slider("Радиус", 1, 40, 1, " бл", () -> wp.radius, v -> wp.radius = v))
+                        .add(new MenuRow.Slider("Частота", 1, 10, 1, " т", () -> wp.spawnRate, v -> wp.spawnRate = v))
+                        .add(new MenuRow.Slider("Кол-во", 1, 10, 1, "", () -> wp.amount, v -> wp.amount = v))
+                        .add(new MenuRow.Slider("Лимит/с", 20, 400, 20, "", () -> wp.maxParticles, v -> wp.maxParticles = v));
+            }
+            if (vm instanceof ru.rooyzee.elytrixclient.client.features.render.modules.HitParticles hp) {
+                card.add(new MenuRow.Mode("Тип", ru.rooyzee.elytrixclient.client.features.render.modules.Particles.SHAPES,
+                                () -> hp.shape, v -> hp.shape = v))
+                        .add(new MenuRow.Slider("Кол-во", 1, 50, 1, "", () -> hp.amount, v -> hp.amount = v));
+            }
+            list.add(card);
+        }
         // Каждая функция визуалов — отдельная карточка со своим окном настроек (как MusicIsland).
         platform.client.Delta delta = platform.client.Delta.h();
         if (delta != null && delta.d() != null && delta.d().t() != null) {
             for (platform.api.module.Module mod : delta.d().t().d()) {
                 if (mod == null || mod.l() != platform.api.module.Category.Render) {
+                    continue;
+                }
+                if (isHiddenVisual(mod.j())) {
                     continue;
                 }
                 list.add(new MenuCard(mod.j())
@@ -237,6 +259,12 @@ public final class MenuContent {
             }
         }
         return list;
+    }
+
+    /** Эти дельтовские визуалы убраны из списка по решению пользователя. */
+    private static boolean isHiddenVisual(String name) {
+        return "Sound ESP".equals(name) || "Warden ESP".equals(name)
+                || "Board Spoofer".equals(name) || "Block ESP".equals(name);
     }
 
     private MenuRow toggle(String label, java.util.function.BooleanSupplier get,

@@ -35,7 +35,7 @@ public abstract class EntityRendererMixin {
     private int delta$shaderEspColor(int original, @Local(argsOnly = true, index = 0) Entity entity) {
         ShaderESP shaderEsp = Delta.h().d().t().ad();
         if (shaderEsp.m()) {
-            return shaderEsp.r().c().intValue() & 0xFFFFFF;
+            return shaderEsp.espColor() & 0xFFFFFF;
         }
         return original;
     }

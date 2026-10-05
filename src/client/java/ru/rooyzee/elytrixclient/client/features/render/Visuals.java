@@ -2,7 +2,9 @@ package ru.rooyzee.elytrixclient.client.features.render;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.entity.Entity;
 import ru.rooyzee.elytrixclient.client.features.render.modules.FullBright;
+import ru.rooyzee.elytrixclient.client.features.render.modules.HitParticles;
 import ru.rooyzee.elytrixclient.client.features.render.modules.Particles;
 
 import java.util.ArrayList;
@@ -19,6 +21,7 @@ public final class Visuals {
     static {
         register(new FullBright());
         register(new Particles());
+        register(new HitParticles());
     }
 
     private Visuals() {
@@ -36,6 +39,15 @@ public final class Visuals {
         for (VisualModule m : MODULES) {
             if (m.enabled()) {
                 m.tick(mc);
+            }
+        }
+    }
+
+    /** Удар игрока по цели — для HitParticles (fabric AttackEntityEvents). */
+    public static void onAttack(Entity target) {
+        for (VisualModule m : MODULES) {
+            if (m.enabled() && m instanceof HitParticles hp) {
+                hp.onAttack(target);
             }
         }
     }

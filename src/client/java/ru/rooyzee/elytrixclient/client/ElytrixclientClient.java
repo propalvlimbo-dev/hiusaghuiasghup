@@ -35,6 +35,10 @@ public class ElytrixclientClient implements ClientModInitializer {
 
     private boolean panelKeyHeld;
 
+    /** Замер MSPT (мс на тик) для инфо-панели: START/END клиентского тика. */
+    private static long tickStartNano;
+    public static volatile float mspt;
+
     @Override
     public void onInitializeClient() {
         // Инициализация перенесённого ядра delta-26.2 (рендер-модули, события, шейдеры).
@@ -57,7 +61,18 @@ public class ElytrixclientClient implements ClientModInitializer {
         } catch (Exception ignored) {
         }
 
+        // MSPT: замеряем длительность клиентского тика (START → END), сглаживаем.
+        ClientTickEvents.START_CLIENT_TICK.register(client -> tickStartNano = System.nanoTime());
+        net.fabricmc.fabric.api.event.player.AttackEntityEvents.AFTER_ATTACK_ENTITY.register(
+                (player, world, entity, hand, hitResult) -> {
+                    if (player == net.minecraft.client.Minecraft.getInstance().player) {
+                        ru.rooyzee.elytrixclient.client.features.render.Visuals.onAttack(entity);
+                    }
+                });
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            long dt = System.nanoTime() - tickStartNano;
+            mspt = mspt * 0.8f + (dt / 1_000_000f) * 0.2f;
             WindowIcon.tick(client);
             ru.rooyzee.elytrixclient.client.features.render.Visuals.tick(client);
 
