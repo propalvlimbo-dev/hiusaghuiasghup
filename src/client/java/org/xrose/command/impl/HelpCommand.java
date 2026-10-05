@@ -16,7 +16,7 @@ public final class HelpCommand extends ClientCommand {
    @Override
    public void build(LiteralArgumentBuilder<Object> builder) {
       builder.executes(context -> {
-         ChatUtil.header("XRose commands");
+         ChatUtil.header("Elytrix commands");
 
          for (ClientCommand command : this.manager.getCommands()) {
             ChatUtil.entry(command.emoji(), this.manager.getPrefix() + command.name(), command.description());

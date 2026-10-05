@@ -309,14 +309,6 @@ public final class MenuContent {
         }
         for (ru.rooyzee.elytrixclient.client.features.render.VisualModule vm
                 : ru.rooyzee.elytrixclient.client.features.render.Visuals.all()) {
-            if (vm instanceof ru.rooyzee.elytrixclient.client.features.misc.Optimizations oz) {
-                list.add(new MenuCard("Оптимизации")
-                        .badge(() -> oz.enabled() ? "вкл" : "выкл", 0)
-                        .add(toggle("Включить", oz::enabled, oz::setEnabled))
-                        .add(toggle("Облака выкл", () -> oz.cloudsOff, v -> oz.cloudsOff = v))
-                        .add(toggle("Покачивание камеры выкл", () -> oz.bobOff, v -> oz.bobOff = v))
-                        .add(toggle("60 FPS в меню", () -> oz.fpsMenu, v -> oz.fpsMenu = v)));
-            }
             if (vm instanceof ru.rooyzee.elytrixclient.client.features.misc.AutoRegister ar) {
                 list.add(new MenuCard("AutoRegister")
                         .badge(() -> ar.enabled() ? "вкл" : "выкл", 0)

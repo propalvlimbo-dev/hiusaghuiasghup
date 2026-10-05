@@ -21,7 +21,7 @@ public class ChatUtil implements Interface {
     }
 
     public static void a(Object message) {
-        a("[Delta 26.2]", message);
+        a("[Elytrix]", message);
     }
 
     public static void a(String prefix, Object message) {

@@ -15,7 +15,7 @@ import sdk.api.invoke.impl.PackerType;
 @invoke(ivirtualiz = PackerType.MUTATION, imode = PackerMode.BLOCK)
 public final class DiscordRPCFeature extends Feature {
    private static final String DISCORD_ID = "1359591386927595551";
-   private static final String VERSION_LABEL = "XRose Client | 26.2";
+   private static final String VERSION_LABEL = "Elytrix Client | 26.2";
    private static final String LARGE_IMAGE_KEY = "https://i.postimg.cc/kGxLz1T0/ava-gif.gif";
    private static DiscordRPC discordRPC;
    private static DiscordRichPresence presence;
@@ -24,7 +24,7 @@ public final class DiscordRPCFeature extends Feature {
    private static volatile boolean available;
 
    public DiscordRPCFeature() {
-      super("Discord RPC", "Shows Discord Rich Presence for XRose Client.", FeatureCategory.PLAYER, -1);
+      super("Discord RPC", "Shows Discord Rich Presence for Elytrix Client.", FeatureCategory.PLAYER, -1);
       this.setVisible(false);
       initRPC();
       startRPC();
@@ -49,13 +49,13 @@ public final class DiscordRPCFeature extends Feature {
             discordRPC.Discord_Initialize("1359591386927595551", handlers, true, null);
             presence.startTimestamp = System.currentTimeMillis() / 1000L;
             presence.largeImageKey = "https://i.postimg.cc/kGxLz1T0/ava-gif.gif";
-            presence.largeImageText = "XRose Client | 26.2";
+            presence.largeImageText = "Elytrix Client | 26.2";
             running = true;
             rpcThread = new Thread(() -> {
                while (running) {
                   try {
                      presence.state = "User: " + sessionName();
-                     presence.details = "XRose Client | 26.2";
+                     presence.details = "Elytrix Client | 26.2";
                      discordRPC.Discord_UpdatePresence(presence);
                      discordRPC.Discord_RunCallbacks();
                      Thread.sleep(5000L);

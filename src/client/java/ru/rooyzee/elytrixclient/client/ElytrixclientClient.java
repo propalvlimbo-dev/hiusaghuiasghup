@@ -47,6 +47,19 @@ public class ElytrixclientClient implements ClientModInitializer {
         } catch (Throwable t) {
             System.err.println("[Elytrix] Delta init failed: " + t);
         }
+        // Baritone в чате не светится: глушим его logger.
+        try {
+            Object settings = baritone.api.BaritoneAPI.getSettings();
+            Object loggerSetting = settings.getClass().getField("logger").get(settings);
+            loggerSetting.getClass().getField("value").set(loggerSetting,
+                    (java.util.function.Consumer<String>) msg -> { });
+        } catch (Throwable ignored) {
+        }
+        // Прокси из конфига — сразу.
+        try {
+            ru.rooyzee.elytrixclient.client.ui.NetworkScreen.applyFromConfig();
+        } catch (Throwable ignored) {
+        }
         // Тема и тумблер анимаций из конфига — до первого кадра.
         UiTheme.applyPreset(CONFIG.themeIndex);
         UiWidget.ANIMATIONS = CONFIG.animations;

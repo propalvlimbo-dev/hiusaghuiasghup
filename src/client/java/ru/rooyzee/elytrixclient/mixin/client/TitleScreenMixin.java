@@ -38,6 +38,19 @@ public abstract class TitleScreenMixin extends Screen {
 
     /** Убираем надпись копирайта внизу справа и маленькие иконки (язык и т.д.). */
     @Inject(method = "init", at = @At("TAIL"), require = 0)
+    private void elytrix$extraButtons(CallbackInfo ci) {
+        int y = this.height - 26;
+        this.addWidget(net.minecraft.client.gui.components.Button.builder(
+                        net.minecraft.network.chat.Component.literal("Аккаунты"),
+                        b -> this.minecraft.gui.setScreen(new platform.client.ui.screen.AltScreen()))
+                .bounds(this.width - 178, y, 84, 20).build());
+        this.addWidget(net.minecraft.client.gui.components.Button.builder(
+                        net.minecraft.network.chat.Component.literal("Сеть"),
+                        b -> this.minecraft.gui.setScreen(new ru.rooyzee.elytrixclient.client.ui.NetworkScreen((net.minecraft.client.gui.screens.Screen) (Object) this)))
+                .bounds(this.width - 90, y, 84, 20).build());
+    }
+
+    @Inject(method = "init", at = @At("TAIL"), require = 0)
     private void elytrix$noCopyright(CallbackInfo ci) {
         if (!ElytrixclientClient.CONFIG.hackerBackground) {
             return;

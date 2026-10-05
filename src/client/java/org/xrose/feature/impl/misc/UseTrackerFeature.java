@@ -339,7 +339,7 @@ public final class UseTrackerFeature extends Feature {
       Minecraft mc = Minecraft.getInstance();
       if (mc.player != null) {
          MutableComponent text = Component.empty()
-            .append(Component.literal("XRose Beta").withStyle(style -> style.withBold(true).withColor(8385279)))
+            .append(Component.literal("Elytrix").withStyle(style -> style.withBold(true).withColor(8385279)))
             .append(Component.literal(" » ").withStyle(ChatFormatting.DARK_GRAY))
             .append(message);
          mc.player.sendSystemMessage(text);

@@ -13,7 +13,7 @@ import org.xrose.utils.render.Theme;
 
 public final class ChatUtil {
    private static final Pattern EMOJI_ALIAS = Pattern.compile(":[A-Za-z0-9_+\\-]+:");
-   private static final String PREFIX = "XRose: ";
+   private static final String PREFIX = "Elytrix: ";
 
    public static void print(String message) {
       info(message);
@@ -46,7 +46,7 @@ public final class ChatUtil {
    public static void send(String message) {
       Minecraft mc = MinecraftContext.mc;
       if (mc.gui != null) {
-         mc.gui.hud.getChat().addClientSystemMessage(gradient("XRose: " + message));
+         mc.gui.hud.getChat().addClientSystemMessage(gradient("Elytrix: " + message));
       }
    }
 

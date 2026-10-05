@@ -10,7 +10,7 @@ import sdk.api.invoke.impl.PackerType;
 
 @invoke(ivirtualiz = PackerType.MUTATION, imode = PackerMode.BLOCK)
 public final class NameProtectFeature extends Feature {
-   public final TextSetting name = this.register(new TextSetting("Name", "XRoseUser", 32));
+   public final TextSetting name = this.register(new TextSetting("Name", "ElytrixUser", 32));
    public final ModeSetting mode = this.register(new ModeSetting("Mode", "Replace", "Replace", "Blur"));
 
    public NameProtectFeature() {

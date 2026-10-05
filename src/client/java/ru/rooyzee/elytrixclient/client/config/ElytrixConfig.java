@@ -71,6 +71,14 @@ public class ElytrixConfig {
     /** Семейство шрифтов интерфейса: 0 — Google Sans, 1 — Google Sans Flex, 2 — SF Pro (Fonts.FAMILY_NAMES). */
     public int fontFamily = 0;
 
+    // ---------- Сеть ----------
+    /** Прокси: "off" / "socks5" / "http". */
+    public String proxyMode = "off";
+    public String proxyHost = "";
+    public int proxyPort = 1080;
+    /** Желаемая версия протокола (информационно; реальную смену версий даёт ViaFabric). */
+    public String protocolVersion = "";
+
     // ---------- Визуалы / HUD ----------
     /** Плавающий музыкальный плеер (MusicIsland). */
     public boolean musicIsland = true;
