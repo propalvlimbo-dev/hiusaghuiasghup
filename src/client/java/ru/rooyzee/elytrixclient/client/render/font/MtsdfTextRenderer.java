@@ -1,40 +1,32 @@
 package ru.rooyzee.elytrixclient.client.render.font;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.navigation.ScreenRectangle;
-import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.minecraft.resources.Identifier;
-import org.joml.Matrix3x2fc;
+import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
- * MTSDF текстовый рендерер — рисует текст из MTSDF атласа.
+ * MTSDF текстовый рендерер.
  *
- * <p>Каждый глиф рисуется как textured quad через GUI_TEXTURED pipeline.
- * Текстура атласа загружается из ресурсов и используется как обычная текстура.
+ * <p>Сейчас использует UiText (Inter TTF) для отрисовки и MtsdfFont для
+ * точного измерения ширины. MTSDF атлас загружается как текстура.
  *
  * <p>Для полноценного MTSDF рендеринга (с SDF math в шейдере) нужен
- * кастомный RenderPipeline с text.vsh/text.fsh. Это требует глубокой
- * интеграции с MC 26.2 shader system.
+ * кастомный RenderPipeline с text.vsh/text.fsh + GuiElementRenderState.
  */
 public final class MtsdfTextRenderer {
 
-    private static Identifier fontTextureId;
-    private static DynamicTexture fontTexture;
+    private static MtsdfFont regularFont;
+    private static MtsdfFont mediumFont;
     private static boolean initialized = false;
-    private static int texWidth = 1, texHeight = 1;
 
-    /** Регистрирует MTSDF текстуру в Minecraft. */
+    /** Загружает MTSDF атласы. */
     public static void init() {
         if (initialized) return;
         initialized = true;
@@ -42,96 +34,50 @@ public final class MtsdfTextRenderer {
         if (mc == null) return;
 
         try {
-            Identifier pngId = Identifier.fromNamespaceAndPath("elytrixclient", "textures/font/google_sans_regular.png");
-            try (InputStream is = mc.getResourceManager().open(pngId)) {
-                NativeImage image = NativeImage.read(is);
-                texWidth = image.getWidth();
-                texHeight = image.getHeight();
-                fontTextureId = Identifier.fromNamespaceAndPath("elytrixclient", "font/mtsdf_atlas");
-                fontTexture = new DynamicTexture(() -> "elytrix-mtsdf", image);
-                mc.getTextureManager().register(fontTextureId, fontTexture);
-                System.out.println("[Elytrix] MTSDF texture registered: " + texWidth + "x" + texHeight);
-            }
+            regularFont = new MtsdfFont(
+                    Identifier.fromNamespaceAndPath("elytrixclient", "textures/font/google_sans_regular"),
+                    Identifier.fromNamespaceAndPath("elytrixclient", "textures/font/google_sans_regular.json"));
+            mediumFont = new MtsdfFont(
+                    Identifier.fromNamespaceAndPath("elytrixclient", "textures/font/google_sans_medium"),
+                    Identifier.fromNamespaceAndPath("elytrixclient", "textures/font/google_sans_medium.json"));
+            System.out.println("[Elytrix] MTSDF fonts loaded: regular=" + (regularFont != null)
+                    + " medium=" + (mediumFont != null));
         } catch (Exception e) {
-            System.err.println("[Elytrix] MTSDF texture load failed: " + e);
+            System.err.println("[Elytrix] MTSDF font load failed: " + e);
         }
     }
+
+    public static MtsdfFont regular() { return regularFont; }
+    public static MtsdfFont medium() { return mediumFont; }
 
     /**
-     * Рисует MTSDF текст через GUI_TEXTURED pipeline.
-     * Каждый глиф = textured quad с UV из MTSDF атласа.
+     * Рисует текст через UiText (Inter TTF). MtsdfFont используется для измерения.
      */
-    public static void draw(GuiGraphicsExtractor g, MtsdfFont font, String text,
+    public static void draw(GuiGraphicsExtractor g, Font mcFont, String text,
                             float x, float y, float size, int color) {
-        if (font == null || text == null || text.isEmpty()) return;
-        if (fontTextureId == null) {
-            // Fallback на UiText если текстура не загружена
-            Minecraft mc = Minecraft.getInstance();
-            if (mc != null) {
-                ru.rooyzee.elytrixclient.client.ui.kit.UiText.draw(g, mc.font, text, (int) x, (int) y, color,
-                        ru.rooyzee.elytrixclient.client.ui.kit.UiText.FACE, false);
-            }
-            return;
-        }
-
-        float r = ((color >> 16) & 0xFF) / 255f;
-        float gr = ((color >> 8) & 0xFF) / 255f;
-        float b = (color & 0xFF) / 255f;
-        float a = ((color >> 24) & 0xFF) / 255f;
-
-        float pen = x;
-        int prev = -1;
-        float baseline = y + font.ascender(size);
-
-        for (int i = 0; i < text.length(); ) {
-            int cp = text.codePointAt(i);
-            int len = Character.charCount(cp);
-
-            MtsdfFont.Glyph glyph = font.glyph(cp);
-            if (prev != -1) pen += font.kerning(prev, cp) * size;
-
-            if (glyph.atlasRight() > glyph.atlasLeft()) {
-                float gx0 = pen + glyph.planeLeft() * size;
-                float gy0 = baseline - glyph.planeTop() * size;
-                float gx1 = pen + glyph.planeRight() * size;
-                float gy1 = baseline - glyph.planeBottom() * size;
-
-                // UV в атласе (нормализованные)
-                float u0 = glyph.atlasLeft() / (float) font.atlasWidth();
-                float v0 = glyph.atlasBottom() / (float) font.atlasHeight();
-                float u1 = glyph.atlasRight() / (float) font.atlasWidth();
-                float v1 = glyph.atlasTop() / (float) font.atlasHeight();
-
-                // Рисуем через blit
-                int ix0 = (int) gx0, iy0 = (int) gy0;
-                int ix1 = (int) gx1, iy1 = (int) gy1;
-                int dw = ix1 - ix0, dh = iy1 - iy0;
-                if (dw > 0 && dh > 0) {
-                    g.blit(RenderPipelines.GUI_TEXTURED, fontTextureId,
-                            ix0, iy0,
-                            u0, v0,
-                            dw, dh,
-                            (int) ((u1 - u0) * texWidth), (int) ((v1 - v0) * texHeight),
-                            texWidth, texHeight,
-                            color);
-                }
-            }
-
-            pen += glyph.advance() * size;
-            prev = cp;
-            i += len;
-        }
+        if (text == null || text.isEmpty()) return;
+        UiText.draw(g, mcFont, text, (int) x, (int) y, color, UiText.FACE, false);
     }
 
-    /** Ширина текста через MtsdfFont. */
-    public static float width(MtsdfFont font, String text, float size) {
-        if (font == null || text == null || text.isEmpty()) return 0;
-        return font.measureWidth(text, size);
+    /** Ширина текста через MtsdfFont (точнее чем mc.font). */
+    public static float width(String text, float size) {
+        if (regularFont == null || text == null || text.isEmpty()) return 0;
+        return regularFont.measureWidth(text, size);
     }
 
     /** Fallback ширина через mc.font. */
-    public static float widthFallback(net.minecraft.client.gui.Font mcFont, String text) {
+    public static float widthFallback(Font mcFont, String text) {
         if (text == null || text.isEmpty()) return 0;
         return mcFont.width(text);
+    }
+
+    /** Высота строки. */
+    public static float lineHeight(float size) {
+        return regularFont != null ? regularFont.lineHeight(size) : size * 1.2f;
+    }
+
+    /** Ascender в пикселях. */
+    public static float ascender(float size) {
+        return regularFont != null ? regularFont.ascender(size) : size * 0.8f;
     }
 }
