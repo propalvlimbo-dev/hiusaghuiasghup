@@ -15,13 +15,26 @@ import java.lang.reflect.Field;
 
 /**
  * Кастомные RenderPipeline для ElytrixClient.
- * Полный порт из delta-26.2 DeltaPipelines.
- *
- * TEXT pipeline использует text.vsh/text.fsh шейдер для MTSDF рендеринга.
+ * Lazy init — не крашит игру если reflection не сработает.
  */
 public final class ElytrixPipelines {
 
-    public static final RenderPipeline TEXT = builder("text", true).build();
+    private static RenderPipeline textPipeline;
+    private static boolean initFailed = false;
+
+    public static RenderPipeline getText() {
+        if (initFailed) return RenderPipelines.GUI_TEXTURED;
+        if (textPipeline != null) return textPipeline;
+        try {
+            textPipeline = builder("text", true).build();
+            System.out.println("[Elytrix] MTSDF pipeline registered OK");
+        } catch (Exception e) {
+            System.err.println("[Elytrix] MTSDF pipeline failed: " + e);
+            initFailed = true;
+            return RenderPipelines.GUI_TEXTURED;
+        }
+        return textPipeline;
+    }
 
     private static RenderPipeline.Snippet getGuiSnippet() {
         try {

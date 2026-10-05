@@ -87,7 +87,7 @@ public final class MtsdfTextRenderState extends ElytrixElementRenderState {
 
     @Override
     public RenderPipeline pipeline() {
-        return ElytrixPipelines.TEXT;
+        return ElytrixPipelines.getText();
     }
 
     @Override

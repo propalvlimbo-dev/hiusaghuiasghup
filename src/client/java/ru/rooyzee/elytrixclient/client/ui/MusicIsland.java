@@ -214,14 +214,14 @@ public final class MusicIsland {
         }
     }
 
-    /* ══ ТЕКСТ через MtsdfTextRenderer (MTSDF + UiText fallback) ══ */
+    /* ══ ТЕКСТ через UiText (Inter TTF) — рабочий ══ */
     private static void txt(Font f, GuiGraphicsExtractor g, String t, float x, float y, float sz, int col) {
         if (t == null || t.isEmpty()) return;
-        MtsdfTextRenderer.draw(g, f, t, x, y, sz, col);
+        UiText.draw(g, f, t, (int)x, (int)y, col, UiText.FACE, false);
     }
 
-    private static float twS(Font f, String t, float sz) { return t == null ? 0 : MtsdfTextRenderer.widthFallback(f, t); }
-    private static float tw(Font f, LyricLayout l) { float t = 0; for (String s : l.lines()) t += MtsdfTextRenderer.widthFallback(f, s); return Math.max(1f, t); }
+    private static float twS(Font f, String t, float sz) { return t == null ? 0 : f.width(t); }
+    private static float tw(Font f, LyricLayout l) { float t = 0; for (String s : l.lines()) t += f.width(s); return Math.max(1f, t); }
 
     /* ══ прокрутка (из сурцов Font.a scroll) ══ */
     private static void scroll(GuiGraphicsExtractor g, Font f, Object key, String text,
