@@ -3,7 +3,7 @@ package ru.rooyzee.elytrixclient.client.ui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.render.pip.RenderPipelines;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
