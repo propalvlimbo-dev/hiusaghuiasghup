@@ -167,18 +167,6 @@ public class OwnBot implements Runnable {
                     status = "кик: сервер в online-mode";
                     log.add("[Бот " + name + "] сервер требует online-mode — встроенные боты работают только на offline-серверах");
                     return false;
-                } else if (f.id == SL_DISCONNECT) {
-                    String why = f.component();
-                    if (why == null || why.isEmpty() || why.startsWith("(")) {
-                        StringBuilder hex = new StringBuilder();
-                        for (int i = 0; i < Math.min(24, f.data.length); i++) {
-                            hex.append(String.format("%02X ", f.data[i]));
-                        }
-                        why = "(hex " + hex + ")";
-                    }
-                    status = "кик: " + why;
-                    log.add("[Бот " + name + "] кик при входе: " + status);
-                    return false;
                 } else if (f.id == SL_SUCCESS || elytrix$looksLikeSuccess(f)) {
                     send(L_ACK, w -> {
                     });
@@ -195,6 +183,18 @@ public class OwnBot implements Runnable {
                         w.bool(true);
                     });
                     send(CFG_KNOWN, w -> w.varInt(0));
+                } else if (f.id == SL_DISCONNECT) {
+                    String why = f.component();
+                    if (why == null || why.isEmpty() || why.startsWith("(")) {
+                        StringBuilder hex = new StringBuilder();
+                        for (int i2 = 0; i2 < Math.min(24, f.data.length); i2++) {
+                            hex.append(String.format("%02X ", f.data[i2]));
+                        }
+                        why = "(hex " + hex + ")";
+                    }
+                    status = "кик: " + why;
+                    log.add("[Бот " + name + "] кик при входе: " + status);
+                    return false;
                 }
                 return true;
             }
@@ -442,7 +442,7 @@ public class OwnBot implements Runnable {
                 off = 0;
             }
         }
-        int[] holder = new int[1];
+        int[] holder = new int[]{off};
         int id = readVarInt(data, holder);
         return new Frame(id, data, holder[0]);
     }
