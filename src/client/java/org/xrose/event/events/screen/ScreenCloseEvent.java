@@ -1,0 +1,28 @@
+package org.xrose.event.events.screen;
+
+import lombok.Generated;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import org.xrose.event.CancellableEvent;
+
+public final class ScreenCloseEvent extends CancellableEvent {
+   private Minecraft client;
+   private Screen screen;
+
+   public ScreenCloseEvent set(Minecraft client, Screen screen) {
+      this.client = client;
+      this.screen = screen;
+      return this;
+   }
+
+   @Generated
+   public Minecraft getClient() {
+      return this.client;
+   }
+
+   @Generated
+   public Screen getScreen() {
+      return this.screen;
+   }
+}
+

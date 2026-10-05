@@ -1,0 +1,135 @@
+package org.xrose.utils.render.chams;
+
+import com.mojang.blaze3d.buffers.GpuBuffer;
+import com.mojang.blaze3d.buffers.Std140SizeCalculator;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
+import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.GpuSampler;
+import com.mojang.blaze3d.textures.GpuTextureView;
+import java.util.function.Consumer;
+import org.xrose.feature.impl.visual.ChamsFeature;
+import org.xrose.utils.ColorUtil;
+import org.xrose.utils.render.HurtUtil;
+import org.xrose.utils.render.post.KawaseBlur;
+import org.xrose.utils.render.post.PostFx;
+import org.xrose.utils.render.post.PostPipelines;
+import org.xrose.utils.render.post.PostTarget;
+import sdk.api.optimize.optimize;
+
+@optimize
+public final class ChamsCompositeEffect {
+   private static final int MAX_MIPS = 3;
+   private static final int STYLE_SIZE = new Std140SizeCalculator().putVec4().putVec4().get();
+   private final GpuBuffer styleUniforms = PostFx.createUniforms("XRose Chams Style UBO", STYLE_SIZE);
+   private final KawaseBlur maskBlur = new KawaseBlur("xrose-chams-mask");
+   private final KawaseBlur sceneBlur = new KawaseBlur("xrose-chams-scene");
+   private final PostTarget sceneCopy = new PostTarget("xrose-chams-scene-copy", PostPipelines.EFFECT_FORMAT, false);
+
+   public void render(ChamsMaskRenderer.MaskFrame frame, ChamsFeature feature) {
+      RenderTarget mask = frame.mask();
+      RenderTarget output = frame.output();
+      if (mask != null && output != null && mask.getColorTextureView() != null && output.getColorTextureView() != null) {
+         int width = output.width;
+         int height = output.height;
+         this.writeStyle(feature, frame.hurtFactor(), frame.friend());
+         GpuSampler sampler = PostFx.linearSampler();
+         GpuTextureView blurredMask = null;
+         if (feature.usesInternal() || feature.hasGlow()) {
+            float radius = Math.max(1.0F, feature.glowRadius.getValue().floatValue() * 2.0F);
+            blurredMask = this.maskBlur
+               .run(mask.getColorTextureView(), width, height, Math.clamp((int)Math.ceil(radius / 2.0F), 1, 3), Math.clamp(radius, 0.5F, 4.0F), sampler);
+         }
+
+         if (feature.hasGlass()) {
+            TextureTarget scene = this.sceneCopy.ensure(width, height);
+            RenderSystem.getDevice()
+               .createCommandEncoder()
+               .copyTextureToTexture(output.getColorTexture(), scene.getColorTexture(), 0, 0, 0, 0, 0, width, height);
+            GpuTextureView sceneView = scene.getColorTextureView();
+            if (feature.glassBlur.getValue() > 0.001) {
+               float radius = feature.glassBlur.getValue().floatValue() / 8.0F;
+               sceneView = this.sceneBlur
+                  .run(sceneView, width, height, Math.clamp((int)Math.ceil(radius / 2.0F), 1, 3), Math.clamp(radius, 0.5F, 4.0F), sampler);
+            }
+
+            GpuTextureView finalScene = sceneView;
+            this.stylePass("XRose Chams Glass", PostPipelines.CHAMS_GLASS, output, pass -> {
+               pass.bindTexture("SceneSampler", finalScene, sampler);
+               pass.bindTexture("MaskSampler", mask.getColorTextureView(), sampler);
+            });
+         }
+
+         if (feature.hasSolid()) {
+            this.stylePass("XRose Chams Solid", PostPipelines.CHAMS_SOLID, output, pass -> pass.bindTexture("MaskSampler", mask.getColorTextureView(), sampler));
+         }
+
+         if (feature.hasShaderFill()) {
+            this.stylePass(
+               "XRose Chams Shader Fill",
+               feature.shader.is("Nebula") ? PostPipelines.CHAMS_NEBULA : PostPipelines.CHAMS_PLASMA,
+               output,
+               pass -> pass.bindTexture("MaskSampler", mask.getColorTextureView(), sampler)
+            );
+         }
+
+         if (feature.usesInternal() && blurredMask != null) {
+            GpuTextureView finalBlur = blurredMask;
+            this.stylePass("XRose Chams Internal", PostPipelines.CHAMS_INTERNAL, output, pass -> {
+               pass.bindTexture("BlurredSampler", finalBlur, sampler);
+               pass.bindTexture("MaskSampler", mask.getColorTextureView(), sampler);
+            });
+         }
+
+         if (feature.hasOutline()) {
+            this.stylePass(
+               "XRose Chams Outline", PostPipelines.CHAMS_OUTLINE, output, pass -> pass.bindTexture("MaskSampler", mask.getColorTextureView(), sampler)
+            );
+         }
+
+         if (feature.hasGlow() && blurredMask != null) {
+            GpuTextureView finalBlur = blurredMask;
+            this.stylePass(
+               "XRose Chams Glow", feature.additiveBlending.getValue() ? PostPipelines.CHAMS_GLOW_ADDITIVE : PostPipelines.CHAMS_GLOW, output, pass -> {
+                  pass.bindTexture("BlurredSampler", finalBlur, sampler);
+                  pass.bindTexture("MaskSampler", mask.getColorTextureView(), sampler);
+               }
+            );
+         }
+      }
+   }
+
+   private void stylePass(String label, RenderPipeline pipeline, RenderTarget output, Consumer<RenderPass> setup) {
+      PostFx.pass(label, pipeline, output, pass -> {
+         pass.setUniform("ChamsStyle", this.styleUniforms);
+         setup.accept(pass);
+      });
+   }
+
+   private void writeStyle(ChamsFeature feature, float hurtFactor, boolean friend) {
+      int color = HurtUtil.blend(feature.resolvedColor(friend), hurtFactor, 1.0F);
+      PostFx.writeUniforms(
+         this.styleUniforms,
+         STYLE_SIZE,
+         builder -> builder.putVec4(
+               ColorUtil.red(color) / 255.0F, ColorUtil.green(color) / 255.0F, ColorUtil.blue(color) / 255.0F, feature.opacity.getValue().floatValue()
+            )
+            .putVec4(
+               PostFx.shaderTime() * feature.shaderSpeed.getValue().floatValue(),
+               feature.mirror.getValue() ? 1.0F : 0.0F,
+               feature.outlineThickness.getValue().floatValue(),
+               feature.glowStrength.getValue().floatValue()
+            )
+      );
+   }
+
+   public void release() {
+      this.maskBlur.release();
+      this.sceneBlur.release();
+      this.sceneCopy.release();
+      this.styleUniforms.close();
+   }
+}
+

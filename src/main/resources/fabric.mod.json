@@ -16,7 +16,8 @@
       "ru.rooyzee.elytrixclient.client.ElytrixclientClient"
     ],
     "main": [
-      "ru.rooyzee.elytrixclient.Elytrixclient"
+      "ru.rooyzee.elytrixclient.Elytrixclient",
+      "org.xrose.XRose"
     ]
   },
   "mixins": [
@@ -27,6 +28,10 @@
     },
     {
       "config": "delta.mixins.json",
+      "environment": "client"
+    },
+    {
+      "config": "xrose.mixins.json",
       "environment": "client"
     }
   ],

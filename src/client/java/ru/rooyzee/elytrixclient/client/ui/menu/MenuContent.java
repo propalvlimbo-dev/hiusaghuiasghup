@@ -240,6 +240,25 @@ public final class MenuContent {
             }
             list.add(card);
         }
+        // Новые визуалы xroses, которых нет в delta-26.2: карточка с тумблером,
+        // настройки — в родном меню xroses (кнопка «Настройки»).
+        try {
+            for (org.xrose.feature.Feature fx
+                    : org.xrose.feature.FeatureManager.INSTANCE.getFeatures(org.xrose.feature.FeatureCategory.VISUAL)) {
+                if (fx == null || isXroseDuplicate(fx.getName())) {
+                    continue;
+                }
+                list.add(new MenuCard(fx.getName())
+                        .badge(() -> fx.isEnabled() ? "вкл" : "выкл", 0)
+                        .add(new MenuRow.Toggle("Включить", fx::isEnabled, fx::setEnabled).describe(fx.getDescription()))
+                        .add(new MenuRow.Button("Настройки", MenuRow.Button.Kind.SECONDARY, () -> {
+                            if (!org.xrose.menu.core.MenuOverlay.isOpen()) {
+                                org.xrose.menu.core.MenuOverlay.toggle(net.minecraft.client.Minecraft.getInstance());
+                            }
+                        }).describe(fx.getDescription())));
+            }
+        } catch (Throwable ignored) {
+        }
         // Каждая функция визуалов — отдельная карточка со своим окном настроек (как MusicIsland).
         platform.client.Delta delta = platform.client.Delta.h();
         if (delta != null && delta.d() != null && delta.d().t() != null) {
@@ -265,6 +284,30 @@ public final class MenuContent {
     private static boolean isHiddenVisual(String name) {
         return "Sound ESP".equals(name) || "Warden ESP".equals(name)
                 || "Board Spoofer".equals(name) || "Block ESP".equals(name);
+    }
+
+    /** Визуалы xroses, которые у нас уже есть в delta или перенесены своими модулями. */
+    private static boolean isXroseDuplicate(String name) {
+        switch (name) {
+            case "Arrows":
+            case "AtmoDawnFog":
+            case "BlockESP":
+            case "Crosshair":
+            case "SwingAnimation":
+            case "ViewModel":
+            case "JumpCircles":
+            case "Removals":
+            case "ItemPhysics":
+            case "See Invisible":
+            case "EntityESP":
+            case "ShaderHands":
+            case "HUD":
+            case "WorldParticles":
+            case "HitParticles":
+                return true;
+            default:
+                return false;
+        }
     }
 
     private MenuRow toggle(String label, java.util.function.BooleanSupplier get,

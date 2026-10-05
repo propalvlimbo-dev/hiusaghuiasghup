@@ -62,6 +62,11 @@ public class ElytrixclientClient implements ClientModInitializer {
         }
 
         // MSPT: замеряем длительность клиентского тика (START → END), сглаживаем.
+        // World-render хук: наши визуалы получают WorldRenderContext каждый кадр.
+        net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.LAST.register(ctx -> {
+            ru.rooyzee.elytrixclient.client.features.render.Visuals.renderWorld(ctx);
+        });
+
         ClientTickEvents.START_CLIENT_TICK.register(client -> tickStartNano = System.nanoTime());
         net.fabricmc.fabric.api.event.player.AttackEntityEvents.AFTER_ATTACK_ENTITY.register(
                 (player, world, entity, hand, hitResult) -> {

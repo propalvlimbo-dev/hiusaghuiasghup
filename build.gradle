@@ -59,6 +59,11 @@ dependencies {
     include 'org.jsoup:jsoup:1.18.3'
     implementation 'org.reflections:reflections:0.10.2'
     implementation 'org.slf4j:slf4j-api:2.0.6'
+
+    // ── Зависимости перенесённого стека xroses (аннотации, нужны только на compile) ──
+    compileOnly 'org.jetbrains:annotations:24.1.0'
+    compileOnly 'org.osgi:org.osgi.annotation.bundle:2.0.0'
+    compileOnly 'biz.aQute.bnd:biz.aQute.bnd.annotation:7.0.0'
 }
 
 processResources {
