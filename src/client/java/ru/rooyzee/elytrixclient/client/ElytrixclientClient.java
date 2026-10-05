@@ -9,7 +9,6 @@ import org.lwjgl.glfw.GLFW;
 import ru.rooyzee.elytrixclient.client.botmark.BotMarkRunner;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 import ru.rooyzee.elytrixclient.client.soulfire.SoulFireController;
-import ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixScreen;
 import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
 import ru.rooyzee.elytrixclient.client.ui.WindowIcon;
@@ -40,9 +39,6 @@ public class ElytrixclientClient implements ClientModInitializer {
         // Тема и тумблер анимаций из конфига — до первого кадра.
         UiTheme.applyPreset(CONFIG.themeIndex);
         UiWidget.ANIMATIONS = CONFIG.animations;
-
-        // Загружаем MTSDF шрифты (Google Sans Regular/Medium)
-        MtsdfTextRenderer.init();
 
         // Создаём папку .minecraft/elytrix/ для музыки, прокси и т.д.
         try {
