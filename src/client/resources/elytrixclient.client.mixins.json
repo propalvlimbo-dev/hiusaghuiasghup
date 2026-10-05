@@ -11,8 +11,7 @@
     "LoadingScreensMixin",
     "AbstractButtonMixin",
     "AbstractWidgetMixin",
-    "MusicManagerMixin",
-    "GuiMixin"
+    "MusicManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

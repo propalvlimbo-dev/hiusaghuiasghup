@@ -38,6 +38,10 @@ dependencies {
     // MP3 декодирование (javax.sound.sampled SPI) — для .mp3 файлов музыки
     implementation 'com.googlecode.soundlibs:mp3spi:1.9.5.4'
     include 'com.googlecode.soundlibs:mp3spi:1.9.5.4'
+
+    // Windows Media Session — чтение текущего трека из Spotify, YouTube и т.д.
+    implementation('dev.redstones.mediaplayerinfo:media-player-info:0.1.0') { exclude group: 'com.github.hypfvieh' }
+    include('dev.redstones.mediaplayerinfo:media-player-info:0.1.0') { transitive = false }
 }
 
 processResources {
