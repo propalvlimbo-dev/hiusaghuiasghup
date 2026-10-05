@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import ru.rooyzee.elytrixclient.client.ElytrixclientClient;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
+import ru.rooyzee.elytrixclient.client.render.font.Fonts;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixLoader;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixQuality;
 import ru.rooyzee.elytrixclient.client.ui.UiSound;
@@ -184,6 +185,11 @@ public final class MenuContent {
                 }))
                 .add(new MenuRow.Mode("Размер панели", SCALE_NAMES, () -> cfg.uiScaleIndex, i -> {
                     cfg.uiScaleIndex = i;
+                    dirty.run();
+                }))
+                .add(new MenuRow.Mode("Шрифт", Fonts.FAMILY_NAMES, () -> cfg.fontFamily, i -> {
+                    cfg.fontFamily = i;
+                    Fonts.setFamily(i);
                     dirty.run();
                 }))
                 .add(new MenuRow.Slider("Непрозрачность фона", 0, 100, 1, "%", () -> cfg.panelOpacity, v -> {

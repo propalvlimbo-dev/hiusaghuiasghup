@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
+import ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer;
 import ru.rooyzee.elytrixclient.client.ui.kit.gfx.UiVector;
 
 /**
@@ -427,6 +428,15 @@ public final class UiDraw {
 
     public static void textSpaced(GuiGraphicsExtractor g, Font font, String s, int x, int y, int spacing,
                                   int color, boolean shadow, Identifier face) {
+        if (s == null || s.isEmpty()) {
+            return;
+        }
+        // MTSDF умеет разрядку одним прогоном — буквы остаются в одном батче
+        // и с настоящим кернингом, а не рисуются по одной.
+        if (MtsdfTextRenderer.available()) {
+            UiText.drawSpaced(g, font, s, x, y, color, face, spacing);
+            return;
+        }
         int cx = x;
         for (int i = 0; i < s.length(); i++) {
             String ch = String.valueOf(s.charAt(i));
@@ -445,6 +455,12 @@ public final class UiDraw {
     }
 
     public static int spacedWidth(Font font, String s, int spacing, Identifier face) {
+        if (s == null || s.isEmpty()) {
+            return 0;
+        }
+        if (MtsdfTextRenderer.available()) {
+            return UiText.widthSpaced(font, s, face, spacing);
+        }
         int w = 0;
         for (int i = 0; i < s.length(); i++) {
             String ch = String.valueOf(s.charAt(i));
@@ -482,7 +498,19 @@ public final class UiDraw {
         return sb + ellipsis;
     }
 
+    /** Центрированный текст из {@link Component} (стили компонента не сохраняются). */
     public static void textComponentCenter(GuiGraphicsExtractor g, Font font, Component c, int cx, int y, int color) {
+        if (c == null) {
+            return;
+        }
+        if (MtsdfTextRenderer.available()) {
+            String s = c.getString();
+            if (s == null || s.isEmpty()) {
+                return;
+            }
+            UiText.draw(g, font, s, cx - UiText.width(font, s, UiText.FACE) / 2f, y, color, UiText.FACE, false);
+            return;
+        }
         g.centeredText(font, c, cx, y, color);
     }
 

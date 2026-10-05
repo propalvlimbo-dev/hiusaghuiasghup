@@ -56,7 +56,7 @@ public final class MsdfFont {
         for (RawGlyph raw : file.glyphs) {
             this.glyphs.put(raw.unicode, Glyph.bake(raw, this.atlasWidth, this.atlasHeight));
         }
-        this.fallbackGlyph = this.glyphs.get('?');
+        this.fallbackGlyph = pickFallback(this.glyphs);
 
         this.kerning = new Long2FloatOpenHashMap();
         this.kerning.defaultReturnValue(0.0F);
@@ -83,6 +83,11 @@ public final class MsdfFont {
     public Glyph glyph(int codePoint) {
         Glyph glyph = this.glyphs.get(codePoint);
         return glyph != null ? glyph : this.fallbackGlyph;
+    }
+
+    /** Есть ли в атласе настоящий глиф для символа (а не подстановка вместо него). */
+    public boolean supports(int codePoint) {
+        return this.glyphs.containsKey(codePoint);
     }
 
     public float kerning(int leftCodePoint, int rightCodePoint) {
@@ -154,6 +159,24 @@ public final class MsdfFont {
         return ((long) left << 32) | (right & 0xFFFFFFFFL);
     }
 
+    /**
+     * Чем заменять отсутствующий символ: сначала «?», потом любой видимый глиф,
+     * иначе — пустой (нулевой) глиф, чтобы {@link #glyph(int)} не вернул null
+     * и не уронил отрисовку текста.
+     */
+    private static Glyph pickFallback(Int2ObjectMap<Glyph> glyphs) {
+        Glyph question = glyphs.get('?');
+        if (question != null) {
+            return question;
+        }
+        for (Glyph glyph : glyphs.values()) {
+            if (glyph.planeBounds() != null) {
+                return glyph;
+            }
+        }
+        return Glyph.blank();
+    }
+
     public static final class Glyph {
         private final float advanceEm;
         private final Bounds planeBounds;
@@ -163,6 +186,11 @@ public final class MsdfFont {
             this.advanceEm = advanceEm;
             this.planeBounds = planeBounds;
             this.u0 = u0; this.v0 = v0; this.u1 = u1; this.v1 = v1;
+        }
+
+        /** Пустой глиф нулевой ширины — последний резерв, чтобы не вернуть null. */
+        private static Glyph blank() {
+            return new Glyph(0.0F, null, 0.0F, 0.0F, 0.0F, 0.0F);
         }
 
         private static Glyph bake(RawGlyph raw, int atlasWidth, int atlasHeight) {

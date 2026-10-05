@@ -1,7 +1,6 @@
 package ru.rooyzee.elytrixclient.client.ui;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
@@ -12,6 +11,7 @@ import ru.rooyzee.elytrixclient.client.media.CoverArt;
 import ru.rooyzee.elytrixclient.client.media.CoverTexture;
 import ru.rooyzee.elytrixclient.client.media.Lyrics;
 import ru.rooyzee.elytrixclient.client.media.MediaSession;
+import ru.rooyzee.elytrixclient.client.render.font.Fonts;
 import ru.rooyzee.elytrixclient.client.render.font.MtsdfTextRenderer;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiText;
 import ru.rooyzee.elytrixclient.client.ui.kit.UiTheme;
@@ -22,7 +22,9 @@ import java.util.Locale;
 
 /**
  * MusicWidget — портирован из Xivivide MusicWidget.java.
- * Использует ElytrixClient TTF шрифты (Inter) вместо MSDF.
+ * Текст рисуется MTSDF-атласами xrose_1 (см. {@link MtsdfTextRenderer});
+ * кегли и начертания — как в оригинальном виджете: заголовок 9, исполнитель 7,
+ * субтитры 8.5, тайминги 6.
  * PANEL_WIDTH=164, SCALE=0.85, COVER=33 — как в сурцах.
  */
 public final class MusicIsland {
@@ -32,8 +34,19 @@ public final class MusicIsland {
     private static final float SC = 0.85f;
     private static final float PAD = 6.0f;
     private static final float COV = 33.0f;
-    private static final float LSIZE = 8.0f;
+    private static final float LSIZE = 8.5f;
     private static final float LROW = 11.0f;
+
+    /** Кегли текста (в оригинальном виджете: 9 / 7 / 8.5 / 6). */
+    private static final float TITLE_SIZE = 9.0f;
+    private static final float ARTIST_SIZE = 7.0f;
+    private static final float TIME_SIZE = 6.0f;
+
+    /** Начертания: заголовок и субтитры плотнее, остальное — обычное. */
+    private static final int W_TITLE = Fonts.MEDIUM;
+    private static final int W_SUB = Fonts.REGULAR;
+    private static final int W_LYRIC = Fonts.MEDIUM;
+    private static final int W_TIME = Fonts.REGULAR;
 
     private static float sX = 6f, sY = 80f;
     private static float openT, trackFade, coverFade, lineFade;
@@ -43,7 +56,6 @@ public final class MusicIsland {
     private static boolean wasPressed, dragging, expanded = true;
     private static float dragOX, dragOY;
     private static LyricLayout curLayout;
-    private static final java.util.Map<Object, float[]> SCROLL = new java.util.WeakHashMap<>();
     private static final Object tKey = new Object(), aKey = new Object();
 
     public static void render(GuiGraphicsExtractor g, int sw, int sh, int mx, int my) {
@@ -93,13 +105,16 @@ public final class MusicIsland {
         g.pose().translate(x, y);
         g.pose().scale(SC, SC);
         g.pose().translate(-x, -y);
-        try { draw(g, mc.font, x, y, PANEL_W, pH, accent, accent2, title, artist, source, pos, dur, dt, lh); }
-        finally { g.pose().popMatrix(); }
+        try {
+            draw(g, x, y, PANEL_W, pH, accent, accent2, title, artist, source, pos, dur, dt, lh, lr);
+        } finally {
+            g.pose().popMatrix();
+        }
     }
 
-    private static void draw(GuiGraphicsExtractor g, Font f, float x, float y, float w, float h,
+    private static void draw(GuiGraphicsExtractor g, float x, float y, float w, float h,
             int ac, int ac2, String title, String artist, String source,
-            long pos, long dur, float dt, float lh) {
+            long pos, long dur, float dt, float lh, boolean lyricsRow) {
         int txt = 0xFFFFFFFF;
         bg(g, x, y, w, h, openT);
         String stamp = title + "|" + artist;
@@ -115,16 +130,18 @@ public final class MusicIsland {
         float dr = x + w - PAD;
         float tw = Math.max(10f, dr - cx - 16f);
         String st = title.isEmpty() ? "Ничего не играет" : title;
-        scroll(g, f, tKey, st, cx + sl, y + PAD + 1.5f, withAlpha(txt, ta), tw - sl, true, 18f, dt);
+        scroll(g, W_TITLE, tKey, st, cx + sl, y + PAD + 1.5f, TITLE_SIZE, withAlpha(txt, ta), tw - sl, 18f, dt);
         String un = artist;
         if (!source.isEmpty()) un = un.isEmpty() ? source : un + " - " + source;
-        if (!un.isEmpty()) scroll(g, f, aKey, un, cx + sl, y + PAD + 14f, withAlpha(txt, .5f * ta), dr - cx - sl, true, 14f, dt);
+        if (!un.isEmpty()) {
+            scroll(g, W_SUB, aKey, un, cx + sl, y + PAD + 14f, ARTIST_SIZE, withAlpha(txt, .5f * ta),
+                    dr - cx - sl, 14f, dt);
+        }
 
         float ry = y + PAD + COV;
-        if (lr) { lyrics(g, f, curLayout, x + PAD, ry + 2, pos, txt, openT * lyricsRoom); ry += lh; }
-        bar(g, f, x + PAD, ry + 3, w - PAD * 2, pos, dur, ac, ac2, txt, dt);
+        if (lyricsRow) { lyrics(g, curLayout, x + PAD, ry + 2, pos, txt, openT * lyricsRoom); ry += lh; }
+        bar(g, x + PAD, ry + 3, w - PAD * 2, pos, dur, ac, ac2, txt, dt);
     }
-    private static boolean lr;
 
     private static void bg(GuiGraphicsExtractor g, float x, float y, float w, float h, float a) {
         if (a <= .01f) return;
@@ -145,7 +162,7 @@ public final class MusicIsland {
         int c2 = mix(withAlpha(ac2, 1f), withAlpha(ac, 1f), w);
         UiVector.roundRectBilinear(g, x, y, COV, COV, 6f, 6f, 6f, 6f, withAlpha(c1, openT), withAlpha(c2, openT), withAlpha(c2, openT), withAlpha(c1, openT));
         UiVector.outline(g, x, y, COV, COV, 6f, .5f, withAlpha(0xFFFFFFFF, .16f * openT));
-        if (c != null) g.blit(RenderPipelines.GUI_TEXTURED, c, (int)x, (int)y, 0, 0, (int)COV, (int)COV, (int)COV, (int)COV, (int)COV, (int)COV, withAlpha(-1, openT * coverFade));
+        if (c != null) g.blit(RenderPipelines.GUI_TEXTURED, c, (int)x, (int)y, 0, 0, (int)COV, (int)COV, (int)COV, (int)COV, withAlpha(-1, openT * coverFade));
         CoverArt.ensure(MediaSession.artist(), MediaSession.title());
         float pulse = MediaSession.playing() ? 1f + .08f * (float)Math.sin(System.currentTimeMillis() / 320.0) : 1f;
         int ink = withAlpha(0xFFFFFFFF, .92f * openT);
@@ -172,38 +189,40 @@ public final class MusicIsland {
         }
     }
 
-    private static void lyrics(GuiGraphicsExtractor g, Font f, LyricLayout lay, float x, float y, long pos, int txt, float a) {
+    private static void lyrics(GuiGraphicsExtractor g, LyricLayout lay, float x, float y, long pos, int txt, float a) {
         if (lay.lines().isEmpty()) return;
         String key = String.join("\n", lay.lines());
-        if (!key.equals(lastLine)) { prevLine = lastLine; lastLine = key; lineFade = 0; sungWidth = cl01(Lyrics.progress(pos)) * tw(f, lay); }
+        if (!key.equals(lastLine)) { prevLine = lastLine; lastLine = key; lineFade = 0; sungWidth = cl01(Lyrics.progress(pos)) * tw(W_LYRIC, lay); }
         lineFade = lerp(lineFade, 1f, 1f / 60f, 6f);
         float e = lineFade * lineFade * (3f - 2f * lineFade);
-        if (!prevLine.isEmpty() && e < .999f) txt(f, g, prevLine.split("\n")[0], x, y - 2f * e, lay.size, withAlpha(txt, .3f * a * (1f - e)));
-        float total = tw(f, lay), sung = cl01(Lyrics.progress(pos)) * total;
+        if (!prevLine.isEmpty() && e < .999f) {
+            txt(g, W_LYRIC, prevLine.split("\n")[0], x, y - 2f * e, lay.size, withAlpha(txt, .3f * a * (1f - e)));
+        }
+        float total = tw(W_LYRIC, lay), sung = cl01(Lyrics.progress(pos)) * total;
         sungWidth = lerp(sungWidth, sung, 1f / 60f, 25f);
         float lift = (1f - e) * 2.5f, fade = a * e, consumed = 0;
         for (int r = 0; r < lay.lines().size(); r++) {
             String ln = lay.lines().get(r);
-            float lw = twS(f, ln, lay.size), lit = cl01(sungWidth - consumed); lit = Math.min(lit, lw);
+            float lw = twS(W_LYRIC, ln, lay.size), lit = cl01(sungWidth - consumed); lit = Math.min(lit, lw);
             int cut = 0;
-            while (cut < ln.length() && twS(f, ln.substring(0, cut + 1), lay.size) <= lit) cut++;
+            while (cut < ln.length() && twS(W_LYRIC, ln.substring(0, cut + 1), lay.size) <= lit) cut++;
             String done = ln.substring(0, cut), left = ln.substring(cut);
             float ry = y + r * LROW + lift;
-            txt(f, g, done, x, ry, lay.size, withAlpha(txt, fade));
-            txt(f, g, left, x + twS(f, done, lay.size), ry, lay.size, withAlpha(txt, .35f * fade));
+            txt(g, W_LYRIC, done, x, ry, lay.size, withAlpha(txt, fade));
+            txt(g, W_LYRIC, left, x + twS(W_LYRIC, done, lay.size), ry, lay.size, withAlpha(txt, .35f * fade));
             consumed += lw;
         }
     }
 
-    private static void bar(GuiGraphicsExtractor g, Font f, float x, float y, float w,
+    private static void bar(GuiGraphicsExtractor g, float x, float y, float w,
             long pos, long dur, int ac, int ac2, int txt, float dt) {
         float tgt = dur > 0 ? cl01(pos / (float)dur) : 0;
         progress = Math.abs(tgt - progress) < .0015f ? tgt : lerp(progress, tgt, dt, 15f);
         String el = time(pos), lt = dur > 0 ? "-" + time(Math.max(0, dur - pos)) : "--:--";
-        float ew = twS(f, el, 6f), lw = twS(f, lt, 6f);
+        float ew = twS(W_TIME, el, TIME_SIZE), lw = twS(W_TIME, lt, TIME_SIZE);
         float bx = x + ew + 8, bw = Math.max(10f, w - ew - lw - 16);
-        txt(f, g, el, x, y - 1, 6f, withAlpha(txt, .45f * openT));
-        txt(f, g, lt, x + w - lw, y - 1, 6f, withAlpha(txt, .45f * openT));
+        txt(g, W_TIME, el, x, y - 1, TIME_SIZE, withAlpha(txt, .45f * openT));
+        txt(g, W_TIME, lt, x + w - lw, y - 1, TIME_SIZE, withAlpha(txt, .45f * openT));
         UiVector.roundRect(g, bx, y + 1.5f, bw, 3, 1.5f, withAlpha(txt, .16f * openT));
         float fl = bw * progress;
         if (fl > .5f) {
@@ -214,56 +233,49 @@ public final class MusicIsland {
         }
     }
 
-    /* ══ ТЕКСТ через MtsdfTextRenderer (MTSDF + UiText fallback) ══ */
-    private static void txt(Font f, GuiGraphicsExtractor g, String t, float x, float y, float sz, int col) {
+    /* ══ ТЕКСТ: MTSDF-атласы xrose_1, ванильный шрифт — только запасной путь ══ */
+
+    private static void txt(GuiGraphicsExtractor g, int weight, String t, float x, float y, float sz, int col) {
         if (t == null || t.isEmpty()) return;
-        try {
-            MtsdfTextRenderer.draw(g, f, t, x, y, sz, col);
-        } catch (Throwable e) {
-            // MTSDF pipeline упал — fallback на UiText
-            UiText.draw(g, f, t, (int) x, (int) y, col, UiText.FACE, false);
-        }
+        if (MtsdfTextRenderer.draw(g, weight, t, x, y, sz, col)) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null) UiText.draw(g, mc.font, t, x, y, col, UiText.FACE, false);
     }
 
-    private static float twS(Font f, String t, float sz) { return t == null ? 0 : f.width(t); }
-    private static float tw(Font f, LyricLayout l) { float t = 0; for (String s : l.lines()) t += f.width(s); return Math.max(1f, t); }
-
-    /* ══ прокрутка (из сурцов Font.a scroll) ══ */
-    private static void scroll(GuiGraphicsExtractor g, Font f, Object key, String text,
-            float x, float y, int color, float maxW, boolean hover, float speed, float delta) {
+    private static void scroll(GuiGraphicsExtractor g, int weight, Object key, String text, float x, float y,
+            float size, int color, float maxW, float speed, float delta) {
         if (text == null || text.isEmpty() || maxW <= 0) return;
-        float tw = f.width(text);
-        if (tw <= maxW) { SCROLL.remove(key); txt(f, g, text, x, y, 0, color); return; }
-        float[] s = SCROLL.computeIfAbsent(key, k -> new float[]{0, 1});
-        float maxOff = tw - maxW, dt = Math.max(0, Math.min(delta, .05f));
-        if (hover) {
-            s[0] += s[1] * speed * dt;
-            if (s[0] >= maxOff) { s[0] = maxOff; s[1] = -1; }
-            else if (s[0] <= 0) { s[0] = 0; s[1] = 1; }
-        } else { s[0] += (0 - s[0]) * Math.min(1, dt * 12f); if (s[0] < .3f) { s[0] = 0; s[1] = 1; } }
-        int sw = g.guiWidth(), sh = g.guiHeight();
-        int x0 = Math.max(0, (int)(x - 1)), y0 = Math.max(0, (int)(y - 5));
-        int x1 = Math.min(sw, (int)Math.ceil(x + maxW + 1)), y1 = Math.min(sh, (int)Math.ceil(y + 15));
-        if (x1 > x0 && y1 > y0) { g.enableScissor(x0, y0, x1, y1); txt(f, g, text, x - s[0], y, 0, color); g.disableScissor(); }
+        if (MtsdfTextRenderer.scroll(g, weight, key, text, x, y, size, color, maxW, true, speed, delta)) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null) UiText.draw(g, mc.font, text, x, y, color, UiText.FACE, false);
+    }
+
+    /** Ширина строки тем же шрифтом и кеглем, каким она рисуется. */
+    private static float twS(int weight, String t, float sz) {
+        return t == null || t.isEmpty() ? 0f : MtsdfTextRenderer.width(weight, t, sz);
+    }
+
+    private static float tw(int weight, LyricLayout l) {
+        float t = 0;
+        for (String s : l.lines()) t += twS(weight, s, l.size);
+        return Math.max(1f, t);
     }
 
     /* ══ LyricLayout ══ */
     private record LyricLayout(float size, List<String> lines) {}
     private static LyricLayout layout(String raw, float width) {
         if (raw.isEmpty() || width <= 0) { curLayout = new LyricLayout(LSIZE, List.of()); return curLayout; }
-        Minecraft mc = Minecraft.getInstance();
-        if (mc == null) { curLayout = new LyricLayout(LSIZE, List.of()); return curLayout; }
-        Font f = mc.font;
-        if (f.width(raw) <= width) { curLayout = new LyricLayout(LSIZE, List.of(raw)); return curLayout; }
+        float size = LSIZE;
+        if (twS(W_LYRIC, raw, size) <= width) { curLayout = new LyricLayout(size, List.of(raw)); return curLayout; }
         StringBuilder a = new StringBuilder(), b = new StringBuilder();
         for (String w : raw.split(" ")) {
             StringBuilder t = b.isEmpty() ? a : b;
             String c = t.isEmpty() ? w : t + " " + w;
-            if (t == a && f.width(c) > width) { b.append(w); continue; }
+            if (t == a && twS(W_LYRIC, c, size) > width) { b.append(w); continue; }
             t.setLength(0); t.append(c);
         }
-        if (b.isEmpty()) { curLayout = new LyricLayout(LSIZE, List.of(a.toString())); return curLayout; }
-        curLayout = new LyricLayout(LSIZE, List.of(a.toString(), b.toString()));
+        if (b.isEmpty()) { curLayout = new LyricLayout(size, List.of(a.toString())); return curLayout; }
+        curLayout = new LyricLayout(size, List.of(a.toString(), b.toString()));
         return curLayout;
     }
 

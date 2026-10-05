@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import org.lwjgl.glfw.GLFW;
 import ru.rooyzee.elytrixclient.client.botmark.BotMarkRunner;
 import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
+import ru.rooyzee.elytrixclient.client.render.font.Fonts;
 import ru.rooyzee.elytrixclient.client.soulfire.SoulFireController;
 import ru.rooyzee.elytrixclient.client.ui.ElytrixScreen;
 import ru.rooyzee.elytrixclient.client.ui.MusicIsland;
@@ -39,6 +40,9 @@ public class ElytrixclientClient implements ClientModInitializer {
         // Тема и тумблер анимаций из конфига — до первого кадра.
         UiTheme.applyPreset(CONFIG.themeIndex);
         UiWidget.ANIMATIONS = CONFIG.animations;
+        // Семейство шрифтов интерфейса (MTSDF-атласы xrose_1) — тоже до первого кадра.
+        // Сами атласы читаются лениво: ResourceManager сейчас ещё не готов.
+        Fonts.setFamily(CONFIG.fontFamily);
 
         // Создаём папку .minecraft/elytrix/ для музыки, прокси и т.д.
         try {

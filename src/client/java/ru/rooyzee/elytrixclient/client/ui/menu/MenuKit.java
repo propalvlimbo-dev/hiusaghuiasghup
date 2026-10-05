@@ -22,14 +22,16 @@ public final class MenuKit {
     private MenuKit() {
     }
 
-    // ── шрифты (assets/elytrixclient/font/menu*.json) ───────────────────
-    /** Основной текст, Inter 7.5. */
+    // ── шрифты ──────────────────────────────────────────────────────────
+    // Логические имена: начертание и кегль для них задаёт UiText.face(...)
+    // (атласы xrose_1 в assets/elytrixclient/textures/font/).
+    /** Основной текст, кегль 8. */
     public static final Identifier BODY = id("menu");
-    /** Подписи и значения, Inter 6.5. */
+    /** Подписи и значения, кегль 7. */
     public static final Identifier SMALL = id("menu_s");
-    /** Логотип/заголовки, Inter 9. */
+    /** Логотип/заголовки, кегль 10, полужирный. */
     public static final Identifier TITLE = id("menu_t");
-    /** Консоль, адреса, числа — JetBrains Mono 6.5. */
+    /** Консоль, адреса, числа — кегль 7 с разрядкой. */
     public static final Identifier MONO = id("mono_s");
 
     /** Общая прозрачность кадра (анимация открытия/закрытия панели). */
@@ -175,13 +177,10 @@ public final class MenuKit {
             // панель в нецелом масштабе: ставим текст точно в сетку пикселей экрана
             float sx = Math.round(x * o) / (float) o;
             float sy = Math.round(y * o) / (float) o;
-            g.pose().pushMatrix();
-            g.pose().translate(sx, sy);
-            g.text(font, UiText.of(s, face), 0, 0, c, false);
-            g.pose().popMatrix();
+            UiText.draw(g, font, s, sx, sy, c, face, false);
             return;
         }
-        g.text(font, UiText.of(s, face), Math.round(x), Math.round(y), c, false);
+        UiText.draw(g, font, s, Math.round(x), Math.round(y), c, face, false);
     }
 
     public static void textRight(GuiGraphicsExtractor g, Font font, String s, float right, float y, int color,
@@ -196,8 +195,10 @@ public final class MenuKit {
 
     /**
      * Y для отрисовки, чтобы заглавные буквы встали по центру {@code centerY}.
-     * В 26.2 базовая линия TTF-глифа — {@code y + 7 + shift} (shift = 0.5 в наших json),
-     * высота заглавных у Inter/JetBrains Mono ≈ 0.73 размера шрифта.
+     * Базовая линия лежит на {@code y + 7 + shift} — так же её считает
+     * {@link UiText#alignY} для MTSDF-атласов, поэтому формула верна и для
+     * нового рендерера. Высота заглавных ≈ 0.73 кегля (кегли атласов xrose_1
+     * домножены на поправку высоты прописных в {@code UiText}).
      */
     public static float ty(Identifier face, float centerY) {
         float size = face == TITLE ? 10f : (face == BODY ? 8f : 7f);
@@ -206,7 +207,7 @@ public final class MenuKit {
     }
 
     public static int width(Font font, String s, Identifier face) {
-        return s == null || s.isEmpty() ? 0 : font.width(UiText.of(s, face));
+        return s == null || s.isEmpty() ? 0 : UiText.width(font, s, face);
     }
 
     /** Обрезать строку с «…», чтобы влезла в {@code max}. */

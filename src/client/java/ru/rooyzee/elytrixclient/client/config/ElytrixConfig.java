@@ -72,6 +72,8 @@ public class ElytrixConfig {
     public int musicVolume = 100;
     /** Фон главного меню (MenuBackgrounds.NAMES), 0 — хакерский. */
     public int menuBackground = 0;
+    /** Семейство шрифтов интерфейса: 0 — Google Sans, 1 — Google Sans Flex, 2 — SF Pro (Fonts.FAMILY_NAMES). */
+    public int fontFamily = 0;
     /** Тихий звук при наведении на элементы. */
     public boolean hoverSounds = true;
     /** Плавные анимации интерфейса. */
