@@ -77,8 +77,6 @@ public class ElytrixclientClient implements ClientModInitializer {
         // Семейство шрифтов интерфейса (MTSDF-атласы xrose_1) — тоже до первого кадра.
         // Сами атласы читаются лениво: ResourceManager сейчас ещё не готов.
         Fonts.setFamily(CONFIG.fontFamily);
-        // Серверный MSPT: /mspt-проба + парсинг ответа (см. ServerMspt).
-        ru.rooyzee.elytrixclient.client.features.ServerMspt.init();
         // Живые настройки ботов = текущий конфиг с самого старта.
         ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(CONFIG);
 

@@ -58,6 +58,7 @@ public class OwnBot implements Runnable {
     private final BotProxy proxy;
     private long nextAfkAt, afkStepUntil, nextSneakAt;
     private boolean sneakOn;
+    private boolean chunkDiag, groundDiag;
     private float afkTargetYaw;
     private double afkDirX, afkDirZ;
     private boolean havePos;
@@ -296,10 +297,22 @@ public class OwnBot implements Runnable {
                         int cx = f.i32();
                         int cz = f.i32();
                         long[] hm = OwnBotEngine.extractHeightmap(f.data, off2(f));
+                        if (hm == null && !chunkDiag) {
+                            chunkDiag = true;
+                            StringBuilder sb = new StringBuilder();
+                            for (int i = 8; i < Math.min(f.data.length, 48); i++) {
+                                sb.append(String.format("%02X ", f.data[i]));
+                            }
+                            log.add("[Бот " + name + "] чанк не распознан, байты heightmap: " + sb);
+                        }
                         if (hm != null && hm.length >= 36) {
                             OwnBotEngine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
                             int h = OwnBotEngine.heightAt(x, z);
                             if (h != Integer.MIN_VALUE && h > 0) {
+                                if (!groundDiag) {
+                                    groundDiag = true;
+                                    log.add("[Бот " + name + "] heightmap ок: земля=" + h + " y=" + (int) y);
+                                }
                                 groundY = h;
                                 haveGround = true;
                                 if (y < h - 0.01) {

@@ -170,21 +170,9 @@ public class OwnBotEngine {
                 return best;
             }
         } catch (Exception e) {
-            // ниже фолбэк
-        }
-        try {
-            int[] h = {from};
-            int t = d[h[0]] & 0xFF;
-            if (t == 10) {
-                h[0]++;
-                int nl = u16(d, h);
-                h[0] += nl;
-                return nbtLongs(d, h, 10);
-            }
-            return nbtLongs(d, new int[]{from}, 10);
-        } catch (Exception e) {
             return null;
         }
+        return null;
     }
 
     private static int varint(byte[] d, int[] h) {
