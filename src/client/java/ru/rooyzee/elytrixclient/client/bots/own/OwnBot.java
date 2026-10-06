@@ -64,6 +64,7 @@ public class OwnBot implements Runnable {
     private boolean groundDiag;
     private int cfgLogFirst;
     private boolean secDiag;
+    private boolean regDiag;
     private float afkTargetYaw;
     private double afkDirX, afkDirZ;
     private boolean havePos;
@@ -347,6 +348,11 @@ public class OwnBot implements Runnable {
                 return true;
             }
             case "config": {
+                BlockRegistry.sniff(f.data, f.off);
+                if (!regDiag && BlockRegistry.ready()) {
+                    regDiag = true;
+                    log.add("[Бот " + name + "] реестр блоков сервера получен");
+                }
                 if (cfgLogFirst < 8) {
                     cfgLogFirst++;
                     log.add("[Бот " + name + "] config-пакет id=" + f.id);

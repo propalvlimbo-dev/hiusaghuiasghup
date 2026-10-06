@@ -710,7 +710,7 @@ public abstract class MenuRow {
                     continue;
                 }
                 boolean topFace = axis == 1 && dy < 0;
-                int base = ru.rooyzee.elytrixclient.client.bots.own.BlockLook.color(hit);
+                int base = ru.rooyzee.elytrixclient.client.bots.own.BlockLook.color(hit, topFace);
                 float shade = topFace ? 1f : axis == 1 ? 0.5f : (axis == 0 ? 0.72f : 0.85f);
                 base = UiTheme.mix(base, 0xFF000000, 1f - shade);
                 float fog = Math.min(0.9f, (float) (t / 48) * 0.9f);
@@ -728,7 +728,8 @@ public abstract class MenuRow {
             }
             disc(g, ox + vw / 2f, horizon, 1.6f, 0xCCFFFFFF);
             text(g, font, "глазами бота · " + (int) camX + " " + (int) (camY - 1.62) + " " + (int) camZ
-                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°",
+                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°"
+                    + (ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.ready() ? "" : " · жду реестр блоков"),
                     x + 10, ty(SMALL, y + h - 7), soft(), SMALL);
         }
     }
