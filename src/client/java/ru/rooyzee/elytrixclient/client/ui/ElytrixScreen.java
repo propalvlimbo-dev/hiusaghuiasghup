@@ -95,6 +95,8 @@ public class ElytrixScreen extends Screen {
     private long lastFrame;
     private boolean dirty;
     private long dirtyAt;
+    private MenuContent content;
+    private int seenStruct = -1;
 
     private String search = "";
     private boolean searching;
@@ -135,7 +137,8 @@ public class ElytrixScreen extends Screen {
     }
 
     private void buildTabs() {
-        MenuContent content = new MenuContent(this::markDirty, this::select, this::resetInterface);
+        content = new MenuContent(this::markDirty, this::select, this::resetInterface);
+        seenStruct = content.structVersion();
         themes = new ThemesView(this::markDirty);
         tabs.clear();
         tabs.add(new Tab("Главная", UiIcon.HOME, VIEW_CARDS, content.home()));
@@ -162,7 +165,25 @@ public class ElytrixScreen extends Screen {
             dirty = false;
             cfg.save();
         }
+        // Структура карточек изменилась (папки созданы/удалены/выбраны) — пересобрать вкладки
+        if (content != null && content.structChanged(seenStruct)) {
+            seenStruct = content.structVersion();
+            rebuildCards();
+        }
         UiWidget.ANIMATIONS = cfg.animations;
+    }
+
+    /** Пересобирает карточки всех вкладок (значения — через поставщиков, структура — заново). */
+    private void rebuildCards() {
+        if (tabs.size() < 7) {
+            return;
+        }
+        tabs.set(0, new Tab("Главная", UiIcon.HOME, VIEW_CARDS, content.home()));
+        tabs.set(1, new Tab("Боты", UiIcon.BOTS, VIEW_CARDS, content.bots()));
+        tabs.set(2, new Tab("Прокси", UiIcon.PROXY, VIEW_CARDS, content.proxy()));
+        tabs.set(4, new Tab("Визуалы", UiIcon.PALETTE, VIEW_CARDS, content.visuals()));
+        tabs.set(5, new Tab("Misc", UiIcon.SHIELD, VIEW_CARDS, content.misc()));
+        tabs.set(6, new Tab("Настройки", UiIcon.SETTINGS, VIEW_CARDS, content.settings()));
     }
 
     @Override

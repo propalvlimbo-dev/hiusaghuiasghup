@@ -57,8 +57,9 @@ public class OwnBot implements Runnable {
     private double velY;
     private long nextJumpAt;
     private BotProxy proxy;
-    private long nextAfkAt, afkStepUntil, nextSneakAt;
-    private boolean sneakOn;
+    private long nextAfkAt, nextTurnAt0;
+    private boolean haveSpawn, afkClockwise;
+    private double spawnX, spawnZ, afkAngle, afkRadius;
     private boolean chunkDiag, groundDiag;
     private int cfgLogFirst;
     private float afkTargetYaw;
@@ -436,74 +437,38 @@ public class OwnBot implements Runnable {
             sendChat("/login " + settings.password, now);
             log.add("[Бот " + name + "] автовход");
         }
-        int mode = OwnBotEngine.liveMode;
-        if (mode == 2) {
-            // «гулять»: случайные прогулки как раньше
-            if (now >= nextWalkChangeAt) {
-                nextWalkChangeAt = now + 2000 + rnd.nextInt(4000);
-                walking = rnd.nextBoolean();
-                double a = rnd.nextDouble() * Math.PI * 2;
-                walkDirX = Math.sin(a);
-                walkDirZ = -Math.cos(a);
+        // Настоящий анти-афк: медленно наматывает круги вокруг спавна (~1 блок за 30 с),
+        // направление и радиус меняются случайно — выглядит как живой игрок
+        if (OwnBotEngine.liveAntiAfk && havePos) {
+            if (!haveSpawn) {
+                haveSpawn = true;
+                spawnX = x;
+                spawnZ = z;
+                afkAngle = rnd.nextDouble() * Math.PI * 2;
+                afkRadius = 1.5 + rnd.nextDouble() * 3;
+                afkClockwise = rnd.nextBoolean();
             }
-            if (walking) {
-                moveWithCollision(walkDirX * 0.09, walkDirZ * 0.09);
-                yaw = (float) Math.toDegrees(Math.atan2(-walkDirX, walkDirZ));
-            }
-        } else if (mode == 1 && OwnBotEngine.followActive) {
-            // «за мной» / «за ником»: идёт к цели, как follow в SoulFire
-            double dx = OwnBotEngine.followX - x;
-            double dz = OwnBotEngine.followZ - z;
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist > 1.5) {
-                double sp = Math.min(0.22, 0.08 + dist * 0.006); // бегом, если далеко
-                moveWithCollision(dx / dist * sp, dz / dist * sp);
+            afkAngle += afkClockwise ? 0.0007 : -0.0007; // полный круг ~7-8 минут
+            double tx = spawnX + Math.cos(afkAngle) * afkRadius;
+            double tz = spawnZ + Math.sin(afkAngle) * afkRadius;
+            double dx = tx - x, dz = tz - z;
+            double d = Math.hypot(dx, dz);
+            if (d > 0.02) {
+                double step = Math.min(d, 0.0017); // ~1 блок за 30 секунд
+                moveWithCollision(dx / d * step, dz / d * step);
                 yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
-                pitch = 10f;
             }
-        } else if (OwnBotEngine.liveRotation && !OwnBotEngine.liveAntiAfk && now >= nextTurnAt) {
+            if (now >= nextAfkAt) {
+                nextAfkAt = now + 20000 + rnd.nextInt(20000);
+                afkRadius = 1.5 + rnd.nextDouble() * 3;
+                if (rnd.nextInt(3) == 0) {
+                    afkClockwise = !afkClockwise;
+                }
+                pitch = -5f + rnd.nextFloat() * 15f;
+            }
+        } else if (OwnBotEngine.liveRotation && now >= nextTurnAt) {
             nextTurnAt = now + 1500 + rnd.nextInt(3000);
             yaw = rnd.nextFloat() * 360f;
-            pitch = -20f + rnd.nextFloat() * 60f;
-        }
-        // .ffserver: быстрые прыжки + приседания + кручение камерой
-        if (OwnBotEngine.liveFfServer) {
-            if (velY == 0 && y <= groundY + 0.001) {
-                velY = 0.42;
-            }
-            if (now >= nextSneakAt) {
-                nextSneakAt = now + 250 + rnd.nextInt(250);
-                sneakOn = !sneakOn;
-                send(P_PLAYER_CMD, w -> {
-                    w.varInt(entityId);
-                    w.varInt(sneakOn ? 0 : 1);
-                    w.varInt(0);
-                });
-            }
-            yaw += 25f;
-        }
-        // Анти-АФК: раз в 5 секунд плавно поворачивается, иногда микро-шаг — не кикает за афк
-        if (OwnBotEngine.liveAntiAfk) {
-            if (now >= nextAfkAt) {
-                nextAfkAt = now + 5000;
-                afkTargetYaw = yaw + (rnd.nextFloat() * 140f - 70f);
-                pitch = -10f + rnd.nextFloat() * 30f;
-                if (rnd.nextInt(100) < 35) {
-                    afkStepUntil = now + 300 + rnd.nextInt(300);
-                    double a = Math.toRadians(afkTargetYaw);
-                    afkDirX = -Math.sin(a);
-                    afkDirZ = Math.cos(a);
-                }
-            }
-            boolean idle = !(OwnBotEngine.liveMode == 2 && walking)
-                    && !(OwnBotEngine.liveMode == 1 && OwnBotEngine.followActive);
-            if (idle) {
-                yaw += (afkTargetYaw - yaw) * 0.15f;
-                if (now < afkStepUntil) {
-                    x += afkDirX * 0.04;
-                    z += afkDirZ * 0.04;
-                }
-            }
         }
         // Земля под ногами берётся из heightmap чанка, если она есть
         int hh = engine.heightAt(x, z);
@@ -512,20 +477,12 @@ public class OwnBot implements Runnable {
             haveGround = true;
         }
         // Физика как у живого игрока (SoulFire auto-jump): падение на землю + периодические прыжки
-        if (haveGround) {
-            if (OwnBotEngine.liveAutoJump && velY == 0 && y <= groundY + 0.001 && now >= nextJumpAt) {
-                boolean moving = (OwnBotEngine.liveMode == 2 && walking)
-                        || (OwnBotEngine.liveMode == 1 && OwnBotEngine.followActive);
-                nextJumpAt = now + (moving ? 700 + rnd.nextInt(1800) : 4000 + rnd.nextInt(9000));
-                velY = 0.42;
-            }
-            if (velY != 0 || y > groundY + 0.001) {
-                y += velY;
-                velY -= 0.08;
-                if (y <= groundY) {
-                    y = groundY;
-                    velY = 0;
-                }
+        if (haveGround && (velY != 0 || y > groundY + 0.001)) {
+            y += velY;
+            velY -= 0.08;
+            if (y <= groundY) {
+                y = groundY;
+                velY = 0;
             }
         }
         if (havePos) {

@@ -50,11 +50,7 @@ public final class CommandManager {
          List.<ClientCommand>of(
                new org.xrose.command.impl.HelpCommand(this),
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Bots(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.RandomMove(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Follow(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Stay(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Jump(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.FfServer())
+               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Jump())
             .forEach(this::register);
          this.store.load(this);
          this.initialized = true;

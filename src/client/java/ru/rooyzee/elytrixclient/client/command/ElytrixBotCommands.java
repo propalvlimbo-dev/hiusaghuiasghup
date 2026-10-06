@@ -8,7 +8,7 @@ import ru.rooyzee.elytrixclient.client.config.ElytrixConfig;
 
 /**
  * Команды управления ботами и их физикой прямо из чата:
- * .bots, .randommove, .follow, .stay, .jump, .rejoin.
+ * .bots, .jump.
  * .help покажет их все вместе с остальными.
  */
 public final class ElytrixBotCommands {
@@ -28,11 +28,7 @@ public final class ElytrixBotCommands {
     static void list() {
         ChatUtil.header("Управление ботами");
         ChatUtil.entry(E, ".bots start | stop", "запустить / остановить ботов");
-        ChatUtil.entry(E, ".randommove", "физика: случайные прогулки (вкл/выкл)");
-        ChatUtil.entry(E, ".stay", "физика: боты стоят на месте");
-        ChatUtil.entry(E, ".jump", "автопрыжки ботов (вкл/выкл)");
-        ChatUtil.entry(E, ".follow ник", "следовать за конкретным игроком");
-        ChatUtil.entry(E, ".ffserver", "FF-режим: боты прыгают, приседают, крутят камерой");
+        ChatUtil.entry(E, ".jump", "автопрыжки-ступеньки через блок (вкл/выкл)");
     }
 
     static void start() {
@@ -115,88 +111,6 @@ public final class ElytrixBotCommands {
                 stop();
                 return 1;
             }));
-        }
-    }
-
-    public static final class RandomMove extends ClientCommand {
-        public RandomMove() {
-            super("randommove", "Физика ботов: случайные прогулки (вкл/выкл)", E);
-        }
-
-        @Override
-        public void build(LiteralArgumentBuilder<Object> b) {
-            b.executes(ctx -> {
-                cfg().botMode = cfg().botMode == 2 ? 0 : 2;
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
-                toggle(cfg().botMode == 2, "randommove: боты гуляют", "randommove: выкл (стоят)");
-                return 1;
-            });
-        }
-    }
-
-    public static final class Follow extends ClientCommand {
-        public Follow() {
-            super("follow", "Физика ботов: за тобой или за игроком: .follow {ник}", E);
-        }
-
-        @Override
-        public void build(LiteralArgumentBuilder<Object> b) {
-            b.executes(ctx -> {
-                cfg().botFollowTarget = "";
-                cfg().botMode = cfg().botMode == 1 ? 0 : 1;
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
-                toggle(cfg().botMode == 1, "follow: боты идут за тобой", "follow: выкл (стоят)");
-                return 1;
-            });
-            b.then(LiteralArgumentBuilder.<Object>literal("off").executes(ctx -> {
-                cfg().botMode = 0;
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
-                ChatUtil.success("follow: выкл (стоят)");
-                return 1;
-            }));
-            b.then(com.mojang.brigadier.builder.RequiredArgumentBuilder
-                    .<Object, String>argument("nick", com.mojang.brigadier.arguments.StringArgumentType.word())
-                    .executes(ctx -> {
-                        String nick = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "nick");
-                        cfg().botFollowTarget = nick;
-                        cfg().botMode = 1;
-                        ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
-                        ChatUtil.success("follow: боты идут за " + nick + " (если он в твоей видимости)");
-                        return 1;
-                    }));
-        }
-    }
-
-    public static final class Stay extends ClientCommand {
-        public Stay() {
-            super("stay", "Физика ботов: стоят на месте", E);
-        }
-
-        @Override
-        public void build(LiteralArgumentBuilder<Object> b) {
-            b.executes(ctx -> {
-                cfg().botMode = 0;
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
-                ChatUtil.success("stay: боты стоят");
-                return 1;
-            });
-        }
-    }
-
-    public static final class FfServer extends ClientCommand {
-        public FfServer() {
-            super("ffserver", "FF-режим ботов: быстрые прыжки + приседания + камера во все стороны", E);
-        }
-
-        @Override
-        public void build(LiteralArgumentBuilder<Object> b) {
-            b.executes(ctx -> {
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.liveFfServer =
-                        !ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.liveFfServer;
-                ChatUtil.success(ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.liveFfServer
-                        ? "ffserver: ВКЛ — боты беснуются" : "ffserver: выкл");
-                return 1;
-            });
         }
     }
 

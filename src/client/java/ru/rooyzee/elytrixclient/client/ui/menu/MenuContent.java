@@ -23,6 +23,20 @@ public final class MenuContent {
     private final IntConsumer open;
     private final Runnable resetUi;
     private String draftNick = "";
+    /** Версия структуры карточек: меняется при создании/удалении/выборе папок — экран пересобирает вкладки. */
+    private int structVersion;
+
+    public boolean structChanged(int seen) {
+        return structVersion != seen;
+    }
+
+    public int structVersion() {
+        return structVersion;
+    }
+
+    private void struct() {
+        structVersion++;
+    }
 
     /**
      * @param dirty   отметить конфиг изменённым (сохранится с задержкой)
@@ -94,107 +108,10 @@ public final class MenuContent {
         var rd = ElytrixclientClient.RUST_BOTS;
         list.add(foldersCard());
 
-        list.add(new MenuCard("Запуск")
-                .badge(() -> ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg) || rd.isRunning()
-                        ? "rust: " + rd.statusLine()
-                        : "встроенные: " + ob.status(), 0)
-                .add(new MenuRow.Text("Адрес сервера", 200, () -> cfg.botAddress, v -> {
-                    cfg.botAddress = v;
-                    dirty.run();
-                }))
-                .add(new MenuRow.Slider("Ботов", 1, 500, 1, "", () -> cfg.botmarkCount, v -> {
-                    cfg.botmarkCount = v;
-                    dirty.run();
-                }))
-                .add(new MenuRow.Slider("Задержка входа", 0, 2000, 50, " мс", () -> cfg.botmarkDelay, v -> {
-                    cfg.botmarkDelay = v;
-                    dirty.run();
-                }))
-                .add(new MenuRow.Slider("Ботов в волне", 0, 100, 1, "", () -> cfg.botWaveSize, v -> {
-                    cfg.botWaveSize = v;
-                    dirty.run();
-                }).describe("0 = все сразу. Волнами антибот-плагины не давятся: зашло N — пауза — следующая волна"))
-                .add(new MenuRow.Slider("Пауза между волнами", 0, 300, 5, " с", () -> cfg.botWavePauseSec, v -> {
-                    cfg.botWavePauseSec = v;
-                    dirty.run();
-                }).describe("Сколько ждать перед следующей волной входа"))
-                .add(new MenuRow.Slider("Таймаут", 1000, 30000, 500, " мс", () -> cfg.botmarkTimeout, v -> {
-                    cfg.botmarkTimeout = v;
-                    dirty.run();
-                }))
-                .add(new MenuRow.Text("Префикс ников", 160, () -> cfg.ownBotPrefix, v -> {
-                    cfg.ownBotPrefix = v;
-                    dirty.run();
-                }))
-                .add(toggle("Рандом ники", () -> cfg.botRandomNames, v -> cfg.botRandomNames = v)
-                        .describe("Боты получают случайные ники (типа xQrtz_91) — префикс не используется"))
-                .add(new MenuRow.Text("Путь к rust-ботам", 200, () -> cfg.rustBotsPath, v -> {
-                    cfg.rustBotsPath = v;
-                    dirty.run();
-                }))
-                .add(new MenuRow.Button(() -> (rd.isRunning() || ob.isRunning()) ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
-                        MenuRow.Button.Kind.PRIMARY, () -> {
-                    if (rd.isRunning() || ob.isRunning()) {
-                        rd.stop();
-                        ob.stop();
-                    } else if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg)) {
-                        rd.start(cfg);
-                    } else {
-                        ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings st =
-                                new ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings();
-                        st.count = cfg.botmarkCount;
-                        st.delayMs = cfg.botmarkDelay;
-                        st.timeoutMs = cfg.botmarkTimeout;
-                        st.prefix = cfg.ownBotPrefix;
-                        st.randomNames = cfg.botRandomNames;
-                        st.waveSize = cfg.botWaveSize;
-                        st.wavePauseMs = cfg.botWavePauseSec * 1000;
-                        st.autoReg = cfg.botAutoReg;
-                        st.autoLogin = cfg.botAutoLogin;
-                        st.password = cfg.botPassword;
-                        st.spam = cfg.bmSpam;
-                        st.spamMessage = cfg.bmSpamMessage;
-                        st.spamDelayMin = cfg.botSpamMin;
-                        st.spamDelayMax = cfg.botSpamMax;
-                        st.rotation = cfg.bmRotation;
-                        st.swing = cfg.bmSwing;
-                        st.mode = cfg.botMode;
-                        st.autoJump = cfg.botAutoJump;
-                        st.captcha = cfg.botCaptcha;
-                        st.antiAfk = cfg.botAntiAfk;
-                        st.useProxy = cfg.botUseProxy;
-                        st.rejoin = cfg.botRejoin;
-                        st.rejoinDelayMs = cfg.botRejoinDelay;
-                        String addr = cfg.botAddress.trim();
-                        String host = addr;
-                        int port = 25565;
-                        int colon = addr.lastIndexOf(':');
-                        if (colon > 0) {
-                            host = addr.substring(0, colon);
-                            try {
-                                port = Integer.parseInt(addr.substring(colon + 1));
-                            } catch (NumberFormatException ignored) {
-                            }
-                        }
-                        int proto = ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.probeProtocol(host, port, 3000);
-                        ob.start(host, port, proto < 0 ? -proto : proto, st);
-                    }
-                })));
-
         list.add(new MenuCard("Поведение и физика")
-                .badge(() -> new String[]{"стоит", "за мной", "гулять"}[cfg.botMode], 0)
-                .add(new MenuRow.Mode("Режим", new String[]{"стоит", "за мной", "гулять"}, () -> cfg.botMode, v -> {
-                    cfg.botMode = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg);
-                    dirty.run();
-                }).describe("стоит — на месте; за мной — следуют за тобой; гулять — случайные прогулки. То же командами .stay/.follow/.randommove"))
-                .add(new MenuRow.Text("Цель follow (ник)", 160, () -> cfg.botFollowTarget, v -> {
-                    cfg.botFollowTarget = v;
-                    dirty.run();
-                }).when(() -> cfg.botMode == 1)
-                        .describe("Пусто — боты идут за тобой; укажи ник — пойдут за этим игроком (как .follow ник)"))
+                .badge(() -> cfg.botAntiAfk ? "анти-афк" : "стоит", 0)
                 .add(toggle("Анти-АФК", () -> cfg.botAntiAfk, v -> { cfg.botAntiAfk = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
-                        .describe("Плавно поворачивается раз в 5 секунд и делает микро-шаги — не кикает за AFK"))
+                        .describe("Настоящий анти-афк: бот медленно наматывает круги вокруг спавна (~1 блок за 30 с), взгляд по ходу движения"))
                 .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> { cfg.bmRotation = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
                         .when(() -> cfg.botMode != 1))
                 .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> { cfg.bmSwing = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); }))
@@ -304,6 +221,7 @@ public final class MenuContent {
             ru.rooyzee.elytrixclient.client.bots.own.BotManager.create(
                     "Сервер " + (ru.rooyzee.elytrixclient.client.bots.own.BotManager.folders.size() + 1),
                     cfg.botAddress);
+            struct();
             dirty.run();
         }).describe("Папка = сервер: адрес, свои ники-аккаунты, сколько ботов подключать. Кик — реждойн, бан — смена ника"));
         var folders = ru.rooyzee.elytrixclient.client.bots.own.BotManager.folders;
@@ -334,15 +252,18 @@ public final class MenuContent {
                     f.addAccount(draftNick);
                     draftNick = "";
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                    struct();
                     dirty.run();
                 }));
                 c.add(new MenuRow.Button(() -> "Сгенерировать 5 ников", MenuRow.Button.Kind.SECONDARY, () -> {
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.generateAccounts(f, 5);
+                    struct();
                     dirty.run();
                 }).describe("Добавит 5 случайных MC-ников в пул папки"));
                 c.add(new MenuRow.Button(() -> "Разбанить все ники", MenuRow.Button.Kind.SECONDARY, () -> {
                     f.banned.clear();
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                    struct();
                     dirty.run();
                 }));
                 c.add(toggle("Через прокси", () -> f.useProxy, v -> {
@@ -374,11 +295,13 @@ public final class MenuContent {
                 }));
                 c.add(new MenuRow.Button(() -> "Удалить папку", MenuRow.Button.Kind.SECONDARY, () -> {
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.remove(f);
+                    struct();
                     dirty.run();
                 }));
             } else {
                 c.add(new MenuRow.Button(() -> "Выбрать", MenuRow.Button.Kind.SECONDARY, () -> {
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.selected = idx;
+                    struct();
                     dirty.run();
                 }));
             }
