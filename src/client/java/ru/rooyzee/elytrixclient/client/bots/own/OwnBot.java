@@ -423,58 +423,104 @@ public class OwnBot implements Runnable {
                     send(P_CHUNK_BATCH, w -> w.f32(10f));
                 } else if (f.id == SP_CHUNK_DATA) {
                     try {
-                        net.minecraft.network.FriendlyByteBuf fb = new net.minecraft.network.FriendlyByteBuf(
-                                io.netty.buffer.Unpooled.wrappedBuffer(f.data, f.off, f.data.length - f.off));
-                        net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket pkt =
-                                new net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket(fb);
-                        int cx = pkt.getX();
-                        int cz = pkt.getZ();
-                        f.off = f.data.length;
-                        net.minecraft.world.level.chunk.LevelChunkSection[] secs =
-                                pkt.getChunkData().getSections();
-                        int saved = 0;
-                        for (int i = 0; i < secs.length; i++) {
-                            if (secs[i] == null) {
-                                continue;
+                        int[] h = {f.off};
+                        int cx = i32at(f.data, h);
+                        int cz = i32at(f.data, h);
+                        // heightmap в 1.21.5+/26.x — VarInt-карта: size, затем (index, len, i64[len])*
+                        long[] hm = null;
+                        int hmCount = readVarInt(f.data, h);
+                        for (int i = 0; i < hmCount && i < 16; i++) {
+                            int index = readVarInt(f.data, h);
+                            int len = readVarInt(f.data, h);
+                            if (len < 0 || len > 1024 || h[0] + 8L * len > f.data.length) {
+                                break;
                             }
-                            var states = secs[i].getStates();
+                            long[] arr = new long[len];
+                            for (int j = 0; j < len; j++) {
+                                long v = 0;
+                                for (int k = 0; k < 8; k++) {
+                                    v = (v << 8) | (f.data[h[0]++] & 0xFF);
+                                }
+                                arr[j] = v;
+                            }
+                            if (index == 4 || (hm == null && len >= 36)) {
+                                hm = arr;
+                            }
+                        }
+                        // секции: short blockCount, byte bits, палитра varint, long-данные, биомы
+                        int saved = 0;
+                        for (int sy = -4; sy < 20 && h[0] < f.data.length - 8; sy++) {
+                            h[0] += 2;
+                            int bits = f.data[h[0]++] & 0xFF;
                             short[] sec = new short[4096];
                             boolean any = false;
-                            for (int by = 0; by < 16; by++) {
-                                for (int bz = 0; bz < 16; bz++) {
-                                    for (int bx = 0; bx < 16; bx++) {
-                                        int id = net.minecraft.world.level.block.Block.getId(states.get(bx, by, bz));
-                                        sec[by * 256 + bz * 16 + bx] = (short) id;
-                                        any |= id != 0;
+                            if (bits == 0) {
+                                int single = readVarInt(f.data, h);
+                                int dl = readVarInt(f.data, h);
+                                h[0] += dl * 8;
+                                if (single != 0) {
+                                    java.util.Arrays.fill(sec, (short) single);
+                                    any = true;
+                                }
+                            } else {
+                                int palLen = readVarInt(f.data, h);
+                                int[] pal = new int[palLen];
+                                for (int i = 0; i < palLen; i++) {
+                                    pal[i] = readVarInt(f.data, h);
+                                }
+                                int dl = readVarInt(f.data, h);
+                                long[] longs = new long[dl];
+                                for (int i = 0; i < dl; i++) {
+                                    long v = 0;
+                                    for (int k = 0; k < 8; k++) {
+                                        v = (v << 8) | (f.data[h[0]++] & 0xFF);
                                     }
+                                    longs[i] = v;
+                                }
+                                int epl = 64 / bits;
+                                long mask = (1L << bits) - 1;
+                                for (int i = 0; i < 4096; i++) {
+                                    int v = (int) ((longs[i / epl] >>> ((i % epl) * bits)) & mask);
+                                    int id = v < palLen ? pal[v] : 0;
+                                    sec[i] = (short) id;
+                                    any |= id != 0;
                                 }
                             }
                             if (any) {
-                                engine.storeSection(cx, cz, i - 4, sec);
+                                engine.storeSection(cx, cz, sy, sec);
                                 saved++;
                             }
+                            int bbits = f.data[h[0]++] & 0xFF;
+                            if (bbits == 0) {
+                                readVarInt(f.data, h);
+                                int bdl = readVarInt(f.data, h);
+                                h[0] += bdl * 8;
+                            } else {
+                                int bl = readVarInt(f.data, h);
+                                for (int i = 0; i < bl; i++) {
+                                    readVarInt(f.data, h);
+                                }
+                                int bdl = readVarInt(f.data, h);
+                                h[0] += bdl * 8;
+                            }
                         }
+                        f.off = f.data.length;
                         if (!secDiag) {
                             secDiag = true;
-                            log.add("[Бот " + name + "] чанк: секций с блоками " + saved + "/" + secs.length);
-                        }
-                        long[] hm = null;
-                        net.minecraft.nbt.CompoundTag hmt = pkt.getChunkData().getHeightmaps();
-                        if (hmt != null && hmt.contains("MOTION_BLOCKING")) {
-                            hm = hmt.getLongArray("MOTION_BLOCKING");
+                            log.add("[Бот " + name + "] чанк: секций с блоками " + saved + "/24");
                         }
                         if (hm != null && hm.length >= 36) {
                             engine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
-                            int h = engine.heightAt(x, z);
-                            if (h != Integer.MIN_VALUE && h > 0) {
+                            int hgt = engine.heightAt(x, z);
+                            if (hgt != Integer.MIN_VALUE && hgt > 0) {
                                 if (!groundDiag) {
                                     groundDiag = true;
-                                    log.add("[Бот " + name + "] heightmap ок: земля=" + h + " y=" + (int) y);
+                                    log.add("[Бот " + name + "] heightmap ок: земля=" + hgt + " y=" + (int) y);
                                 }
-                                groundY = h;
+                                groundY = hgt;
                                 haveGround = true;
-                                if (y < h - 0.01) {
-                                    y = h;
+                                if (y < hgt - 0.01) {
+                                    y = hgt;
                                 }
                             }
                         }
