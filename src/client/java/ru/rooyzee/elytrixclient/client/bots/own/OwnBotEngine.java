@@ -277,13 +277,35 @@ public class OwnBotEngine {
         return v;
     }
 
-    /** Следующий прокси по кругу (round-robin на бота). */
+    /** Мёртвые прокси (как у SoulFire: не отвечающие исключаются из ротации на 10 минут). */
+    private static final java.util.Map<BotProxy, Long> badProxies = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long BAD_PROXY_TTL_MS = 10 * 60 * 1000L;
+
+    public static void markBadProxy(BotProxy p) {
+        if (p != null) {
+            badProxies.put(p, System.currentTimeMillis());
+        }
+    }
+
+    public static int badProxyCount() {
+        return badProxies.size();
+    }
+
+    /** Следующий живой прокси по кругу (round-robin на бота, мёртвые пропускаются). */
     public static BotProxy nextProxy() {
         java.util.List<BotProxy> list = proxies;
         if (list.isEmpty()) {
             return null;
         }
-        return list.get(Math.floorMod(proxyIdx.getAndIncrement(), list.size()));
+        long now = System.currentTimeMillis();
+        for (int tries = 0; tries < list.size(); tries++) {
+            BotProxy p = list.get(Math.floorMod(proxyIdx.getAndIncrement(), list.size()));
+            Long badAt = badProxies.get(p);
+            if (badAt == null || now - badAt > BAD_PROXY_TTL_MS) {
+                return p;
+            }
+        }
+        return null; // все прокси мёртвы — вызывающий решает, что делать
     }
 
     public OwnBotEngine(LogBuffer log) {

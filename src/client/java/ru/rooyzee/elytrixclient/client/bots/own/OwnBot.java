@@ -55,10 +55,11 @@ public class OwnBot implements Runnable {
     private boolean haveGround;
     private double velY;
     private long nextJumpAt;
-    private final BotProxy proxy;
+    private BotProxy proxy;
     private long nextAfkAt, afkStepUntil, nextSneakAt;
     private boolean sneakOn;
     private boolean chunkDiag, groundDiag;
+    private int cfgLogFirst;
     private float afkTargetYaw;
     private double afkDirX, afkDirZ;
     private boolean havePos;
@@ -110,8 +111,27 @@ public class OwnBot implements Runnable {
     public void run() {
         alive = true;
         try {
+            int attempt = 0;
+            while (alive && attempt < 3) {
+                attempt++;
+                if (attemptOne(attempt)) {
+                    break;
+                }
+            }
+        } finally {
+            alive = false;
+            close();
+        }
+    }
+
+    /** Одна попытка подключения. false — прокси мёртв, пробуем следующий (как ротация в SoulFire). */
+    private boolean attemptOne(int attempt) {
+        try {
+            state = "handshake";
+            status = "подключение";
             if (proxy != null) {
-                log.add("[Бот " + name + "] подключаюсь через прокси " + proxy);
+                log.add("[Бот " + name + "] подключаюсь через прокси " + proxy
+                        + (attempt > 1 ? " (попытка " + attempt + ")" : ""));
                 socket = proxy.connect(host, port, 30000);
             } else {
                 socket = new Socket(host, port);
@@ -150,6 +170,17 @@ public class OwnBot implements Runnable {
                         ? settings.timeoutMs
                         : Math.max(settings.timeoutMs, 20000);
                 if (!any && now - lastRead > phaseTimeout) {
+                    if (proxy != null && attempt < 3) {
+                        OwnBotEngine.markBadProxy(proxy);
+                        log.add("[Бот " + name + "] прокси " + proxy + " молчит (фаза " + state + ") — пробую следующую");
+                        BotProxy next = OwnBotEngine.nextProxy();
+                        if (next != null) {
+                            proxy = next;
+                            closeSocket();
+                            return false;
+                        }
+                        log.add("[Бот " + name + "] живых прокси больше нет");
+                    }
                     status = "таймаут";
                     log.add("[Бот " + name + "] таймаут соединения (фаза " + state + ")");
                     break;
@@ -162,15 +193,38 @@ public class OwnBot implements Runnable {
                     Thread.sleep(5);
                 }
             }
+            return true;
         } catch (Exception e) {
             if (alive) {
+                if (proxy != null && "handshake".equals(state) && attempt < 3) {
+                    OwnBotEngine.markBadProxy(proxy);
+                    log.add("[Бот " + name + "] прокси " + proxy + " недоступна: " + e);
+                    BotProxy next = OwnBotEngine.nextProxy();
+                    if (next != null) {
+                        proxy = next;
+                        closeSocket();
+                        return false;
+                    }
+                    log.add("[Бот " + name + "] живых прокси больше нет");
+                }
                 status = "ошибка: " + e.getMessage();
                 log.add("[Бот " + name + "] " + e);
             }
-        } finally {
-            alive = false;
-            close();
+            return true;
         }
+    }
+
+    private void closeSocket() {
+        try {
+            if (socket != null) {
+                socket.close();
+            }
+        } catch (IOException ignored) {
+        }
+        socket = null;
+        in = null;
+        out = null;
+        compression = false;
     }
 
     // ---------- логика ----------
@@ -227,6 +281,10 @@ public class OwnBot implements Runnable {
                 return true;
             }
             case "config": {
+                if (cfgLogFirst < 8) {
+                    cfgLogFirst++;
+                    log.add("[Бот " + name + "] config-пакет id=" + f.id);
+                }
                 if (f.id == SC_KEEPALIVE) {
                     long id = f.i64();
                     send(CFG_KEEPALIVE, w -> w.i64(id));
