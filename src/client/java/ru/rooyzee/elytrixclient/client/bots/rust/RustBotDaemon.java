@@ -125,6 +125,7 @@ public class RustBotDaemon {
         o.addProperty("rotation", cfg.bmRotation);
         o.addProperty("swing", cfg.bmSwing);
         o.addProperty("movement", cfg.botMode == 2);
+        o.addProperty("captcha", cfg.botCaptcha);
         o.addProperty("auto_reg", cfg.botAutoReg);
         o.addProperty("auto_login", cfg.botAutoLogin);
         o.addProperty("password", cfg.botPassword);

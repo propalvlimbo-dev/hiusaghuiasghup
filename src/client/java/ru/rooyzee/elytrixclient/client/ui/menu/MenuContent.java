@@ -138,6 +138,8 @@ public final class MenuContent {
                     dirty.run();
                 }).when(() -> cfg.botRejoin))
                 .add(new MenuRow.Header("Чат и авторизация"))
+                .add(toggle("Авторешение капч", () -> cfg.botCaptcha, v -> cfg.botCaptcha = v)
+                        .describe("Как в NeoProxy: бот читает текстовую капчу антибота из чата и вводит код сам"))
                 .add(toggle("Авторегистрация", () -> cfg.botAutoReg, v -> cfg.botAutoReg = v))
                 .add(toggle("Автовход", () -> cfg.botAutoLogin, v -> cfg.botAutoLogin = v))
                 .add(new MenuRow.Text("Пароль", 160, () -> cfg.botPassword, v -> {
@@ -175,6 +177,7 @@ public final class MenuContent {
                         st.autoLogin = cfg.botAutoLogin;
                         st.mode = cfg.botMode;
                         st.autoJump = cfg.botAutoJump;
+                        st.captcha = cfg.botCaptcha;
                         st.useProxy = cfg.botUseProxy;
                         st.rejoin = cfg.botRejoin;
                         st.rejoinDelayMs = cfg.botRejoinDelay;

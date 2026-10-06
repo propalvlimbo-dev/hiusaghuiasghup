@@ -44,6 +44,7 @@ const SP_DISCONNECT: i32 = 32;
 const SP_CHUNK_START: i32 = 12;
 const SP_COMBAT_KILL: i32 = 68;
 const SP_PING: i32 = 61;
+const SP_SYSTEM_CHAT: i32 = 121;
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
@@ -69,6 +70,8 @@ pub struct Settings {
     pub swing: bool,
     #[serde(default = "d_true")]
     pub movement: bool,
+    #[serde(default = "d_true")]
+    pub captcha: bool,
     #[serde(default)]
     pub auto_reg: bool,
     #[serde(default)]
@@ -354,6 +357,14 @@ fn handle(
             SP_SET_HEALTH => { let hp = read_f32(data, &mut off); if hp <= 0.0 { c.send(P_CLIENT_CMD, &varint_bytes(0))?; } }
             SP_COMBAT_KILL => { c.send(P_CLIENT_CMD, &varint_bytes(0))?; }
             SP_CHUNK_START => { let mut b = Vec::new(); write_f32(&mut b, 10.0)?; c.send(P_CHUNK_BATCH, &b)?; }
+            SP_SYSTEM_CHAT => {
+                if s.captcha {
+                    let text = component(data);
+                    if let Some(code) = captcha_code(&text) {
+                        let _ = send_chat(c, &code, now_ms());
+                    }
+                }
+            }
             SP_DISCONNECT => { *status.lock().unwrap() = format!("кик: {}", component(data)); return Ok(false); }
             _ => {}
         },
@@ -435,6 +446,39 @@ fn rand01() -> f64 {
     use std::time::SystemTime;
     let n = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(0);
     (n as f64 % 1000.0) / 1000.0
+}
+
+/// Авто-решение текстовых капч (NeoProxy-стиль): код 4-8 символов рядом с captcha/капча/код/code.
+fn captcha_code(t: &str) -> Option<String> {
+    let low = t.to_lowercase();
+    let keys = ["captcha", "капча", "код", "code"];
+    let mut kw: Option<(usize, usize)> = None;
+    for k in keys {
+        if let Some(i) = low.find(k) {
+            if kw.map_or(true, |(j, _)| i > j) {
+                kw = Some((i, k.len()));
+            }
+        }
+    }
+    let (ki, kl) = kw?;
+    let chars: Vec<char> = t.chars().collect();
+    // токен после ключ. слова
+    let mut i = ki + kl;
+    while i < chars.len() && !chars[i].is_ascii_alphanumeric() { i += 1; }
+    let st = i;
+    while i < chars.len() && chars[i].is_ascii_alphanumeric() { i += 1; }
+    if i - st >= 4 && i - st <= 8 {
+        return Some(chars[st..i].iter().collect());
+    }
+    // токен до ключ. слова
+    let mut e = ki;
+    while e > 0 && !chars[e - 1].is_ascii_alphanumeric() { e -= 1; }
+    let en = e;
+    while e > 0 && chars[e - 1].is_ascii_alphanumeric() { e -= 1; }
+    if en - e >= 4 && en - e <= 8 {
+        return Some(chars[e..en].iter().collect());
+    }
+    None
 }
 
 fn component(data: &[u8]) -> String {

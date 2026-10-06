@@ -28,7 +28,8 @@ public class OwnBot implements Runnable {
     static final int SL_DISCONNECT = 0, SL_ENC = 1, SL_SUCCESS = 2, SL_COMPRESSION = 3;
     static final int SC_DISCONNECT = 2, SC_FINISH = 3, SC_KEEPALIVE = 4, SC_PING = 5;
     static final int SP_KEEPALIVE = 44, SP_LOGIN = 49, SP_PLAYER_POS = 72, SP_SET_HEALTH = 104,
-            SP_DISCONNECT = 32, SP_CHUNK_START = 12, SP_COMBAT_KILL = 68, SP_PING = 61;
+            SP_DISCONNECT = 32, SP_CHUNK_START = 12, SP_COMBAT_KILL = 68, SP_PING = 61,
+            SP_SYSTEM_CHAT = 121;
 
     public final String name;
     private final String host;
@@ -285,6 +286,14 @@ public class OwnBot implements Runnable {
                     send(P_CLIENT_CMD, w -> w.varInt(0));
                 } else if (f.id == SP_CHUNK_START) {
                     send(P_CHUNK_BATCH, w -> w.f32(10f));
+                } else if (f.id == SP_SYSTEM_CHAT) {
+                    if (settings.captcha) {
+                        String code = captchaCode(f.component());
+                        if (code != null) {
+                            log.add("[Бот " + name + "] капча распознана: " + code);
+                            sendChat(code, System.currentTimeMillis());
+                        }
+                    }
                 } else if (f.id == SP_DISCONNECT) {
                     status = "кик: " + f.component();
                     log.add("[Бот " + name + "] кик: " + status);
@@ -377,6 +386,64 @@ public class OwnBot implements Runnable {
             nextChatAt = now + settings.spamDelayMin + rnd.nextInt(Math.max(1, settings.spamDelayMax - settings.spamDelayMin));
             sendChat(settings.spamMessage, now);
         }
+    }
+
+    /** NeoProxy-стиль: авто-решение текстовых капч антибота. Ищет код 4-8 символов рядом со словом captcha/капча/код/code. */
+    static String captchaCode(String t) {
+        if (t == null || t.isEmpty()) {
+            return null;
+        }
+        String low = t.toLowerCase();
+        String[] keys = {"captcha", "капча", "код", "code"};
+        int kw = -1, kl = 0;
+        for (String k : keys) {
+            int i = low.indexOf(k);
+            if (i >= 0 && i > kw) {
+                kw = i;
+                kl = k.length();
+            }
+        }
+        if (kw >= 0) {
+            String after = capToken(t, kw + kl);
+            if (after != null) {
+                return after;
+            }
+            String before = capTokenBefore(t, kw);
+            if (before != null) {
+                return before;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isCapChar(char c) {
+        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9';
+    }
+
+    private static String capToken(String t, int from) {
+        int i = from;
+        while (i < t.length() && !isCapChar(t.charAt(i))) {
+            i++;
+        }
+        int st = i;
+        while (i < t.length() && isCapChar(t.charAt(i))) {
+            i++;
+        }
+        int len = i - st;
+        return len >= 4 && len <= 8 ? t.substring(st, i) : null;
+    }
+
+    private static String capTokenBefore(String t, int to) {
+        int i = to;
+        while (i > 0 && !isCapChar(t.charAt(i - 1))) {
+            i--;
+        }
+        int en = i;
+        while (i > 0 && isCapChar(t.charAt(i - 1))) {
+            i--;
+        }
+        int len = en - i;
+        return len >= 4 && len <= 8 ? t.substring(i, en) : null;
     }
 
     /** Фолбэк: пакет содержит наш ник после 16-байтного uuid — это Login Success, даже если id неожиданный. */

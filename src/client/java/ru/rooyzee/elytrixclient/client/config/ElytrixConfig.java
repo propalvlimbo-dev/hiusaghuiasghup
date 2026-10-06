@@ -35,6 +35,7 @@ public class ElytrixConfig {
     public boolean botRejoin;
     public int botRejoinDelay = 5000;
     public boolean botAutoJump = true;
+    public boolean botCaptcha = true;
     public String bmSpamMessage = "Please do not spam!";
     public boolean bmRotation = true;
     public boolean bmSwing = true;
