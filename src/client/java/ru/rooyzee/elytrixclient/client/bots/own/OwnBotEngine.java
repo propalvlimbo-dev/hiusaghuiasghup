@@ -353,6 +353,19 @@ public class OwnBotEngine {
         out.flush();
     }
 
+    /** Рандомный MC-ник: 5-11 символов, [A-Za-z0-9_], первая буква. */
+    private static final String NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+    public static String randomName() {
+        java.util.Random r = new java.util.Random();
+        int len = 5 + r.nextInt(7);
+        StringBuilder b = new StringBuilder(len);
+        b.append((char) ('a' + r.nextInt(26)));
+        for (int i = 1; i < len; i++) {
+            b.append(NAME_CHARS.charAt(r.nextInt(NAME_CHARS.length())));
+        }
+        return b.toString();
+    }
+
     public synchronized void start(String host, int port, int protocol, OwnBotSettings s) {
         if (running) {
             log.add("[Боты] уже запущены");
@@ -372,7 +385,7 @@ public class OwnBotEngine {
                 proto = probed;
             }
             for (int i = 1; i <= s.count && running; i++) {
-                final String name = s.prefix + i;
+                final String name = s.randomNames ? randomName() : s.prefix + i;
                 Thread t = new Thread(() -> {
                     while (running) {
                         OwnBot bot = new OwnBot(name, host, port, proto, s, log);

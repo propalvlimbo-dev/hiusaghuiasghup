@@ -46,6 +46,8 @@ public class ElytrixConfig {
     public boolean bmSwing = true;
     public boolean bmMovement = true;
     public String ownBotPrefix = "ElytrixBot_";
+    /** Боты с рандомными никами вместо префикса. */
+    public boolean botRandomNames;
     public boolean bmJumping = true;
     public boolean bmPhysics = true;
     public String botAddress = "127.0.0.1:25565";

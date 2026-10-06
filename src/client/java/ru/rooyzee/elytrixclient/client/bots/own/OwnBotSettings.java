@@ -6,6 +6,8 @@ public class OwnBotSettings {
     public int delayMs = 200;
     public int timeoutMs = 5000;
     public String prefix = "ElytrixBot_";
+    /** true — ники генерируются случайно (префикс игнорируется). */
+    public boolean randomNames;
     public boolean spam;
     public String spamMessage = "Elytrix on top!";
     /** 0 = стоит, 1 = за мной (следует за игроком клиента), 2 = гулять. */

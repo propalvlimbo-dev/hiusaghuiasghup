@@ -116,6 +116,8 @@ public final class MenuContent {
                     cfg.ownBotPrefix = v;
                     dirty.run();
                 }))
+                .add(toggle("Рандом ники", () -> cfg.botRandomNames, v -> cfg.botRandomNames = v)
+                        .describe("Боты получают случайные ники (типа xQrtz_91) — префикс не используется"))
                 .add(new MenuRow.Text("Путь к rust-ботам", 200, () -> cfg.rustBotsPath, v -> {
                     cfg.rustBotsPath = v;
                     dirty.run();
@@ -134,6 +136,7 @@ public final class MenuContent {
                         st.delayMs = cfg.botmarkDelay;
                         st.timeoutMs = cfg.botmarkTimeout;
                         st.prefix = cfg.ownBotPrefix;
+                        st.randomNames = cfg.botRandomNames;
                         st.autoReg = cfg.botAutoReg;
                         st.autoLogin = cfg.botAutoLogin;
                         st.password = cfg.botPassword;
