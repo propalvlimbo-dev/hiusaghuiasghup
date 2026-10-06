@@ -63,6 +63,7 @@ public class OwnBot implements Runnable {
     private double spawnX, spawnZ, afkAngle, afkRadius;
     private boolean groundDiag;
     private int cfgLogFirst;
+    private int playLogFirst;
     private boolean secDiag;
     private boolean regDiag;
     private float afkTargetYaw;
@@ -353,9 +354,13 @@ public class OwnBot implements Runnable {
                     regDiag = true;
                     log.add("[Бот " + name + "] реестр блоков сервера получен");
                 }
-                if (cfgLogFirst < 8) {
+                if (cfgLogFirst < 12) {
                     cfgLogFirst++;
-                    log.add("[Бот " + name + "] config-пакет id=" + f.id);
+                    StringBuilder hx = new StringBuilder();
+                    for (int i = f.off; i < Math.min(f.data.length, f.off + 16); i++) {
+                        hx.append(String.format("%02X ", f.data[i]));
+                    }
+                    log.add("[Бот " + name + "] config-пакет id=" + f.id + " len=" + f.data.length + " hex=" + hx);
                 }
                 if (f.id == SC_KEEPALIVE) {
                     long id = f.i64();
@@ -386,6 +391,10 @@ public class OwnBot implements Runnable {
                 return true;
             }
             case "play": {
+                if (playLogFirst < 120) {
+                    playLogFirst++;
+                    log.add("[Бот " + name + "] play-пакет id=" + f.id + " len=" + f.data.length);
+                }
                 if (f.id == SP_KEEPALIVE) {
                     long id = f.i64();
                     send(P_KEEPALIVE, w -> w.i64(id));
