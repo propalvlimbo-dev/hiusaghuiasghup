@@ -346,6 +346,9 @@ public class OwnBot implements Runnable {
                 return true;
             }
             case "config": {
+                if (!BlockRegistry.ready()) {
+                    BlockRegistry.tryParse(f.data, f.off);
+                }
                 if (cfgLogFirst < 8) {
                     cfgLogFirst++;
                     log.add("[Бот " + name + "] config-пакет id=" + f.id);
@@ -424,6 +427,7 @@ public class OwnBot implements Runnable {
                     try {
                         int cx = f.i32();
                         int cz = f.i32();
+                        parseSections(f, cx, cz);
                         long[] hm = OwnBotEngine.extractHeightmap(f.data, off2(f));
                         if (hm == null && !chunkDiag) {
                             chunkDiag = true;
@@ -639,6 +643,59 @@ public class OwnBot implements Runnable {
             velY = 0.42; // стенка в один блок — перепрыгиваем
             x = nx;
             z = nz;
+        }
+    }
+
+    /** Блоки чанка: палитры секций (формат 1.18+/26.x) — для 3D-вида глазами бота. */
+    private void parseSections(Frame f, int cx, int cz) {
+        try {
+            int[] h = {8};
+            if ((f.data[8] & 0xFF) == 10) {
+                BlockRegistry.skipNbt(f.data, h, 10); // heightmap NBT
+            }
+            for (int sy = -4; sy < 20 && h[0] < f.data.length - 8; sy++) {
+                h[0] += 2; // block count
+                int bits = f.data[h[0]++] & 0xFF;
+                short[] sec = new short[4096];
+                if (bits == 0) {
+                    int single = readVarInt(f.data, h);
+                    int dl = readVarInt(f.data, h);
+                    h[0] += dl * 8;
+                    java.util.Arrays.fill(sec, (short) single);
+                } else {
+                    int palLen = readVarInt(f.data, h);
+                    int[] pal = new int[palLen];
+                    for (int i = 0; i < palLen; i++) {
+                        pal[i] = readVarInt(f.data, h);
+                    }
+                    int dl = readVarInt(f.data, h);
+                    long[] longs = new long[dl];
+                    for (int i = 0; i < dl; i++) {
+                        longs[i] = i64(f.data, h);
+                    }
+                    int epl = 64 / bits;
+                    long mask = (1L << bits) - 1;
+                    for (int i = 0; i < 4096; i++) {
+                        int v = (int) ((longs[i / epl] >>> ((i % epl) * bits)) & mask);
+                        sec[i] = (short) (v < palLen ? pal[v] : 0);
+                    }
+                }
+                engine.storeSection(cx, cz, sy, sec);
+                int bbits = f.data[h[0]++] & 0xFF; // биомы
+                if (bbits == 0) {
+                    readVarInt(f.data, h);
+                    readVarInt(f.data, h);
+                } else {
+                    int bl = readVarInt(f.data, h);
+                    for (int i = 0; i < bl; i++) {
+                        readVarInt(f.data, h);
+                    }
+                    int bdl = readVarInt(f.data, h);
+                    h[0] += bdl * 8;
+                }
+            }
+        } catch (Exception ignored) {
+            // кривой чанк — вид просто не обновится
         }
     }
 

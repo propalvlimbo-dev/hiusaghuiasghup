@@ -645,11 +645,10 @@ public abstract class MenuRow {
         }
     }
 
-    /** 3D-вид глазами бота: рейкаст по heightmap (небо, стены, трава, туман, прицел). */
+    /** 3D-вид глазами бота: воксельный рейкаст по настоящим блокам чанков (как POV в SoulFire). */
     public static final class BotView3D extends MenuRow {
         private final ru.rooyzee.elytrixclient.client.bots.own.OwnBot bot;
-        private static final int COLS = 150;
-        private static final int SAMPLES = 72;
+        private static final int COLS = 140;
 
         public BotView3D(ru.rooyzee.elytrixclient.client.bots.own.OwnBot bot) {
             super("");
@@ -661,51 +660,88 @@ public abstract class MenuRow {
         public void render(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
             float vw = w - 20, vh = h - 20;
             float ox = x + 10, oy = y + 6;
-            int sky = 0xFF232C3E;
-            fill(g, ox, oy, vw, vh, 3, sky);
+            fill(g, ox, oy, vw, vh, 3, 0xFF1B2434); // небо
+            fill(g, ox, oy + vh / 2f, vw, vh / 2f, 0f, 0xFF141A26); // дымка низа
             var eng = bot.engine();
             double camX = bot.posX(), camZ = bot.posZ();
             double camY = bot.posY() + 1.62;
             double yawR = Math.toRadians(bot.viewYaw());
-            float horizon = oy + vh / 2f + bot.viewPitch() * (vh / 100f);
-            float[] top = new float[COLS];
-            java.util.Arrays.fill(top, oy + vh);
+            double pitchR = Math.toRadians(bot.viewPitch());
+            double cosP = Math.cos(pitchR), sinP = Math.sin(pitchR);
+            float horizon = oy + vh / 2f + (float) (sinP * vh * 1.1);
+            float k = vh * 1.15f;
+            float colW = vw / COLS + 0.7f;
             for (int c = 0; c < COLS; c++) {
                 float ndc = (c / (float) (COLS - 1)) * 2f - 1f;
                 double ang = yawR + Math.atan(ndc * 0.85);
-                double dx = -Math.sin(ang), dz = Math.cos(ang);
-                for (int iS = 1; iS <= SAMPLES; iS++) {
-                    double t = iS * 0.8;
-                    int hgt = eng.heightAt(camX + dx * t, camZ + dz * t);
-                    if (hgt == Integer.MIN_VALUE) {
-                        continue;
-                    }
-                    float sy = horizon + (float) ((camY - hgt) * (vh * 1.15) / t);
-                    if (sy >= top[c] || sy > oy + vh) {
-                        continue; // закрыто ближней землёй
-                    }
-                    int bx = (int) Math.floor(camX + dx * t);
-                    int bz = (int) Math.floor(camZ + dz * t);
-                    int col;
-                    if (hgt > camY + 0.9) {
-                        col = ((bx + bz) & 1) == 0 ? 0xFF77654C : 0xFF6A5943; // стена
+                double dx = -Math.sin(ang) * cosP;
+                double dz = Math.cos(ang) * cosP;
+                double dy = -sinP;
+                // DDA по воксельной сетке
+                int bx = (int) Math.floor(camX), by = (int) Math.floor(camY), bz = (int) Math.floor(camZ);
+                int stx = dx > 0 ? 1 : -1, sty = dy > 0 ? 1 : -1, stz = dz > 0 ? 1 : -1;
+                double tMaxX = dx != 0 ? (dx > 0 ? bx + 1 - camX : camX - bx) / Math.abs(dx) : 1e9;
+                double tMaxY = dy != 0 ? (dy > 0 ? by + 1 - camY : camY - by) / Math.abs(dy) : 1e9;
+                double tMaxZ = dz != 0 ? (dz > 0 ? bz + 1 - camZ : camZ - bz) / Math.abs(dz) : 1e9;
+                double tDeltaX = dx != 0 ? 1 / Math.abs(dx) : 1e9;
+                double tDeltaY = dy != 0 ? 1 / Math.abs(dy) : 1e9;
+                double tDeltaZ = dz != 0 ? 1 / Math.abs(dz) : 1e9;
+                double t = 0;
+                int axis = -1;
+                int hit = -1;
+                for (int step = 0; step < 96 && t < 44; step++) {
+                    if (tMaxX < tMaxY && tMaxX < tMaxZ) {
+                        t = tMaxX; tMaxX += tDeltaX; bx += stx; axis = 0;
+                    } else if (tMaxY < tMaxZ) {
+                        t = tMaxY; tMaxY += tDeltaY; by += sty; axis = 1;
                     } else {
-                        col = ((bx + bz) & 1) == 0 ? 0xFF517F3E : 0xFF487338; // трава
+                        t = tMaxZ; tMaxZ += tDeltaZ; bz += stz; axis = 2;
                     }
-                    float fog = Math.min(1f, (float) (t / 56));
-                    col = UiTheme.mix(col, 0xFF232C3E, fog * fog);
-                    float px = ox + c * (vw / COLS);
-                    float yFrom = Math.max(oy, sy);
-                    float hLine = Math.min(top[c], oy + vh) - yFrom;
-                    if (hLine > 0.2f) {
-                        fill(g, px, yFrom, vw / COLS + 0.7f, hLine, 0f, col);
+                    int st = eng.blockAt(bx, by, bz);
+                    if (st >= 0 && ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.solid(st)) {
+                        hit = st;
+                        break;
                     }
-                    top[c] = sy;
+                    if (st < 0 && step > 24) {
+                        break; // секции кончились
+                    }
+                }
+                if (hit < 0) {
+                    continue;
+                }
+                int cls = ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.colorClass(hit);
+                boolean topFace = axis == 1 && dy < 0;
+                int base = switch (cls) {
+                    case 1 -> 0xFF6B4A2F;
+                    case 2 -> 0xFF3E6B2A;
+                    case 3 -> 0xFF6E5232;
+                    case 4 -> 0xFFC9B47C;
+                    case 5 -> 0xFFE8EEF2;
+                    case 6 -> 0xFFB3542A;
+                    default -> 0xFF7E858D;
+                };
+                if (cls == 1 && topFace) {
+                    base = 0xFF58893B;
+                }
+                float shade = topFace ? 1f : axis == 1 ? 0.5f : (axis == 0 ? 0.72f : 0.85f);
+                base = UiTheme.mix(base, 0xFF000000, 1f - shade);
+                float fog = Math.min(0.9f, (float) (t / 48) * 0.9f);
+                base = UiTheme.mix(base, 0xFF1B2434, fog);
+                float syTop = horizon + (float) ((camY - (by + 1)) * k / t);
+                float syBot = horizon + (float) ((camY - by) * k / t);
+                float yFrom = Math.max(oy, Math.min(syTop, oy + vh));
+                float yTo = Math.min(oy + vh, Math.max(syBot, yFrom + 0.8f));
+                if (axis != 1 || topFace) {
+                    yTo = oy + vh; // пол/стена тянутся до низа кадра
+                }
+                if (yTo > yFrom) {
+                    fill(g, ox + c * (vw / COLS), yFrom, colW, yTo - yFrom, 0f, base);
                 }
             }
             disc(g, ox + vw / 2f, horizon, 1.6f, 0xCCFFFFFF);
             text(g, font, "глазами бота · " + (int) camX + " " + (int) (camY - 1.62) + " " + (int) camZ
-                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°",
+                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°"
+                    + (ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.ready() ? "" : " · жду реестр блоков"),
                     x + 10, ty(SMALL, y + h - 7), soft(), SMALL);
         }
     }

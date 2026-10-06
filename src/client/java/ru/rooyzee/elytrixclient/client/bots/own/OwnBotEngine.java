@@ -91,6 +91,35 @@ public class OwnBotEngine {
     }
 
     // ── Heightmap чанков (из пакетов 45): чтобы боты не парили, а стояли на земле ──
+    /** Секции блоков: ключ (cx, cz, secY) -> state-id[4096] — для 3D-вида глазами бота. */
+    private final java.util.concurrent.ConcurrentHashMap<Long, short[]> blocks =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static long blockKey(int cx, int cz, int sy) {
+        return ((long) (cx & 0x7FFFF) << 41) | ((long) (cz & 0x7FFFF) << 20) | (sy & 0xFFFFF);
+    }
+
+    public void storeSection(int cx, int cz, int sy, short[] states) {
+        blocks.put(blockKey(cx, cz, sy), states);
+        if (blocks.size() > 3000) {
+            blocks.clear();
+        }
+    }
+
+    /** Глобальный state-id блока; -1, если секция не загружена. */
+    public int blockAt(double x, double y, double z) {
+        int bx = (int) Math.floor(x), by = (int) Math.floor(y), bz = (int) Math.floor(z);
+        if (by < -64 || by > 320) {
+            return -1;
+        }
+        short[] sec = blocks.get(blockKey(Math.floorDiv(bx, 16), Math.floorDiv(bz, 16),
+                Math.floorDiv(by, 16)));
+        if (sec == null) {
+            return -1;
+        }
+        return sec[(by & 15) * 256 + (bz & 15) * 16 + (bx & 15)] & 0xFFFF;
+    }
+
     /** Карта высот — своя на движок (на сервер): боты разных папок не путают чанки. */
     private final java.util.concurrent.ConcurrentHashMap<Long, int[]> chunkH =
             new java.util.concurrent.ConcurrentHashMap<>();
