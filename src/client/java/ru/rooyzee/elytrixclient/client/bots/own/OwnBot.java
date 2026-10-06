@@ -365,7 +365,7 @@ public class OwnBot implements Runnable {
             }
             if (walking) {
                 moveWithCollision(walkDirX * 0.09, walkDirZ * 0.09);
-                yaw = (float) Math.toDegrees(Math.atan2(-walkDirX, -walkDirZ));
+                yaw = (float) Math.toDegrees(Math.atan2(-walkDirX, walkDirZ));
             }
         } else if (mode == 1 && OwnBotEngine.followActive) {
             // «за мной» / «за ником»: идёт к цели, как follow в SoulFire
@@ -373,9 +373,9 @@ public class OwnBot implements Runnable {
             double dz = OwnBotEngine.followZ - z;
             double dist = Math.sqrt(dx * dx + dz * dz);
             if (dist > 1.5) {
-                double sp = Math.min(0.13, 0.06 + dist * 0.004);
+                double sp = Math.min(0.22, 0.08 + dist * 0.006); // бегом, если далеко
                 moveWithCollision(dx / dist * sp, dz / dist * sp);
-                yaw = (float) Math.toDegrees(Math.atan2(-dx, -dz));
+                yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
                 pitch = 10f;
             }
         } else if (OwnBotEngine.liveRotation && !OwnBotEngine.liveAntiAfk && now >= nextTurnAt) {
@@ -409,7 +409,7 @@ public class OwnBot implements Runnable {
                     afkStepUntil = now + 300 + rnd.nextInt(300);
                     double a = Math.toRadians(afkTargetYaw);
                     afkDirX = -Math.sin(a);
-                    afkDirZ = -Math.cos(a);
+                    afkDirZ = Math.cos(a);
                 }
             }
             boolean idle = !(OwnBotEngine.liveMode == 2 && walking)

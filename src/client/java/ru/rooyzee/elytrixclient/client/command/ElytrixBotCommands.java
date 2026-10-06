@@ -127,6 +127,7 @@ public final class ElytrixBotCommands {
         public void build(LiteralArgumentBuilder<Object> b) {
             b.executes(ctx -> {
                 cfg().botMode = cfg().botMode == 2 ? 0 : 2;
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
                 toggle(cfg().botMode == 2, "randommove: боты гуляют", "randommove: выкл (стоят)");
                 return 1;
             });
@@ -143,11 +144,13 @@ public final class ElytrixBotCommands {
             b.executes(ctx -> {
                 cfg().botFollowTarget = "";
                 cfg().botMode = cfg().botMode == 1 ? 0 : 1;
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
                 toggle(cfg().botMode == 1, "follow: боты идут за тобой", "follow: выкл (стоят)");
                 return 1;
             });
             b.then(LiteralArgumentBuilder.<Object>literal("off").executes(ctx -> {
                 cfg().botMode = 0;
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
                 ChatUtil.success("follow: выкл (стоят)");
                 return 1;
             }));
@@ -157,6 +160,7 @@ public final class ElytrixBotCommands {
                         String nick = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "nick");
                         cfg().botFollowTarget = nick;
                         cfg().botMode = 1;
+                        ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
                         ChatUtil.success("follow: боты идут за " + nick + " (если он в твоей видимости)");
                         return 1;
                     }));
@@ -172,6 +176,7 @@ public final class ElytrixBotCommands {
         public void build(LiteralArgumentBuilder<Object> b) {
             b.executes(ctx -> {
                 cfg().botMode = 0;
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
                 ChatUtil.success("stay: боты стоят");
                 return 1;
             });
@@ -204,6 +209,7 @@ public final class ElytrixBotCommands {
         public void build(LiteralArgumentBuilder<Object> b) {
             b.executes(ctx -> {
                 cfg().botAutoJump = !cfg().botAutoJump;
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg());
                 toggle(cfg().botAutoJump, "jump: автопрыжки вкл", "jump: автопрыжки выкл");
                 return 1;
             });

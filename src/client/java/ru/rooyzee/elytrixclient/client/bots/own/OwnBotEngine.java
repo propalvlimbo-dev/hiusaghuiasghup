@@ -139,30 +139,78 @@ public class OwnBotEngine {
         return out;
     }
 
-    /** Ищет в NBT heightmap-ов long-массив MOTION_BLOCKING (или первый long[] >= 36). Безопасно к кривым данным. */
+    /**
+     * Heightmap чанка. В 1.21.5+ (и 26.2) идёт VarInt-карта: size, затем
+     * (index, len, i64[len])*; index 1=WORLD_SURFACE, 4=MOTION_BLOCKING, 5=NO_LEAVES.
+     * Для старых форматов — фолбэк на NBT.
+     */
     public static long[] extractHeightmap(byte[] d, int from) {
         try {
             int[] h = {from};
-            if (h[0] >= d.length) {
-                return null;
+            int size = varint(d, h);
+            if (size >= 1 && size <= 16) {
+                long[] best = null;
+                for (int i = 0; i < size; i++) {
+                    int index = varint(d, h);
+                    int len = varint(d, h);
+                    if (len < 0 || len > 1000 || h[0] + 8L * len > d.length) {
+                        return best;
+                    }
+                    long[] arr = new long[len];
+                    for (int j = 0; j < len; j++) {
+                        arr[j] = i64(d, h);
+                    }
+                    if (index == 4) {
+                        return arr;
+                    }
+                    if (best == null && (index == 1 || len >= 36)) {
+                        best = arr;
+                    }
+                }
+                return best;
             }
+        } catch (Exception e) {
+            // ниже фолбэк
+        }
+        try {
+            int[] h = {from};
             int t = d[h[0]] & 0xFF;
-            long[] r;
             if (t == 10) {
                 h[0]++;
                 int nl = u16(d, h);
                 h[0] += nl;
-                r = nbtLongs(d, h, 10);
-            } else {
-                r = null;
+                return nbtLongs(d, h, 10);
             }
-            if (r == null) {
-                r = nbtLongs(d, new int[]{from}, 10);
-            }
-            return r;
+            return nbtLongs(d, new int[]{from}, 10);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static int varint(byte[] d, int[] h) {
+        int value = 0, bits = 0;
+        while (true) {
+            if (h[0] >= d.length || bits > 35) {
+                throw new IllegalArgumentException("oob varint");
+            }
+            byte b = d[h[0]++];
+            value |= (b & 0x7F) << bits;
+            if ((b & 0x80) == 0) {
+                return value;
+            }
+            bits += 7;
+        }
+    }
+
+    private static long i64(byte[] d, int[] h) {
+        if (h[0] + 8 > d.length) {
+            throw new IllegalArgumentException("oob i64");
+        }
+        long v = 0;
+        for (int i = 0; i < 8; i++) {
+            v = (v << 8) | (d[h[0]++] & 0xFF);
+        }
+        return v;
     }
 
     private static long[] nbtLongs(byte[] d, int[] h, int type) {
