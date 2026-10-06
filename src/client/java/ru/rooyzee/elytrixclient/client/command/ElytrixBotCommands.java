@@ -29,10 +29,9 @@ public final class ElytrixBotCommands {
         ChatUtil.header("Управление ботами");
         ChatUtil.entry(E, ".bots start | stop", "запустить / остановить ботов");
         ChatUtil.entry(E, ".randommove", "физика: случайные прогулки (вкл/выкл)");
-        ChatUtil.entry(E, ".follow", "физика: боты идут за тобой (вкл/выкл)");
         ChatUtil.entry(E, ".stay", "физика: боты стоят на месте");
         ChatUtil.entry(E, ".jump", "автопрыжки ботов (вкл/выкл)");
-        ChatUtil.entry(E, ".rejoin", "реждойн после кика (вкл/выкл)");
+        ChatUtil.entry(E, ".follow ник", "следовать за конкретным игроком");
     }
 
     static void start() {
@@ -76,6 +75,8 @@ public final class ElytrixBotCommands {
         st.mode = c.botMode;
         st.autoJump = c.botAutoJump;
         st.captcha = c.botCaptcha;
+        st.antiKick = c.botAntiKick;
+        st.antiAfk = c.botAntiAfk;
         st.useProxy = c.botUseProxy;
         st.rejoin = c.botRejoin;
         st.rejoinDelayMs = c.botRejoinDelay;
@@ -134,16 +135,31 @@ public final class ElytrixBotCommands {
 
     public static final class Follow extends ClientCommand {
         public Follow() {
-            super("follow", "Физика ботов: следуют за тобой (вкл/выкл)", E);
+            super("follow", "Физика ботов: за тобой или за игроком: .follow {ник}", E);
         }
 
         @Override
         public void build(LiteralArgumentBuilder<Object> b) {
             b.executes(ctx -> {
+                cfg().botFollowTarget = "";
                 cfg().botMode = cfg().botMode == 1 ? 0 : 1;
                 toggle(cfg().botMode == 1, "follow: боты идут за тобой", "follow: выкл (стоят)");
                 return 1;
             });
+            b.then(LiteralArgumentBuilder.<Object>literal("off").executes(ctx -> {
+                cfg().botMode = 0;
+                ChatUtil.success("follow: выкл (стоят)");
+                return 1;
+            }));
+            b.then(com.mojang.brigadier.builder.RequiredArgumentBuilder
+                    .<Object, String>argument("nick", com.mojang.brigadier.arguments.StringArgumentType.word())
+                    .executes(ctx -> {
+                        String nick = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "nick");
+                        cfg().botFollowTarget = nick;
+                        cfg().botMode = 1;
+                        ChatUtil.success("follow: боты идут за " + nick + " (если он в твоей видимости)");
+                        return 1;
+                    }));
         }
     }
 
@@ -177,18 +193,4 @@ public final class ElytrixBotCommands {
         }
     }
 
-    public static final class Rejoin extends ClientCommand {
-        public Rejoin() {
-            super("rejoin", "Реждойн ботов после кика (вкл/выкл)", E);
-        }
-
-        @Override
-        public void build(LiteralArgumentBuilder<Object> b) {
-            b.executes(ctx -> {
-                cfg().botRejoin = !cfg().botRejoin;
-                toggle(cfg().botRejoin, "rejoin: вкл", "rejoin: выкл");
-                return 1;
-            });
-        }
-    }
 }

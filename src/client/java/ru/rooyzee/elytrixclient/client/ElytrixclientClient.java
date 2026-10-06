@@ -113,10 +113,20 @@ public class ElytrixclientClient implements ClientModInitializer {
                 tpsWindowNano = 0L;
             }
 
-            // Координаты игрока — цель для режима ботов «за мной».
+            // Координаты цели для «за мной»: игрок с ником из настройки (если в видимости), иначе ты.
             if (client.player != null) {
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.followX = client.player.getX();
-                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.followZ = client.player.getZ();
+                net.minecraft.world.entity.player.Player src = client.player;
+                String tgt = CONFIG.botFollowTarget.trim();
+                if (!tgt.isEmpty() && client.level != null) {
+                    for (net.minecraft.client.player.AbstractClientPlayer pl : client.level.players()) {
+                        if (tgt.equalsIgnoreCase(pl.getScoreboardName())) {
+                            src = pl;
+                            break;
+                        }
+                    }
+                }
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.followX = src.getX();
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.followZ = src.getZ();
                 ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.followActive = true;
             } else {
                 ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.followActive = false;

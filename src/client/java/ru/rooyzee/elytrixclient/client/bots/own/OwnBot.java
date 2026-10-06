@@ -55,6 +55,9 @@ public class OwnBot implements Runnable {
     private double velY;
     private long nextJumpAt;
     private final BotProxy proxy;
+    private long nextAfkAt, afkStepUntil;
+    private float afkTargetYaw;
+    private double afkDirX, afkDirZ;
     private boolean havePos;
     private int entityId = -1;
 
@@ -355,10 +358,33 @@ public class OwnBot implements Runnable {
                 yaw = (float) Math.toDegrees(Math.atan2(-dx, -dz));
                 pitch = 10f;
             }
-        } else if (settings.rotation && now >= nextTurnAt) {
+        } else if (settings.rotation && !settings.antiAfk && now >= nextTurnAt) {
             nextTurnAt = now + 1500 + rnd.nextInt(3000);
             yaw = rnd.nextFloat() * 360f;
             pitch = -20f + rnd.nextFloat() * 60f;
+        }
+        // Анти-АФК: раз в 5 секунд плавно поворачивается, иногда микро-шаг — не кикает за афк
+        if (settings.antiAfk) {
+            if (now >= nextAfkAt) {
+                nextAfkAt = now + 5000;
+                afkTargetYaw = yaw + (rnd.nextFloat() * 140f - 70f);
+                pitch = -10f + rnd.nextFloat() * 30f;
+                if (rnd.nextInt(100) < 35) {
+                    afkStepUntil = now + 300 + rnd.nextInt(300);
+                    double a = Math.toRadians(afkTargetYaw);
+                    afkDirX = -Math.sin(a);
+                    afkDirZ = -Math.cos(a);
+                }
+            }
+            boolean idle = !(settings.mode == 2 && walking)
+                    && !(settings.mode == 1 && OwnBotEngine.followActive);
+            if (idle) {
+                yaw += (afkTargetYaw - yaw) * 0.15f;
+                if (now < afkStepUntil) {
+                    x += afkDirX * 0.04;
+                    z += afkDirZ * 0.04;
+                }
+            }
         }
         // Физика как у живого игрока (SoulFire auto-jump): падение на землю + периодические прыжки
         if (haveGround) {
@@ -464,13 +490,15 @@ public class OwnBot implements Runnable {
     }
 
     private void sendPosRot() throws IOException {
+        // антикик: честный onGround (иначе античит видит «полёт» во время прыжка)
+        boolean ground = !settings.antiKick || (velY == 0 && y <= groundY + 0.001);
         send(P_POS_ROT, w -> {
             w.f64(x);
             w.f64(y);
             w.f64(z);
             w.f32(yaw);
             w.f32(pitch);
-            w.u8(1); // on ground
+            w.u8(ground ? 1 : 0);
         });
     }
 

@@ -53,8 +53,7 @@ public final class CommandManager {
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.RandomMove(),
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Follow(),
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Stay(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Jump(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Rejoin())
+               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Jump())
             .forEach(this::register);
          this.store.load(this);
          this.initialized = true;

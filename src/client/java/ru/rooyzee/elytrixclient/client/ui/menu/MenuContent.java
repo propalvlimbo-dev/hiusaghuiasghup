@@ -146,6 +146,8 @@ public final class MenuContent {
                         st.mode = cfg.botMode;
                         st.autoJump = cfg.botAutoJump;
                         st.captcha = cfg.botCaptcha;
+                        st.antiKick = cfg.botAntiKick;
+                        st.antiAfk = cfg.botAntiAfk;
                         st.useProxy = cfg.botUseProxy;
                         st.rejoin = cfg.botRejoin;
                         st.rejoinDelayMs = cfg.botRejoinDelay;
@@ -171,6 +173,15 @@ public final class MenuContent {
                     cfg.botMode = v;
                     dirty.run();
                 }).describe("стоит — на месте; за мной — следуют за тобой; гулять — случайные прогулки. То же командами .stay/.follow/.randommove"))
+                .add(new MenuRow.Text("Цель follow (ник)", 160, () -> cfg.botFollowTarget, v -> {
+                    cfg.botFollowTarget = v;
+                    dirty.run();
+                }).when(() -> cfg.botMode == 1)
+                        .describe("Пусто — боты идут за тобой; укажи ник — пойдут за этим игроком (как .follow ник)"))
+                .add(toggle("Анти-АФК", () -> cfg.botAntiAfk, v -> cfg.botAntiAfk = v)
+                        .describe("Плавно поворачивается раз в 5 секунд и делает микро-шаги — не кикает за AFK"))
+                .add(toggle("Антикик (античит)", () -> cfg.botAntiKick, v -> cfg.botAntiKick = v)
+                        .describe("Честный флаг onGround и спокойные скорости — меньше киков от античита"))
                 .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v)
                         .when(() -> cfg.botMode != 1))
                 .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))

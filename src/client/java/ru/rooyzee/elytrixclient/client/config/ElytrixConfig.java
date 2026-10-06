@@ -36,6 +36,10 @@ public class ElytrixConfig {
     public int botRejoinDelay = 5000;
     public boolean botAutoJump = true;
     public boolean botCaptcha = true;
+    /** Ник цели для «за мной»; пусто — следовать за тобой. */
+    public String botFollowTarget = "";
+    public boolean botAntiKick = true;
+    public boolean botAntiAfk = true;
     public String bmSpamMessage = "Please do not spam!";
     public boolean bmRotation = true;
     public boolean bmSwing = true;

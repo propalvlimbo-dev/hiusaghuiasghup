@@ -20,6 +20,8 @@ public class OwnBotSettings {
     public boolean swing = true;
     public boolean movement = true;
     public boolean captcha = true;
+    public boolean antiKick = true;
+    public boolean antiAfk = true;
     public boolean autoReg;
     public boolean autoLogin;
     public String password = "elytrix123";
