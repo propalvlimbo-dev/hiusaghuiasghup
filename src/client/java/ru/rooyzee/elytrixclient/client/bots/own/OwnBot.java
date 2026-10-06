@@ -196,6 +196,11 @@ public class OwnBot implements Runnable {
             return true;
         } catch (Exception e) {
             if (alive) {
+                if (e instanceof java.net.UnknownHostException) {
+                    status = "адрес не найден (DNS)";
+                    log.add("[Бот " + name + "] адрес " + host + " не найден (DNS) — такого сервера нет или он недоступен");
+                    return true;
+                }
                 if (proxy != null && "handshake".equals(state) && attempt < 3) {
                     OwnBotEngine.markBadProxy(proxy);
                     log.add("[Бот " + name + "] прокси " + proxy + " недоступна: " + e);
