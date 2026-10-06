@@ -92,6 +92,10 @@ public class OwnBot implements Runnable {
         return proxy == null ? "локальный IP" : proxy.host + ":" + proxy.port;
     }
 
+    public BotProxy proxy() {
+        return proxy;
+    }
+
     public String status() {
         return status;
     }

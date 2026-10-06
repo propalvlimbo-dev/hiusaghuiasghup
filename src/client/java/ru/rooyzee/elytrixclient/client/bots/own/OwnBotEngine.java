@@ -470,6 +470,7 @@ public class OwnBotEngine {
                         : (s.randomNames ? randomName() : s.prefix + i);
                 Thread t = new Thread(() -> {
                     String nick = initial;
+                    int proxyBanTries = 0;
                     while (running) {
                         OwnBot bot = new OwnBot(OwnBotEngine.this, nick, fHost, fPort, proto, s, log);
                         bots.add(bot);
@@ -480,6 +481,18 @@ public class OwnBotEngine {
                         }
                         String why = bot.status();
                         if (s.folder != null && why != null && isBanReason(why)) {
+                            BotProxy badIp = bot.proxy();
+                            if (badIp != null && proxyBanTries < 3) {
+                                // Забанен IP прокси, а не ник: ник остаётся, прокси в блэклист
+                                proxyBanTries++;
+                                markBadProxy(badIp);
+                                log.add("[Бот " + nick + "] бан по IP прокси " + badIp.host
+                                        + " — ник чистый, меняю прокси (попытка " + proxyBanTries + "/3)");
+                                continue;
+                            }
+                            if (badIp != null) {
+                                markBadProxy(badIp);
+                            }
                             s.folder.banned.add(nick);
                             BotManager.save();
                             log.add("[Бот " + nick + "] забанен на " + fHost + " — меняю аккаунт");
@@ -489,6 +502,7 @@ public class OwnBotEngine {
                                 break;
                             }
                             nick = next;
+                            proxyBanTries = 0;
                         }
                         log.add("[Бот " + nick + "] кик (" + why + ") — реждойн через "
                                 + s.rejoinDelayMs + " мс");

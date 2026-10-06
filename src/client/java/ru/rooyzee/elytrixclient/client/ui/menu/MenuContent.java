@@ -280,14 +280,17 @@ public final class MenuContent {
                     struct();
                     dirty.run();
                 }).describe("Снимет метки бана — ники снова пойдут в ротацию"));
-        int shown = Math.min(f.accounts.size(), 10);
-        for (int i = 0; i < shown; i++) {
-            final String nick = f.accounts.get(i);
-            acc.add(new MenuRow.Info(nick, () -> f.banned.contains(nick) ? "забанен" : "готов",
-                    f.banned.contains(nick) ? 0xFFE5484D : 0));
-        }
-        if (f.accounts.size() > shown) {
-            acc.add(new MenuRow.Info("…", () -> "и ещё " + (f.accounts.size() - shown), 0));
+        for (int ai = 0; ai < f.accounts.size(); ai++) {
+            final String nick = f.accounts.get(ai);
+            acc.add(new MenuRow.Button(
+                    () -> "✕ " + nick + "  ·  " + (f.banned.contains(nick) ? "забанен" : "готов"),
+                    f.banned.contains(nick) ? MenuRow.Button.Kind.DANGER : MenuRow.Button.Kind.SECONDARY, () -> {
+                f.accounts.remove(nick);
+                f.banned.remove(nick);
+                ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                struct();
+                dirty.run();
+            }).describe("Клик — удалить ник из пула папки"));
         }
         list.add(acc);
 
