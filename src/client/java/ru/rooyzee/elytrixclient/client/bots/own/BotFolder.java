@@ -20,6 +20,12 @@ public class BotFolder {
     public int delayMs = 500;
     public List<String> accounts = new ArrayList<>();
     public Set<String> banned = new HashSet<>();
+    /** Физика/поведение ботов этого сервера. */
+    public boolean antiAfk = true;
+    public boolean rotation = true;
+    public boolean swing = true;
+    public boolean autoJump = true;
+    public boolean captcha = true;
 
     /** Следующий ник, не забаненный и не равный keep. null, если свободных нет. */
     public synchronized String nextAccount(String keep) {

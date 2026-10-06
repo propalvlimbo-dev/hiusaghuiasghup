@@ -68,6 +68,12 @@ public class OwnBotEngine {
     }
 
     // ── Живые настройки: меняются из GUI/команд и действуют на уже бегущих ботов сразу ──
+    /** Физика конкретного сервера (настраивается на странице папки). */
+    public volatile boolean pAntiAfk = true;
+    public volatile boolean pRotation = true;
+    public volatile boolean pSwing = true;
+    public volatile boolean pAutoJump = true;
+
     public static volatile int liveMode;
     public static volatile boolean liveRotation = true;
     public static volatile boolean liveSwing = true;
@@ -422,6 +428,12 @@ public class OwnBotEngine {
             return;
         }
         running = true;
+        if (s.folder == null) {
+            pAntiAfk = s.antiAfk;
+            pRotation = s.rotation;
+            pSwing = s.swing;
+            pAutoJump = s.autoJump;
+        }
         // Как ванильный клиент и SoulFire: при порте по умолчанию сначала SRV-запись
         // _minecraft._tcp.<домен> — хостинги (mclan и т.п.) отдают реальный адрес через неё
         String rh = host;

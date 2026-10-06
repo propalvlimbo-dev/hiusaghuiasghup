@@ -439,7 +439,7 @@ public class OwnBot implements Runnable {
         }
         // Настоящий анти-афк: медленно наматывает круги вокруг спавна (~1 блок за 30 с),
         // направление и радиус меняются случайно — выглядит как живой игрок
-        if (OwnBotEngine.liveAntiAfk && havePos) {
+        if (engine.pAntiAfk && havePos) {
             if (!haveSpawn) {
                 haveSpawn = true;
                 spawnX = x;
@@ -466,7 +466,7 @@ public class OwnBot implements Runnable {
                 }
                 pitch = -5f + rnd.nextFloat() * 15f;
             }
-        } else if (OwnBotEngine.liveRotation && now >= nextTurnAt) {
+        } else if (engine.pRotation && now >= nextTurnAt) {
             nextTurnAt = now + 1500 + rnd.nextInt(3000);
             yaw = rnd.nextFloat() * 360f;
         }
@@ -488,7 +488,7 @@ public class OwnBot implements Runnable {
         if (havePos) {
             sendPosRot();
         }
-        if (OwnBotEngine.liveSwing && now >= nextSwingAt) {
+        if (engine.pSwing && now >= nextSwingAt) {
             nextSwingAt = now + 1500 + rnd.nextInt(2500);
             send(P_SWING, w -> w.varInt(0));
         }
@@ -579,7 +579,7 @@ public class OwnBot implements Runnable {
         if (th == Integer.MIN_VALUE || th <= y + 1.001) {
             x = nx;
             z = nz;
-        } else if (OwnBotEngine.liveAutoJump && velY == 0 && th <= y + 2.001) {
+        } else if (engine.pAutoJump && velY == 0 && th <= y + 2.001) {
             velY = 0.42; // стенка в один блок — перепрыгиваем
             x = nx;
             z = nz;

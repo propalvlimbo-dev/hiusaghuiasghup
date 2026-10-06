@@ -97,6 +97,11 @@ public class ElytrixScreen extends Screen {
     private long dirtyAt;
     private MenuContent content;
     private int seenStruct = -1;
+    /** >= 0 — открыта отдельная страница папки ботов (вместо списка карточек вкладки). */
+    public static volatile int openFolderPage = -1;
+    private int pageFolder = -1;
+    private int pageStruct = -1;
+    private List<MenuCard> pageCache;
 
     private String search = "";
     private boolean searching;
@@ -139,6 +144,7 @@ public class ElytrixScreen extends Screen {
     private void buildTabs() {
         content = new MenuContent(this::markDirty, this::select, this::resetInterface);
         seenStruct = content.structVersion();
+        openFolderPage = -1;
         themes = new ThemesView(this::markDirty);
         tabs.clear();
         tabs.add(new Tab("Главная", UiIcon.HOME, VIEW_CARDS, content.home()));
@@ -225,6 +231,7 @@ public class ElytrixScreen extends Screen {
         if (index < 0 || index >= tabs.size() || (index == current && search.isEmpty())) {
             return;
         }
+        openFolderPage = -1;
         current = index;
         UiSound.play(UiSound.Event.CLICK);
         search = "";
@@ -283,6 +290,23 @@ public class ElytrixScreen extends Screen {
 
     private List<MenuCard> visibleCards() {
         if (search.isEmpty()) {
+            var folders = ru.rooyzee.elytrixclient.client.bots.own.BotManager.folders;
+            int of = openFolderPage;
+            if (of >= folders.size()) {
+                openFolderPage = of = -1;
+            }
+            if (of >= 0) {
+                if (of != pageFolder || content.structChanged(pageStruct)) {
+                    pageFolder = of;
+                    pageStruct = content.structVersion();
+                    pageCache = content.folderPage(folders.get(of));
+                    for (MenuCard c : pageCache) {
+                        c.replay(UiWidget.ANIMATIONS ? 0.05f : 0f);
+                    }
+                }
+                return pageCache;
+            }
+            pageFolder = -1;
             return tabs.get(current).cards();
         }
         String q = lower(search.trim());

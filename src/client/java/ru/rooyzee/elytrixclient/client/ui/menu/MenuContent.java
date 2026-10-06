@@ -107,45 +107,6 @@ public final class MenuContent {
         var ob = ElytrixclientClient.OWN_BOTS;
         var rd = ElytrixclientClient.RUST_BOTS;
         list.add(foldersCard());
-
-        list.add(new MenuCard("Поведение и физика")
-                .badge(() -> cfg.botAntiAfk ? "анти-афк" : "стоит", 0)
-                .add(toggle("Анти-АФК", () -> cfg.botAntiAfk, v -> { cfg.botAntiAfk = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
-                        .describe("Настоящий анти-афк: бот медленно наматывает круги вокруг спавна (~1 блок за 30 с), взгляд по ходу движения"))
-                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> { cfg.bmRotation = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
-                        .when(() -> cfg.botMode != 1))
-                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> { cfg.bmSwing = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); }))
-                .add(toggle("Автопрыжки", () -> cfg.botAutoJump, v -> { cfg.botAutoJump = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
-                        .describe("Живое поведение + перепрыгивание ступенек на ходу (команда .jump)"))
-                .add(toggle("Реждойн после кика", () -> cfg.botRejoin, v -> cfg.botRejoin = v)
-                        .describe("После кика бот сам перезайдёт (команда .rejoin)"))
-                .add(new MenuRow.Slider("Задержка реждойна", 1000, 60000, 500, " мс", () -> cfg.botRejoinDelay, v -> {
-                    cfg.botRejoinDelay = v;
-                    dirty.run();
-                }).when(() -> cfg.botRejoin)));
-
-        list.add(new MenuCard("Чат и авторизация")
-                .add(toggle("Авторешение капч", () -> cfg.botCaptcha, v -> cfg.botCaptcha = v)
-                        .describe("Бот читает текстовую капчу антибота из чата и вводит код сам"))
-                .add(toggle("Авторегистрация", () -> cfg.botAutoReg, v -> cfg.botAutoReg = v))
-                .add(toggle("Автовход", () -> cfg.botAutoLogin, v -> cfg.botAutoLogin = v))
-                .add(new MenuRow.Text("Пароль", 160, () -> cfg.botPassword, v -> {
-                    cfg.botPassword = v;
-                    dirty.run();
-                }).when(() -> cfg.botAutoReg || cfg.botAutoLogin))
-                .add(toggle("Сообщения в чат", () -> cfg.bmSpam, v -> { cfg.bmSpam = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); }))
-                .add(new MenuRow.Text("Текст сообщения", 140, () -> cfg.bmSpamMessage, v -> {
-                    cfg.bmSpamMessage = v;
-                    dirty.run();
-                }).when(() -> cfg.bmSpam))
-                .add(new MenuRow.Slider("Интервал спама от", 500, 30000, 500, " мс", () -> cfg.botSpamMin, v -> {
-                    cfg.botSpamMin = v;
-                    dirty.run();
-                }).when(() -> cfg.bmSpam))
-                .add(new MenuRow.Slider("до", 500, 60000, 500, " мс", () -> cfg.botSpamMax, v -> {
-                    cfg.botSpamMax = v;
-                    dirty.run();
-                }).when(() -> cfg.bmSpam)));
         return list;
     }
 
@@ -213,8 +174,9 @@ public final class MenuContent {
                 .add(new MenuRow.Info("Раздача", () -> "по кругу на бота", 0)));
         return list;
     }
-    /** Папки-серверы: у каждой папки свой сервер, пул ников и запуск (SoulFire-style менеджер). */
+    /** Список папок-серверов; клик по папке открывает её отдельную страницу. */
     private MenuCard foldersCard() {
+        var bm = ru.rooyzee.elytrixclient.client.bots.own.BotManager.class;
         MenuCard c = new MenuCard("Папки-серверы")
                 .badge(() -> ru.rooyzee.elytrixclient.client.bots.own.BotManager.folders.size() + " папок", 0);
         c.add(new MenuRow.Button(() -> "Создать папку", MenuRow.Button.Kind.PRIMARY, () -> {
@@ -223,67 +185,41 @@ public final class MenuContent {
                     cfg.botAddress);
             struct();
             dirty.run();
-        }).describe("Папка = сервер: адрес, свои ники-аккаунты, сколько ботов подключать. Кик — реждойн, бан — смена ника"));
+        }).describe("Папка = отдельная страница: сервер, аккаунты, авторизация, физика ботов этого сервера"));
         var folders = ru.rooyzee.elytrixclient.client.bots.own.BotManager.folders;
+        if (folders.isEmpty()) {
+            c.add(new MenuRow.Info("Пока пусто", () -> "создай папку и открой её", 0));
+        }
         for (int i = 0; i < folders.size(); i++) {
             final ru.rooyzee.elytrixclient.client.bots.own.BotFolder f = folders.get(i);
             final int idx = i;
-            final boolean sel = ru.rooyzee.elytrixclient.client.bots.own.BotManager.selected == i;
-            c.add(new MenuRow.Header((sel ? "▸ " : "   ") + f.name));
-            c.add(new MenuRow.Info("Адрес", () -> f.address.isEmpty() ? "не задан" : f.address, 0));
-            c.add(new MenuRow.Info("Боты", () -> ru.rooyzee.elytrixclient.client.bots.own.BotManager.status(f)
-                    + " · ников: " + f.accounts.size()
-                    + (f.banned.isEmpty() ? "" : " · в бане: " + f.banned.size()), 0));
-            if (sel) {
-                c.add(new MenuRow.Text("Имя папки", 140, () -> f.name, v -> {
-                    f.name = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }));
-                c.add(new MenuRow.Text("Адрес", 200, () -> f.address, v -> {
-                    f.address = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }));
-                c.add(new MenuRow.Slider("Подключать ботов", 1, 50, 1, "", () -> f.connectCount, v -> {
-                    f.connectCount = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }).describe("Сколько ботов из пула ников зайдут на сервер"));
-                c.add(new MenuRow.Text("Новый ник", 110, () -> draftNick, v -> draftNick = v));
-                c.add(new MenuRow.Button(() -> "Добавить ник", MenuRow.Button.Kind.SECONDARY, () -> {
-                    f.addAccount(draftNick);
-                    draftNick = "";
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+            c.add(new MenuRow.Button(
+                    () -> f.name + "  ·  " + ru.rooyzee.elytrixclient.client.bots.own.BotManager.status(f),
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.running(f)
+                            ? MenuRow.Button.Kind.PRIMARY : MenuRow.Button.Kind.SECONDARY, () -> {
+                ru.rooyzee.elytrixclient.client.bots.own.BotManager.selected = idx;
+                ru.rooyzee.elytrixclient.client.ui.ElytrixScreen.openFolderPage = idx;
+                struct();
+                dirty.run();
+            }).describe(f.address.isEmpty() ? "адрес не задан" : f.address));
+        }
+        return c;
+    }
+
+    /** Полноценная страница открытой папки: всё про этот сервер, ничего лишнего. */
+    public java.util.List<MenuCard> folderPage(ru.rooyzee.elytrixclient.client.bots.own.BotFolder f) {
+        var list = new java.util.ArrayList<MenuCard>();
+        var BM = ru.rooyzee.elytrixclient.client.bots.own.BotManager.class;
+
+        list.add(new MenuCard(f.name).badge(() -> ru.rooyzee.elytrixclient.client.bots.own.BotManager.status(f), 0)
+                .add(new MenuRow.Button(() -> "← К списку папок", MenuRow.Button.Kind.SECONDARY, () -> {
+                    ru.rooyzee.elytrixclient.client.ui.ElytrixScreen.openFolderPage = -1;
                     struct();
                     dirty.run();
-                }));
-                c.add(new MenuRow.Button(() -> "Сгенерировать 5 ников", MenuRow.Button.Kind.SECONDARY, () -> {
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.generateAccounts(f, 5);
-                    struct();
-                    dirty.run();
-                }).describe("Добавит 5 случайных MC-ников в пул папки"));
-                c.add(new MenuRow.Button(() -> "Разбанить все ники", MenuRow.Button.Kind.SECONDARY, () -> {
-                    f.banned.clear();
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                    struct();
-                    dirty.run();
-                }));
-                c.add(toggle("Через прокси", () -> f.useProxy, v -> {
-                    f.useProxy = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }));
-                c.add(toggle("Авторегистрация", () -> f.autoReg, v -> {
-                    f.autoReg = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }));
-                c.add(toggle("Автовход", () -> f.autoLogin, v -> {
-                    f.autoLogin = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }));
-                c.add(new MenuRow.Text("Пароль авторега", 120, () -> f.password, v -> {
-                    f.password = v;
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
-                }));
-                c.add(new MenuRow.Button(
-                        () -> ru.rooyzee.elytrixclient.client.bots.own.BotManager.running(f) ? "Остановить" : "Подключить ботов",
+                }))
+                .add(new MenuRow.Button(
+                        () -> ru.rooyzee.elytrixclient.client.bots.own.BotManager.running(f)
+                                ? "Отключить ботов" : "Подключить " + f.connectCount + " ботов",
                         ru.rooyzee.elytrixclient.client.bots.own.BotManager.running(f)
                                 ? MenuRow.Button.Kind.SECONDARY : MenuRow.Button.Kind.PRIMARY, () -> {
                     if (ru.rooyzee.elytrixclient.client.bots.own.BotManager.running(f)) {
@@ -292,21 +228,121 @@ public final class MenuContent {
                         ru.rooyzee.elytrixclient.client.bots.own.BotManager.start(f);
                     }
                     dirty.run();
-                }));
-                c.add(new MenuRow.Button(() -> "Удалить папку", MenuRow.Button.Kind.SECONDARY, () -> {
+                }))
+                .add(new MenuRow.Button(() -> "Удалить папку", MenuRow.Button.Kind.DANGER, () -> {
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.remove(f);
+                    ru.rooyzee.elytrixclient.client.ui.ElytrixScreen.openFolderPage = -1;
                     struct();
                     dirty.run();
-                }));
-            } else {
-                c.add(new MenuRow.Button(() -> "Выбрать", MenuRow.Button.Kind.SECONDARY, () -> {
-                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.selected = idx;
+                }).describe("Отключит ботов и уберёт папку со всеми её аккаунтами")));
+
+        list.add(new MenuCard("Сервер")
+                .add(new MenuRow.Text("Имя папки", 140, () -> f.name, v -> {
+                    f.name = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }))
+                .add(new MenuRow.Text("Адрес (ip или домен[:порт])", 200, () -> f.address, v -> {
+                    f.address = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("SRV-запись поддержится автоматически (mclan и т.п.)"))
+                .add(toggle("Через прокси", () -> f.useProxy, v -> {
+                    f.useProxy = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("Каждый бот берёт следующую прокси из общего пула; мёртвые отсеиваются"))
+                .add(new MenuRow.Slider("Подключать ботов", 1, 50, 1, "", () -> f.connectCount, v -> {
+                    f.connectCount = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }))
+                .add(new MenuRow.Slider("Задержка входа", 50, 5000, 50, " мс", () -> f.delayMs, v -> {
+                    f.delayMs = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("Пауза между стартом ботов этой папки")));
+
+        MenuCard acc = new MenuCard("Аккаунты")
+                .badge(() -> f.accounts.size() + " ников", 0)
+                .add(new MenuRow.Info("Готовы", () -> f.freeAccounts().size() + " · в бане: " + f.banned.size(), 0))
+                .add(new MenuRow.Text("Новый ник", 110, () -> draftNick, v -> draftNick = v))
+                .add(new MenuRow.Button(() -> "Добавить ник", MenuRow.Button.Kind.SECONDARY, () -> {
+                    f.addAccount(draftNick);
+                    draftNick = "";
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
                     struct();
                     dirty.run();
-                }));
-            }
+                }))
+                .add(new MenuRow.Button(() -> "Сгенерировать 5 ников", MenuRow.Button.Kind.SECONDARY, () -> {
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.generateAccounts(f, 5);
+                    struct();
+                    dirty.run();
+                }))
+                .add(new MenuRow.Button(() -> "Разбанить все ники", MenuRow.Button.Kind.SECONDARY, () -> {
+                    f.banned.clear();
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                    struct();
+                    dirty.run();
+                }).describe("Снимет метки бана — ники снова пойдут в ротацию"));
+        int shown = Math.min(f.accounts.size(), 10);
+        for (int i = 0; i < shown; i++) {
+            final String nick = f.accounts.get(i);
+            acc.add(new MenuRow.Info(nick, () -> f.banned.contains(nick) ? "забанен" : "готов",
+                    f.banned.contains(nick) ? 0xFFE5484D : 0));
         }
-        return c;
+        if (f.accounts.size() > shown) {
+            acc.add(new MenuRow.Info("…", () -> "и ещё " + (f.accounts.size() - shown), 0));
+        }
+        list.add(acc);
+
+        list.add(new MenuCard("Авторизация")
+                .add(toggle("Авторегистрация", () -> f.autoReg, v -> {
+                    f.autoReg = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("После входа шлёт /register пароль пароль"))
+                .add(toggle("Автовход", () -> f.autoLogin, v -> {
+                    f.autoLogin = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("Шлёт /login пароль"))
+                .add(toggle("Авторешение капч", () -> f.captcha, v -> {
+                    f.captcha = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("Текстовая капча из чата решается сама; иначе вбей вручную в фазе 3"))
+                .add(new MenuRow.Text("Пароль", 120, () -> f.password, v -> {
+                    f.password = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).when(() -> f.autoReg || f.autoLogin)));
+
+        list.add(new MenuCard("Физика ботов этого сервера")
+                .add(toggle("Анти-АФК круги", () -> f.antiAfk, v -> {
+                    f.antiAfk = v;
+                    var e = ru.rooyzee.elytrixclient.client.bots.own.BotManager.engine(f);
+                    if (e != null) {
+                        e.pAntiAfk = v;
+                    }
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }).describe("Медленно наматывает круги вокруг спавна (~1 блок за 30 с)"))
+                .add(toggle("Повороты головы", () -> f.rotation, v -> {
+                    f.rotation = v;
+                    var e = ru.rooyzee.elytrixclient.client.bots.own.BotManager.engine(f);
+                    if (e != null) {
+                        e.pRotation = v;
+                    }
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }))
+                .add(toggle("Взмахи рукой", () -> f.swing, v -> {
+                    f.swing = v;
+                    var e = ru.rooyzee.elytrixclient.client.bots.own.BotManager.engine(f);
+                    if (e != null) {
+                        e.pSwing = v;
+                    }
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                }))
+                .add(toggle("Перепрыгивать ступеньки", () -> f.autoJump, v -> {
+                    f.autoJump = v;
+                    var e = ru.rooyzee.elytrixclient.client.bots.own.BotManager.engine(f);
+                    if (e != null) {
+                        e.pAutoJump = v;
+                    }
+                    ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
+                })));
+        return list;
     }
 
     private MenuCard hudCard() {

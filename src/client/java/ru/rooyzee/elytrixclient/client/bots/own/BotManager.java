@@ -87,6 +87,10 @@ public final class BotManager {
         if (e.isRunning()) {
             return;
         }
+        e.pAntiAfk = f.antiAfk;
+        e.pRotation = f.rotation;
+        e.pSwing = f.swing;
+        e.pAutoJump = f.autoJump;
         var cfg = ElytrixclientClient.CONFIG;
         OwnBotSettings st = new OwnBotSettings();
         st.folder = f;
@@ -102,12 +106,12 @@ public final class BotManager {
         st.spamMessage = cfg.bmSpamMessage;
         st.spamDelayMin = cfg.botSpamMin;
         st.spamDelayMax = cfg.botSpamMax;
-        st.rotation = cfg.bmRotation;
-        st.swing = cfg.bmSwing;
+        st.rotation = f.rotation;
+        st.swing = f.swing;
         st.mode = 0; // ходьба убрана: боты стоят/анти-афк у спавна
-        st.autoJump = cfg.botAutoJump;
-        st.captcha = cfg.botCaptcha;
-        st.antiAfk = cfg.botAntiAfk;
+        st.autoJump = f.autoJump;
+        st.captcha = f.captcha;
+        st.antiAfk = f.antiAfk;
         st.useProxy = f.useProxy;
         st.rejoin = true; // всегда: кик -> реждойн, бан -> смена ника
         st.rejoinDelayMs = cfg.botRejoinDelay;
