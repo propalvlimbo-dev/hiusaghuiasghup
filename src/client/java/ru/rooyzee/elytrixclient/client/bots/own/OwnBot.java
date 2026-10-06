@@ -341,7 +341,7 @@ public class OwnBot implements Runnable {
             if (walking) {
                 x += walkDirX * 0.09;
                 z += walkDirZ * 0.09;
-                yaw = (float) Math.toDegrees(Math.atan2(walkDirX, -walkDirZ));
+                yaw = (float) Math.toDegrees(Math.atan2(-walkDirX, -walkDirZ));
             }
         } else if (settings.mode == 1 && OwnBotEngine.followActive) {
             // «за мной»: идёт к игроку клиента, как follow в SoulFire
@@ -352,7 +352,7 @@ public class OwnBot implements Runnable {
                 double sp = Math.min(0.13, 0.06 + dist * 0.004);
                 x += dx / dist * sp;
                 z += dz / dist * sp;
-                yaw = (float) Math.toDegrees(Math.atan2(dx, -dz));
+                yaw = (float) Math.toDegrees(Math.atan2(-dx, -dz));
                 pitch = 10f;
             }
         } else if (settings.rotation && now >= nextTurnAt) {
@@ -363,7 +363,9 @@ public class OwnBot implements Runnable {
         // Физика как у живого игрока (SoulFire auto-jump): падение на землю + периодические прыжки
         if (haveGround) {
             if (settings.autoJump && velY == 0 && y <= groundY + 0.001 && now >= nextJumpAt) {
-                nextJumpAt = now + 4000 + rnd.nextInt(9000);
+                boolean moving = (settings.mode == 2 && walking)
+                        || (settings.mode == 1 && OwnBotEngine.followActive);
+                nextJumpAt = now + (moving ? 700 + rnd.nextInt(1800) : 4000 + rnd.nextInt(9000));
                 velY = 0.42;
             }
             if (velY != 0 || y > groundY + 0.001) {

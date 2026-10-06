@@ -31,8 +31,8 @@ public class OwnBotEngine {
     private static final java.util.concurrent.atomic.AtomicInteger proxyIdx =
             new java.util.concurrent.atomic.AtomicInteger();
 
-    /** Читает txt с прокси (ip:port или ip:port:user:pass). Возвращает число загруженных. */
-    public static synchronized int loadProxies(String path, LogBuffer log) {
+    /** Путь к файлу прокси: абсолютный как есть, относительный — от .minecraft/elytrix/. */
+    public static java.nio.file.Path proxyPath(String path) {
         java.nio.file.Path f = java.nio.file.Path.of(path);
         if (!f.isAbsolute()) {
             try {
@@ -41,6 +41,12 @@ public class OwnBotEngine {
             } catch (Throwable ignored) {
             }
         }
+        return f;
+    }
+
+    /** Читает txt с прокси (ip:port или ip:port:user:pass). Возвращает число загруженных. */
+    public static synchronized int loadProxies(String path, LogBuffer log) {
+        java.nio.file.Path f = proxyPath(path);
         java.util.List<BotProxy> list = new java.util.ArrayList<>();
         try {
             for (String line : java.nio.file.Files.readAllLines(f, java.nio.charset.StandardCharsets.UTF_8)) {
@@ -146,12 +152,14 @@ public class OwnBotEngine {
         log.add("[Боты] запускаем " + s.count + " встроенных ботов на " + host + ":" + port
                 + " (protocol " + protocol + ")");
         Thread spawner = new Thread(() -> {
-            int proto = probeProtocol(host, port, 3000);
-            if (proto < 0) {
-                log.add("[Боты] протокол сервера: " + (-proto) + " (из status-ping)");
-                proto = -proto;
+            int probed = probeProtocol(host, port, 3000);
+            final int proto;
+            if (probed < 0) {
+                log.add("[Боты] протокол сервера: " + (-probed) + " (из status-ping)");
+                proto = -probed;
             } else {
-                log.add("[Боты] status не ответил, используем стандартный протокол " + proto);
+                log.add("[Боты] status не ответил, используем стандартный протокол " + probed);
+                proto = probed;
             }
             for (int i = 1; i <= s.count && running; i++) {
                 final String name = s.prefix + i;

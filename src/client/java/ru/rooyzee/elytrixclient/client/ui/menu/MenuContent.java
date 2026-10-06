@@ -92,15 +92,10 @@ public final class MenuContent {
         var ob = ElytrixclientClient.OWN_BOTS;
         var rd = ElytrixclientClient.RUST_BOTS;
 
-        list.add(new MenuCard("Боты")
+        list.add(new MenuCard("Запуск")
                 .badge(() -> ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg) || rd.isRunning()
                         ? "rust: " + rd.statusLine()
                         : "встроенные: " + ob.status(), 0)
-                .add(new MenuRow.Header("Подключение"))
-                .add(new MenuRow.Text("Путь к rust-ботам", 200, () -> cfg.rustBotsPath, v -> {
-                    cfg.rustBotsPath = v;
-                    dirty.run();
-                }))
                 .add(new MenuRow.Text("Адрес сервера", 200, () -> cfg.botAddress, v -> {
                     cfg.botAddress = v;
                     dirty.run();
@@ -121,25 +116,76 @@ public final class MenuContent {
                     cfg.ownBotPrefix = v;
                     dirty.run();
                 }))
-                .add(new MenuRow.Header("Поведение"))
+                .add(new MenuRow.Text("Путь к rust-ботам", 200, () -> cfg.rustBotsPath, v -> {
+                    cfg.rustBotsPath = v;
+                    dirty.run();
+                }))
+                .add(new MenuRow.Button(() -> (rd.isRunning() || ob.isRunning()) ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
+                        MenuRow.Button.Kind.PRIMARY, () -> {
+                    if (rd.isRunning() || ob.isRunning()) {
+                        rd.stop();
+                        ob.stop();
+                    } else if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg)) {
+                        rd.start(cfg);
+                    } else {
+                        ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings st =
+                                new ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings();
+                        st.count = cfg.botmarkCount;
+                        st.delayMs = cfg.botmarkDelay;
+                        st.timeoutMs = cfg.botmarkTimeout;
+                        st.prefix = cfg.ownBotPrefix;
+                        st.autoReg = cfg.botAutoReg;
+                        st.autoLogin = cfg.botAutoLogin;
+                        st.password = cfg.botPassword;
+                        st.spam = cfg.bmSpam;
+                        st.spamMessage = cfg.bmSpamMessage;
+                        st.spamDelayMin = cfg.botSpamMin;
+                        st.spamDelayMax = cfg.botSpamMax;
+                        st.rotation = cfg.bmRotation;
+                        st.swing = cfg.bmSwing;
+                        st.mode = cfg.botMode;
+                        st.autoJump = cfg.botAutoJump;
+                        st.captcha = cfg.botCaptcha;
+                        st.useProxy = cfg.botUseProxy;
+                        st.rejoin = cfg.botRejoin;
+                        st.rejoinDelayMs = cfg.botRejoinDelay;
+                        String addr = cfg.botAddress.trim();
+                        String host = addr;
+                        int port = 25565;
+                        int colon = addr.lastIndexOf(':');
+                        if (colon > 0) {
+                            host = addr.substring(0, colon);
+                            try {
+                                port = Integer.parseInt(addr.substring(colon + 1));
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+                        int proto = ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.probeProtocol(host, port, 3000);
+                        ob.start(host, port, proto < 0 ? -proto : proto, st);
+                    }
+                })));
+
+        list.add(new MenuCard("Поведение и физика")
+                .badge(() -> new String[]{"стоит", "за мной", "гулять"}[cfg.botMode], 0)
                 .add(new MenuRow.Mode("Режим", new String[]{"стоит", "за мной", "гулять"}, () -> cfg.botMode, v -> {
                     cfg.botMode = v;
                     dirty.run();
-                }).describe("стоит — бот на месте; за мной — следует за тобой, как follow в SoulFire; гулять — случайные прогулки"))
+                }).describe("стоит — на месте; за мной — следуют за тобой; гулять — случайные прогулки. То же командами .stay/.follow/.randommove"))
                 .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v)
                         .when(() -> cfg.botMode != 1))
                 .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
                 .add(toggle("Автопрыжки", () -> cfg.botAutoJump, v -> cfg.botAutoJump = v)
-                        .describe("Живое поведение: боты периодически прыгают, как auto-jump в SoulFire"))
+                        .describe("Живое поведение + перепрыгивание ступенек на ходу (команда .jump)"))
                 .add(toggle("Реждойн после кика", () -> cfg.botRejoin, v -> cfg.botRejoin = v)
-                        .describe("После кика бот сам перезайдёт через задержку (auto-reconnect как в SoulFire)"))
+                        .describe("После кика бот сам перезайдёт (команда .rejoin)"))
                 .add(new MenuRow.Slider("Задержка реждойна", 1000, 60000, 500, " мс", () -> cfg.botRejoinDelay, v -> {
                     cfg.botRejoinDelay = v;
                     dirty.run();
-                }).when(() -> cfg.botRejoin))
-                .add(new MenuRow.Header("Чат и авторизация"))
+                }).when(() -> cfg.botRejoin)));
+
+        list.add(new MenuCard("Чат и авторизация")
                 .add(toggle("Авторешение капч", () -> cfg.botCaptcha, v -> cfg.botCaptcha = v)
-                        .describe("Как в NeoProxy: бот читает текстовую капчу антибота из чата и вводит код сам"))
+                        .describe("Бот читает текстовую капчу антибота из чата и вводит код сам"))
                 .add(toggle("Авторегистрация", () -> cfg.botAutoReg, v -> cfg.botAutoReg = v))
                 .add(toggle("Автовход", () -> cfg.botAutoLogin, v -> cfg.botAutoLogin = v))
                 .add(new MenuRow.Text("Пароль", 160, () -> cfg.botPassword, v -> {
@@ -158,42 +204,7 @@ public final class MenuContent {
                 .add(new MenuRow.Slider("до", 500, 60000, 500, " мс", () -> cfg.botSpamMax, v -> {
                     cfg.botSpamMax = v;
                     dirty.run();
-                }).when(() -> cfg.bmSpam))
-                .add(new MenuRow.Button(() -> (rd.isRunning() || ob.isRunning()) ? "Остановить" : "Запустить " + cfg.botmarkCount + " ботов",
-                        MenuRow.Button.Kind.PRIMARY, () -> {
-                    if (rd.isRunning() || ob.isRunning()) {
-                        rd.stop();
-                        ob.stop();
-                    } else if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg)) {
-                        rd.start(cfg);
-                    } else {
-                        ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings st =
-                                new ru.rooyzee.elytrixclient.client.bots.own.OwnBotSettings();
-                        st.count = cfg.botmarkCount;
-                        st.delayMs = cfg.botmarkDelay;
-                        st.timeoutMs = cfg.botmarkTimeout;
-                        st.prefix = cfg.ownBotPrefix;
-                        st.autoReg = cfg.botAutoReg;
-                        st.autoLogin = cfg.botAutoLogin;
-                        st.mode = cfg.botMode;
-                        st.autoJump = cfg.botAutoJump;
-                        st.captcha = cfg.botCaptcha;
-                        st.useProxy = cfg.botUseProxy;
-                        st.rejoin = cfg.botRejoin;
-                        st.rejoinDelayMs = cfg.botRejoinDelay;
-                        st.password = cfg.botPassword;
-                        st.spam = cfg.bmSpam;
-                        st.spamMessage = cfg.bmSpamMessage;
-                        st.spamDelayMin = cfg.botSpamMin;
-                        st.spamDelayMax = cfg.botSpamMax;
-                        st.rotation = cfg.bmRotation;
-                        st.swing = cfg.bmSwing;
-                        st.movement = cfg.bmMovement;
-                        String addr = cfg.botAddress.trim();
-                        String[] hp = addr.split(":");
-                        ob.start(hp[0], hp.length > 1 ? Integer.parseInt(hp[1]) : 25565, 776, st);
-                    }
-                })));
+                }).when(() -> cfg.bmSpam)));
         return list;
     }
 
@@ -206,6 +217,23 @@ public final class MenuContent {
                     cfg.botProxyFile = v;
                     dirty.run();
                 }).describe("txt-файл: по одной прокси на строку. Если путь не абсолютный — ищется в .minecraft/elytrix/"))
+                .add(new MenuRow.Button(() -> "Открыть файл прокси", MenuRow.Button.Kind.PRIMARY, () -> {
+                    try {
+                        java.nio.file.Path f = ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine
+                                .proxyPath(cfg.botProxyFile);
+                        if (f.getParent() != null) {
+                            java.nio.file.Files.createDirectories(f.getParent());
+                        }
+                        if (!java.nio.file.Files.exists(f)) {
+                            java.nio.file.Files.writeString(f,
+                                    "# по одной прокси на строку: ip:port или ip:port:login:pass\n",
+                                    java.nio.charset.StandardCharsets.UTF_8);
+                        }
+                        net.minecraft.util.Util.getPlatform().openFile(f.toFile());
+                    } catch (Exception e) {
+                        ru.rooyzee.elytrixclient.client.ElytrixclientClient.LOG.add("[Прокси] " + e.getMessage());
+                    }
+                }).describe("Откроет txt в системном редакторе — закинь туда прокси и сохрани"))
                 .add(new MenuRow.Button(() -> "Перечитать файл", MenuRow.Button.Kind.SECONDARY, () -> {
                     ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.loadProxies(cfg.botProxyFile,
                             ru.rooyzee.elytrixclient.client.ElytrixclientClient.LOG);
