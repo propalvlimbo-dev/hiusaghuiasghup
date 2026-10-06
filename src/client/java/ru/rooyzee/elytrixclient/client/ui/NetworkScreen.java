@@ -79,7 +79,9 @@ public final class NetworkScreen extends Screen {
         if (pr && !wasPressed) {
             if (hovApply) {
                 apply(cfg);
-                note = "Прокси применён к клиенту";
+                note = ru.rooyzee.elytrixclient.client.util.VfpBridge.installed()
+                        ? "Применено (прокси + версия " + ru.rooyzee.elytrixclient.client.util.VfpBridge.current() + ")"
+                        : "Прокси применён; VFP не найден — версия не сменится";
                 noteUntil = System.currentTimeMillis() + 3000;
             } else if (hovSave) {
                 cfg.save();
@@ -91,7 +93,7 @@ public final class NetworkScreen extends Screen {
             MtsdfTextRenderer.draw(g, Fonts.REGULAR, note, px + 10, py + 126, 7f, 0xB3FFFFFF);
         } else {
             MtsdfTextRenderer.draw(g, Fonts.REGULAR,
-                    "Смена версий работает при установленном ViaFabric", px + 10, py + 126, 6.5f, 0x80FFFFFF);
+                    ru.rooyzee.elytrixclient.client.util.VfpBridge.status(), px + 10, py + 126, 6.5f, 0x80FFFFFF);
         }
         wasPressed = pr;
 
@@ -110,6 +112,10 @@ public final class NetworkScreen extends Screen {
     }
 
     private static void apply(ElytrixConfig cfg) {
+        // Смена версии сервера через ViaFabricPlus (если установлен)
+        if (!cfg.protocolVersion.isBlank()) {
+            ru.rooyzee.elytrixclient.client.util.VfpBridge.setVersion(cfg.protocolVersion);
+        }
         try {
             if (cfg.proxyMode.equals("off") || cfg.proxyHost.isBlank()) {
                 System.clearProperty("socksProxyHost");
