@@ -698,7 +698,7 @@ public abstract class MenuRow {
                         t = tMaxZ; tMaxZ += tDeltaZ; bz += stz; axis = 2;
                     }
                     int st = eng.blockAt(bx, by, bz);
-                    if (st >= 0 && ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.solid(st)) {
+                    if (st >= 0 && ru.rooyzee.elytrixclient.client.bots.own.BlockLook.solid(st)) {
                         hit = st;
                         break;
                     }
@@ -709,20 +709,8 @@ public abstract class MenuRow {
                 if (hit < 0) {
                     continue;
                 }
-                int cls = ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.colorClass(hit);
                 boolean topFace = axis == 1 && dy < 0;
-                int base = switch (cls) {
-                    case 1 -> 0xFF6B4A2F;
-                    case 2 -> 0xFF3E6B2A;
-                    case 3 -> 0xFF6E5232;
-                    case 4 -> 0xFFC9B47C;
-                    case 5 -> 0xFFE8EEF2;
-                    case 6 -> 0xFFB3542A;
-                    default -> 0xFF7E858D;
-                };
-                if (cls == 1 && topFace) {
-                    base = 0xFF58893B;
-                }
+                int base = ru.rooyzee.elytrixclient.client.bots.own.BlockLook.color(hit);
                 float shade = topFace ? 1f : axis == 1 ? 0.5f : (axis == 0 ? 0.72f : 0.85f);
                 base = UiTheme.mix(base, 0xFF000000, 1f - shade);
                 float fog = Math.min(0.9f, (float) (t / 48) * 0.9f);
@@ -741,7 +729,7 @@ public abstract class MenuRow {
             disc(g, ox + vw / 2f, horizon, 1.6f, 0xCCFFFFFF);
             text(g, font, "глазами бота · " + (int) camX + " " + (int) (camY - 1.62) + " " + (int) camZ
                     + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°"
-                    + (ru.rooyzee.elytrixclient.client.bots.own.BlockRegistry.ready() ? "" : " · жду реестр блоков"),
+),
                     x + 10, ty(SMALL, y + h - 7), soft(), SMALL);
         }
     }

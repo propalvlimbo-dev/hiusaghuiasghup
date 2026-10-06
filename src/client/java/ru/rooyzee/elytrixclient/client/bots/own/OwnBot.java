@@ -63,6 +63,7 @@ public class OwnBot implements Runnable {
     private double spawnX, spawnZ, afkAngle, afkRadius;
     private boolean chunkDiag, groundDiag;
     private int cfgLogFirst;
+    private boolean secDiag;
     private float afkTargetYaw;
     private double afkDirX, afkDirZ;
     private boolean havePos;
@@ -346,9 +347,6 @@ public class OwnBot implements Runnable {
                 return true;
             }
             case "config": {
-                if (!BlockRegistry.ready()) {
-                    BlockRegistry.tryParse(f.data, f.off);
-                }
                 if (cfgLogFirst < 8) {
                     cfgLogFirst++;
                     log.add("[Бот " + name + "] config-пакет id=" + f.id);
@@ -646,12 +644,62 @@ public class OwnBot implements Runnable {
         }
     }
 
+    /** Пропуск NBT-компаунда (сетевой формат) — для выхода к секциям чанка. */
+    private static void skipNbtCompound(byte[] d, int[] h) {
+        while (true) {
+            int t = d[h[0]++] & 0xFF;
+            if (t == 0) {
+                return;
+            }
+            int nl = ((d[h[0]] & 0xFF) << 8) | (d[h[0] + 1] & 0xFF);
+            h[0] += 2 + nl;
+            skipNbtPayload(d, h, t);
+        }
+    }
+
+    private static void skipNbtPayload(byte[] d, int[] h, int type) {
+        switch (type) {
+            case 1 -> h[0] += 1;
+            case 2 -> h[0] += 2;
+            case 3 -> h[0] += 4;
+            case 4 -> h[0] += 8;
+            case 5 -> h[0] += 4;
+            case 6 -> h[0] += 8;
+            case 7 -> {
+                int n = ((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
+                        | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF);
+                h[0] += 4 + n;
+            }
+            case 8 -> {
+                int n = ((d[h[0]] & 0xFF) << 8) | (d[h[0] + 1] & 0xFF);
+                h[0] += 2 + n;
+            }
+            case 9 -> {
+                int et = d[h[0]++] & 0xFF;
+                int n = ((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
+                        | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF);
+                h[0] += 4;
+                for (int i = 0; i < n; i++) {
+                    skipNbtPayload(d, h, et);
+                }
+            }
+            case 10 -> skipNbtCompound(d, h);
+            case 11 -> h[0] += 4L * (((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
+                    | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF));
+            case 12 -> h[0] += 8L * (((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
+                    | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF));
+            default -> {
+            }
+        }
+    }
+
     /** Блоки чанка: палитры секций (формат 1.18+/26.x) — для 3D-вида глазами бота. */
     private void parseSections(Frame f, int cx, int cz) {
+        int parsed = 0;
         try {
             int[] h = {8};
             if ((f.data[8] & 0xFF) == 10) {
-                BlockRegistry.skipNbt(f.data, h, 10); // heightmap NBT
+                skipNbtCompound(f.data, h); // heightmap NBT
             }
             for (int sy = -4; sy < 20 && h[0] < f.data.length - 8; sy++) {
                 h[0] += 2; // block count
@@ -685,6 +733,7 @@ public class OwnBot implements Runnable {
                     }
                 }
                 engine.storeSection(cx, cz, sy, sec);
+                parsed++;
                 int bbits = f.data[h[0]++] & 0xFF; // биомы
                 if (bbits == 0) {
                     readVarInt(f.data, h);
@@ -700,6 +749,10 @@ public class OwnBot implements Runnable {
             }
         } catch (Exception ignored) {
             // кривой чанк — вид просто не обновится
+        }
+        if (!secDiag) {
+            secDiag = true;
+            log.add("[Бот " + name + "] чанк: секций с блоками " + parsed + "/24");
         }
     }
 
