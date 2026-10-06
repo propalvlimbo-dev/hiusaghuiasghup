@@ -114,6 +114,14 @@ public class OwnBot implements Runnable {
         return z;
     }
 
+    public float viewYaw() {
+        return yaw;
+    }
+
+    public float viewPitch() {
+        return pitch;
+    }
+
     // ── чат бота: лента для страницы аккаунта ────────────────────────────
     private final java.util.ArrayDeque<String> chatLines = new java.util.ArrayDeque<>();
 

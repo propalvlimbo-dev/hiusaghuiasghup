@@ -623,6 +623,93 @@ public abstract class MenuRow {
     //  Выбор цвета — кружки-образцы
     // ═════════════════════════════════════════════════════════════════════
 
+    /** Строка текста (чат бота). Свои сообщения — акцентным цветом. */
+    public static final class Line extends MenuRow {
+        private final Supplier<String> text;
+
+        public Line(Supplier<String> text) {
+            super("");
+            this.text = text;
+            this.h = 13;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
+            String t = text.get();
+            if (t == null || t.isEmpty()) {
+                return;
+            }
+            boolean own = t.startsWith("я:");
+            text(g, font, trim(font, t, SMALL, w - 20), x + 10, ty(SMALL, y + h / 2f),
+                    own ? accent : soft(), SMALL);
+        }
+    }
+
+    /** 3D-вид глазами бота: рейкаст по heightmap (небо, стены, трава, туман, прицел). */
+    public static final class BotView3D extends MenuRow {
+        private final ru.rooyzee.elytrixclient.client.bots.own.OwnBot bot;
+        private static final int COLS = 150;
+        private static final int SAMPLES = 72;
+
+        public BotView3D(ru.rooyzee.elytrixclient.client.bots.own.OwnBot bot) {
+            super("");
+            this.bot = bot;
+            this.h = 118;
+        }
+
+        @Override
+        public void render(GuiGraphicsExtractor g, Font font, double mx, double my, float dt) {
+            float vw = w - 20, vh = h - 20;
+            float ox = x + 10, oy = y + 6;
+            int sky = 0xFF232C3E;
+            fill(g, ox, oy, vw, vh, 3, sky);
+            var eng = bot.engine();
+            double camX = bot.posX(), camZ = bot.posZ();
+            double camY = bot.posY() + 1.62;
+            double yawR = Math.toRadians(bot.viewYaw());
+            float horizon = oy + vh / 2f + bot.viewPitch() * (vh / 100f);
+            float[] top = new float[COLS];
+            java.util.Arrays.fill(top, oy + vh);
+            for (int c = 0; c < COLS; c++) {
+                float ndc = (c / (float) (COLS - 1)) * 2f - 1f;
+                double ang = yawR + Math.atan(ndc * 0.85);
+                double dx = -Math.sin(ang), dz = Math.cos(ang);
+                for (int iS = 1; iS <= SAMPLES; iS++) {
+                    double t = iS * 0.8;
+                    int hgt = eng.heightAt(camX + dx * t, camZ + dz * t);
+                    if (hgt == Integer.MIN_VALUE) {
+                        continue;
+                    }
+                    float sy = horizon + (float) ((camY - hgt) * (vh * 1.15) / t);
+                    if (sy >= top[c] || sy > oy + vh) {
+                        continue; // закрыто ближней землёй
+                    }
+                    int bx = (int) Math.floor(camX + dx * t);
+                    int bz = (int) Math.floor(camZ + dz * t);
+                    int col;
+                    if (hgt > camY + 0.9) {
+                        col = ((bx + bz) & 1) == 0 ? 0xFF77654C : 0xFF6A5943; // стена
+                    } else {
+                        col = ((bx + bz) & 1) == 0 ? 0xFF517F3E : 0xFF487338; // трава
+                    }
+                    float fog = Math.min(1f, (float) (t / 56));
+                    col = UiTheme.mix(col, 0xFF232C3E, fog * fog);
+                    float px = ox + c * (vw / COLS);
+                    float yFrom = Math.max(oy, sy);
+                    float hLine = Math.min(top[c], oy + vh) - yFrom;
+                    if (hLine > 0.2f) {
+                        fill(g, px, yFrom, vw / COLS + 0.7f, hLine, 0f, col);
+                    }
+                    top[c] = sy;
+                }
+            }
+            disc(g, ox + vw / 2f, horizon, 1.6f, 0xCCFFFFFF);
+            text(g, font, "глазами бота · " + (int) camX + " " + (int) (camY - 1.62) + " " + (int) camZ
+                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°",
+                    x + 10, ty(SMALL, y + h - 7), soft(), SMALL);
+        }
+    }
+
     public static final class Swatches extends MenuRow {
         private static final float R = 5.5f;
         private static final float STEP = 17;
