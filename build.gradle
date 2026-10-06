@@ -51,7 +51,7 @@ dependencies {
     // github.com/ViaVersion/ViaFabricPlus/releases/tag/5.0.2 и положи в bundled-mods/ —
     // runClient подхватит его сам. Нет файла — зависимость просто пропускается.
     if (file("bundled-mods/ViaFabricPlus-5.0.2.jar").exists()) {
-        modLocalRuntime(files("bundled-mods/ViaFabricPlus-5.0.2.jar"))
+        implementation(files("bundled-mods/ViaFabricPlus-5.0.2.jar"))
     }
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
