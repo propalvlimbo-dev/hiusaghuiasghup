@@ -45,10 +45,7 @@ public final class BlockLook {
         }
         try {
             BlockState st = Block.stateById(stateId);
-            if (st == null || st.isAir()) {
-                return 0xFF7E858D;
-            }
-            return 0xFF000000 | (st.getBlock().defaultMapColor().col & 0xFFFFFF);
+            return st != null && !st.isAir() ? 0xFF8A8F98 : 0xFF1B2434;
         } catch (Throwable t) {
             return 0xFF7E858D;
         }
