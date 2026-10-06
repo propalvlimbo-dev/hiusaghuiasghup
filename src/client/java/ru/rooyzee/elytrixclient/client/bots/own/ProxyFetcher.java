@@ -119,18 +119,34 @@ public final class ProxyFetcher {
                 if (f.getParent() != null) {
                     Files.createDirectories(f.getParent());
                 }
-                StringBuilder sb = new StringBuilder(
-                        "# свежие прокси Elytrix, проверены на " + targetHost + ":" + targetPort + "\n");
-                for (BotProxy p : alive) {
-                    sb.append(p.host).append(':').append(p.port);
-                    if (p.hasAuth()) {
-                        sb.append(':').append(p.user).append(':').append(p.pass);
+                // Не удаляем старое: существующие строки остаются, живые новички дописываются
+                List<String> merged = new ArrayList<>();
+                LinkedHashSet<String> seenHp = new LinkedHashSet<>();
+                if (Files.exists(f)) {
+                    for (String ln : Files.readAllLines(f, StandardCharsets.UTF_8)) {
+                        merged.add(ln);
+                        BotProxy old = BotProxy.parse(ln);
+                        if (old != null) {
+                            seenHp.add(old.host + ":" + old.port);
+                        }
                     }
-                    sb.append('\n');
                 }
-                Files.writeString(f, sb.toString(), StandardCharsets.UTF_8);
+                int added = 0;
+                for (BotProxy p : alive) {
+                    if (!seenHp.add(p.host + ":" + p.port)) {
+                        continue;
+                    }
+                    StringBuilder line = new StringBuilder(p.host).append(':').append(p.port);
+                    if (p.hasAuth()) {
+                        line.append(':').append(p.user).append(':').append(p.pass);
+                    }
+                    merged.add(line.toString());
+                    added++;
+                }
+                Files.writeString(f, String.join("\n", merged) + "\n", StandardCharsets.UTF_8);
                 OwnBotEngine.loadProxies(proxyFilePath, log);
-                log.add("[Прокси] готово: живых " + alive.size() + " из " + parsed.size() + " — список сохранён и загружен");
+                log.add("[Прокси] готово: живых " + alive.size() + " из " + parsed.size()
+                        + ", добавлено новых " + added + " (старые не тронуты)");
             } catch (Exception e) {
                 log.add("[Прокси] ошибка загрузки: " + e);
             } finally {

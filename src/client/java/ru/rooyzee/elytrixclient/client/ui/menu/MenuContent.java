@@ -267,7 +267,7 @@ public final class MenuContent {
                     ru.rooyzee.elytrixclient.client.bots.own.ProxyFetcher.fetchValidateSave(
                             host, port, cfg.botProxyFile,
                             ru.rooyzee.elytrixclient.client.ElytrixclientClient.LOG);
-                }).describe("Качает свежие бесплатные списки и оставляет только те прокси, что реально достучались до твоего сервера"))
+                }).describe("Качает свежие бесплатные списки, проверяет каждую на твоём сервере и ДОБАВЛЯЕТ живые к твоему списку — старые прокси не удаляются"))
                 .add(new MenuRow.Info("В списке", () -> ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.proxyCount()
                         + " шт", 0))
                 .add(new MenuRow.Header("Использование"))
