@@ -641,6 +641,14 @@ public class OwnBot implements Runnable {
     }
 
     /** NeoProxy-стиль: авто-решение текстовых капч антибота. Ищет код 4-8 символов рядом со словом captcha/капча/код/code. */
+    private static int i32at(byte[] d, int[] h) {
+        int v = 0;
+        for (int i = 0; i < 4; i++) {
+            v = (v << 8) | (d[h[0]++] & 0xFF);
+        }
+        return v;
+    }
+
     /** Heightmap из NBT-компаунда (серверы до 1.21.4): ищет MOTION_BLOCKING long[]. */
     private static long[] nbtHeightmap(byte[] d, int[] h) {
         try {
