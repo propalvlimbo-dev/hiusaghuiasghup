@@ -76,11 +76,7 @@ public final class MenuContent {
                 .add(new MenuRow.Info("Где", MenuContent::whereAmI, 0))
                 .add(new MenuRow.Info("Строк в логе", () -> String.valueOf(ElytrixclientClient.LOG.size()), 0))
                 .add(new MenuRow.Info("Боты", () -> {
-                    var rd = ElytrixclientClient.RUST_BOTS;
                     var ob = ElytrixclientClient.OWN_BOTS;
-                    if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(cfg) || rd.isRunning()) {
-                        return "rust: " + rd.statusLine();
-                    }
                     return "встроенные: " + ob.status();
                 }, 0)));
 
@@ -402,7 +398,7 @@ public final class MenuContent {
                     dirty.run();
                 })));
         list.add(new MenuCard("Экран бота")
-                .add(new MenuRow.BotMap(bot))
+                .add(new MenuRow.BotView3D(bot))
                 .add(new MenuRow.Info("Прокси", bot::proxyLabel, 0)));
         MenuCard chat = new MenuCard("Чат бота").badge(() -> String.valueOf(bot.chatSnapshot().size()), 0);
         for (int k = 0; k < 12; k++) {
