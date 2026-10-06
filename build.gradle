@@ -46,6 +46,13 @@ dependencies {
     // ── Зависимости перенесённого визуал-стека delta-26.2 ──
     compileOnly(files("bundled-mods/baritone-fabric-1.15.0-10.jar"))
     implementation(files("bundled-mods/baritone-fabric-1.15.0-10.jar"))
+
+    // ViaFabricPlus (смена версий серверов): скачай ViaFabricPlus-5.0.2.jar с
+    // github.com/ViaVersion/ViaFabricPlus/releases/tag/5.0.2 и положи в bundled-mods/ —
+    // runClient подхватит его сам. Нет файла — зависимость просто пропускается.
+    if (file("bundled-mods/ViaFabricPlus-5.0.2.jar").exists()) {
+        modLocalRuntime(files("bundled-mods/ViaFabricPlus-5.0.2.jar"))
+    }
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
     implementation 'com.google.code.findbugs:jsr305:3.0.2'
