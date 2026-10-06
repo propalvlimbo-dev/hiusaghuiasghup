@@ -671,7 +671,11 @@ public class OwnBot implements Runnable {
                     int dl = readVarInt(f.data, h);
                     long[] longs = new long[dl];
                     for (int i = 0; i < dl; i++) {
-                        longs[i] = i64(f.data, h);
+                        long v = 0;
+                        for (int b = 0; b < 8; b++) {
+                            v = (v << 8) | (f.data[h[0]++] & 0xFF);
+                        }
+                        longs[i] = v;
                     }
                     int epl = 64 / bits;
                     long mask = (1L << bits) - 1;
