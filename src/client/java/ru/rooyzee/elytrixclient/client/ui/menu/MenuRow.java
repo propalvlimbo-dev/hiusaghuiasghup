@@ -728,8 +728,7 @@ public abstract class MenuRow {
             }
             disc(g, ox + vw / 2f, horizon, 1.6f, 0xCCFFFFFF);
             text(g, font, "глазами бота · " + (int) camX + " " + (int) (camY - 1.62) + " " + (int) camZ
-                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°"
-),
+                    + " · " + Math.round(Math.toDegrees(yawR) % 360) + "°",
                     x + 10, ty(SMALL, y + h - 7), soft(), SMALL);
         }
     }
