@@ -61,7 +61,7 @@ public class OwnBot implements Runnable {
     private long nextAfkAt, nextTurnAt0;
     private boolean haveSpawn, afkClockwise;
     private double spawnX, spawnZ, afkAngle, afkRadius;
-    private boolean chunkDiag, groundDiag;
+    private boolean groundDiag;
     private int cfgLogFirst;
     private boolean secDiag;
     private float afkTargetYaw;
@@ -423,17 +423,45 @@ public class OwnBot implements Runnable {
                     send(P_CHUNK_BATCH, w -> w.f32(10f));
                 } else if (f.id == SP_CHUNK_DATA) {
                     try {
-                        int cx = f.i32();
-                        int cz = f.i32();
-                        parseSections(f, cx, cz);
-                        long[] hm = OwnBotEngine.extractHeightmap(f.data, off2(f));
-                        if (hm == null && !chunkDiag) {
-                            chunkDiag = true;
-                            StringBuilder sb = new StringBuilder();
-                            for (int i = 8; i < Math.min(f.data.length, 48); i++) {
-                                sb.append(String.format("%02X ", f.data[i]));
+                        net.minecraft.network.FriendlyByteBuf fb = new net.minecraft.network.FriendlyByteBuf(
+                                io.netty.buffer.Unpooled.wrappedBuffer(f.data, f.off, f.data.length - f.off));
+                        net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket pkt =
+                                new net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket(fb);
+                        int cx = pkt.getX();
+                        int cz = pkt.getZ();
+                        f.off = f.data.length;
+                        net.minecraft.world.level.chunk.LevelChunkSection[] secs =
+                                pkt.getChunkData().getSections();
+                        int saved = 0;
+                        for (int i = 0; i < secs.length; i++) {
+                            if (secs[i] == null) {
+                                continue;
                             }
-                            log.add("[Бот " + name + "] чанк не распознан, байты heightmap: " + sb);
+                            var states = secs[i].getStates();
+                            short[] sec = new short[4096];
+                            boolean any = false;
+                            for (int by = 0; by < 16; by++) {
+                                for (int bz = 0; bz < 16; bz++) {
+                                    for (int bx = 0; bx < 16; bx++) {
+                                        int id = net.minecraft.world.level.block.Block.getId(states.get(bx, by, bz));
+                                        sec[by * 256 + bz * 16 + bx] = (short) id;
+                                        any |= id != 0;
+                                    }
+                                }
+                            }
+                            if (any) {
+                                engine.storeSection(cx, cz, i - 4, sec);
+                                saved++;
+                            }
+                        }
+                        if (!secDiag) {
+                            secDiag = true;
+                            log.add("[Бот " + name + "] чанк: секций с блоками " + saved + "/" + secs.length);
+                        }
+                        long[] hm = null;
+                        net.minecraft.nbt.CompoundTag hmt = pkt.getChunkData().getHeightmaps();
+                        if (hmt != null && hmt.contains("MOTION_BLOCKING")) {
+                            hm = hmt.getLongArray("MOTION_BLOCKING");
                         }
                         if (hm != null && hm.length >= 36) {
                             engine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
@@ -457,7 +485,7 @@ public class OwnBot implements Runnable {
                     String line = f.component();
                     chatAdd(line);
                     if (settings.captcha) {
-                        String code = captchaCode(f.component());
+                        String code = captchaCode(line);
                         if (code != null) {
                             log.add("[Бот " + name + "] капча распознана: " + code);
                             sendChat(code, System.currentTimeMillis());
@@ -642,122 +670,6 @@ public class OwnBot implements Runnable {
             x = nx;
             z = nz;
         }
-    }
-
-    /** Пропуск NBT-компаунда (сетевой формат) — для выхода к секциям чанка. */
-    private static void skipNbtCompound(byte[] d, int[] h) {
-        while (true) {
-            int t = d[h[0]++] & 0xFF;
-            if (t == 0) {
-                return;
-            }
-            int nl = ((d[h[0]] & 0xFF) << 8) | (d[h[0] + 1] & 0xFF);
-            h[0] += 2 + nl;
-            skipNbtPayload(d, h, t);
-        }
-    }
-
-    private static void skipNbtPayload(byte[] d, int[] h, int type) {
-        switch (type) {
-            case 1 -> h[0] += 1;
-            case 2 -> h[0] += 2;
-            case 3 -> h[0] += 4;
-            case 4 -> h[0] += 8;
-            case 5 -> h[0] += 4;
-            case 6 -> h[0] += 8;
-            case 7 -> {
-                int n = ((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
-                        | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF);
-                h[0] += 4 + n;
-            }
-            case 8 -> {
-                int n = ((d[h[0]] & 0xFF) << 8) | (d[h[0] + 1] & 0xFF);
-                h[0] += 2 + n;
-            }
-            case 9 -> {
-                int et = d[h[0]++] & 0xFF;
-                int n = ((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
-                        | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF);
-                h[0] += 4;
-                for (int i = 0; i < n; i++) {
-                    skipNbtPayload(d, h, et);
-                }
-            }
-            case 10 -> skipNbtCompound(d, h);
-            case 11 -> h[0] += 4L * (((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
-                    | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF));
-            case 12 -> h[0] += 8L * (((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
-                    | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF));
-            default -> {
-            }
-        }
-    }
-
-    /** Блоки чанка: палитры секций (формат 1.18+/26.x) — для 3D-вида глазами бота. */
-    private void parseSections(Frame f, int cx, int cz) {
-        int parsed = 0;
-        try {
-            int[] h = {8};
-            if ((f.data[8] & 0xFF) == 10) {
-                skipNbtCompound(f.data, h); // heightmap NBT
-            }
-            for (int sy = -4; sy < 20 && h[0] < f.data.length - 8; sy++) {
-                h[0] += 2; // block count
-                int bits = f.data[h[0]++] & 0xFF;
-                short[] sec = new short[4096];
-                if (bits == 0) {
-                    int single = readVarInt(f.data, h);
-                    int dl = readVarInt(f.data, h);
-                    h[0] += dl * 8;
-                    java.util.Arrays.fill(sec, (short) single);
-                } else {
-                    int palLen = readVarInt(f.data, h);
-                    int[] pal = new int[palLen];
-                    for (int i = 0; i < palLen; i++) {
-                        pal[i] = readVarInt(f.data, h);
-                    }
-                    int dl = readVarInt(f.data, h);
-                    long[] longs = new long[dl];
-                    for (int i = 0; i < dl; i++) {
-                        long v = 0;
-                        for (int b = 0; b < 8; b++) {
-                            v = (v << 8) | (f.data[h[0]++] & 0xFF);
-                        }
-                        longs[i] = v;
-                    }
-                    int epl = 64 / bits;
-                    long mask = (1L << bits) - 1;
-                    for (int i = 0; i < 4096; i++) {
-                        int v = (int) ((longs[i / epl] >>> ((i % epl) * bits)) & mask);
-                        sec[i] = (short) (v < palLen ? pal[v] : 0);
-                    }
-                }
-                engine.storeSection(cx, cz, sy, sec);
-                parsed++;
-                int bbits = f.data[h[0]++] & 0xFF; // биомы
-                if (bbits == 0) {
-                    readVarInt(f.data, h);
-                    readVarInt(f.data, h);
-                } else {
-                    int bl = readVarInt(f.data, h);
-                    for (int i = 0; i < bl; i++) {
-                        readVarInt(f.data, h);
-                    }
-                    int bdl = readVarInt(f.data, h);
-                    h[0] += bdl * 8;
-                }
-            }
-        } catch (Exception ignored) {
-            // кривой чанк — вид просто не обновится
-        }
-        if (!secDiag) {
-            secDiag = true;
-            log.add("[Бот " + name + "] чанк: секций с блоками " + parsed + "/24");
-        }
-    }
-
-    private static int off2(Frame f) {
-        return 8; // после i32 x и i32 z начинается NBT heightmap
     }
 
     private void sendPosRot() throws IOException {
@@ -1103,31 +1015,37 @@ public class OwnBot implements Runnable {
                     int n = u16at(d, h);
                     String r = new String(d, h[0], n, StandardCharsets.UTF_8);
                     h[0] += n;
-                    return r;
+                    return key == null || "text".equals(key) || "value".equals(key) ? r : null;
                 }
                 case 9: {
                     int et = d[h[0]++] & 0xFF;
                     int n = i32at(d, h);
+                    StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < n; i++) {
                         String r = nbtWalk(d, h, et, null, depth + 1);
                         if (r != null) {
-                            return r;
+                            sb.append(r);
                         }
                     }
-                    return null;
+                    return sb.length() == 0 ? null : sb.toString();
                 }
                 case 10: {
+                    StringBuilder sb = new StringBuilder();
                     while (true) {
                         int et = d[h[0]++] & 0xFF;
                         if (et == 0) {
-                            return null;
+                            return sb.length() == 0 ? null : sb.toString();
                         }
                         int nl = u16at(d, h);
                         String name = new String(d, h[0], nl, StandardCharsets.UTF_8);
                         h[0] += nl;
-                        String r = nbtWalk(d, h, et, name, depth + 1);
-                        if (r != null) {
-                            return r;
+                        if ("text".equals(name) || "extra".equals(name) || "with".equals(name)) {
+                            String r = nbtWalk(d, h, et, name, depth + 1);
+                            if (r != null) {
+                                sb.append(r);
+                            }
+                        } else {
+                            nbtWalk(d, h, et, name, depth + 1); // просто пропустить
                         }
                     }
                 }
