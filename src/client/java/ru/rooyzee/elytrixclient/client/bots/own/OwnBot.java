@@ -432,9 +432,12 @@ public class OwnBot implements Runnable {
                         int[] h = {f.off};
                         int cx = i32at(f.data, h);
                         int cz = i32at(f.data, h);
-                        // heightmap в 1.21.5+/26.x — VarInt-карта: size, затем (index, len, i64[len])*
+                        // heightmap: до 1.21.4 — NBT-компаунд, с 1.21.5+/26.x — VarInt-карта
                         long[] hm = null;
-                        int hmCount = readVarInt(f.data, h);
+                        if ((f.data[h[0]] & 0xFF) == 10) {
+                            hm = nbtHeightmap(f.data, h);
+                        }
+                        int hmCount = hm == null ? readVarInt(f.data, h) : 0;
                         for (int i = 0; i < hmCount && i < 16; i++) {
                             int index = readVarInt(f.data, h);
                             int len = readVarInt(f.data, h);
@@ -638,6 +641,89 @@ public class OwnBot implements Runnable {
     }
 
     /** NeoProxy-стиль: авто-решение текстовых капч антибота. Ищет код 4-8 символов рядом со словом captcha/капча/код/code. */
+    /** Heightmap из NBT-компаунда (серверы до 1.21.4): ищет MOTION_BLOCKING long[]. */
+    private static long[] nbtHeightmap(byte[] d, int[] h) {
+        try {
+            if ((d[h[0]++] & 0xFF) != 10) {
+                return null;
+            }
+            long[] best = null;
+            while (true) {
+                int t = d[h[0]++] & 0xFF;
+                if (t == 0) {
+                    return best;
+                }
+                int nl = ((d[h[0]++] & 0xFF) << 8) | (d[h[0]++] & 0xFF);
+                String name = new String(d, h[0], nl, StandardCharsets.UTF_8);
+                h[0] += nl;
+                if (t == 10) {
+                    while (true) {
+                        int it = d[h[0]++] & 0xFF;
+                        if (it == 0) {
+                            break;
+                        }
+                        int il = ((d[h[0]++] & 0xFF) << 8) | (d[h[0]++] & 0xFF);
+                        String iname = new String(d, h[0], il, StandardCharsets.UTF_8);
+                        h[0] += il;
+                        if (it == 12 && (best == null || "MOTION_BLOCKING".equals(name))) {
+                            int n = i32at(d, h);
+                            long[] arr = new long[n];
+                            for (int j = 0; j < n; j++) {
+                                long v = 0;
+                                for (int k = 0; k < 8; k++) {
+                                    v = (v << 8) | (d[h[0]++] & 0xFF);
+                                }
+                                arr[j] = v;
+                            }
+                            best = arr;
+                        } else {
+                            skipNbtVal(d, h, it);
+                        }
+                    }
+                } else {
+                    skipNbtVal(d, h, t);
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void skipNbtVal(byte[] d, int[] h, int t) {
+        switch (t) {
+            case 1 -> h[0] += 1;
+            case 2 -> h[0] += 2;
+            case 3 -> h[0] += 4;
+            case 4 -> h[0] += 8;
+            case 5 -> h[0] += 4;
+            case 6 -> h[0] += 8;
+            case 7 -> h[0] += i32at(d, h);
+            case 8 -> h[0] += ((d[h[0]++] & 0xFF) << 8) | (d[h[0]++] & 0xFF);
+            case 9 -> {
+                int et = d[h[0]++] & 0xFF;
+                int n = i32at(d, h);
+                for (int i = 0; i < n; i++) {
+                    skipNbtVal(d, h, et);
+                }
+            }
+            case 10 -> {
+                while (true) {
+                    int et = d[h[0]++] & 0xFF;
+                    if (et == 0) {
+                        return;
+                    }
+                    int nl = ((d[h[0]++] & 0xFF) << 8) | (d[h[0]++] & 0xFF);
+                    h[0] += nl;
+                    skipNbtVal(d, h, et);
+                }
+            }
+            case 11 -> h[0] += 4L * i32at(d, h);
+            case 12 -> h[0] += 8L * i32at(d, h);
+            default -> {
+            }
+        }
+    }
+
     static String captchaCode(String t) {
         if (t == null || t.isEmpty()) {
             return null;
