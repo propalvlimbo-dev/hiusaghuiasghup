@@ -160,7 +160,7 @@ public class OwnBot implements Runnable {
                     any = true;
                     lastRead = System.currentTimeMillis();
                     if (!handle(readFrame())) {
-                        return;
+                        return true; // кик/отключение — попытка завершена штатно
                     }
                 }
                 long now = System.currentTimeMillis();
