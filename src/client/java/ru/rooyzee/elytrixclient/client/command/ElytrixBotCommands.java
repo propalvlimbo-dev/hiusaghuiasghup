@@ -33,7 +33,7 @@ public final class ElytrixBotCommands {
 
     static void start() {
         var ob = ElytrixclientClient.OWN_BOTS;
-        if (rd.isRunning() || ob.isRunning()) {
+        if (ob.isRunning()) {
             ChatUtil.error("Боты уже запущены — .bots stop");
             return;
         }
@@ -62,10 +62,6 @@ public final class ElytrixBotCommands {
         st.autoReg = c.botAutoReg;
         st.autoLogin = c.botAutoLogin;
         st.password = c.botPassword;
-        st.spam = c.bmSpam;
-        st.spamMessage = c.bmSpamMessage;
-        st.spamDelayMin = c.botSpamMin;
-        st.spamDelayMax = c.botSpamMax;
         st.rotation = c.bmRotation;
         st.swing = c.bmSwing;
         st.mode = c.botMode;
