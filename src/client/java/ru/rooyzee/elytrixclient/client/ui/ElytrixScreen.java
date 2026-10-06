@@ -99,9 +99,14 @@ public class ElytrixScreen extends Screen {
     private int seenStruct = -1;
     /** >= 0 — открыта отдельная страница папки ботов (вместо списка карточек вкладки). */
     public static volatile int openFolderPage = -1;
+    /** Открыт экран конкретного бота (аккаунта). */
+    public static volatile ru.rooyzee.elytrixclient.client.bots.own.OwnBot openBotView;
     private int pageFolder = -1;
     private int pageStruct = -1;
     private List<MenuCard> pageCache;
+    private ru.rooyzee.elytrixclient.client.bots.own.OwnBot botPageBot;
+    private int botPageStruct = -1;
+    private List<MenuCard> botPageCache;
 
     private String search = "";
     private boolean searching;
@@ -232,6 +237,7 @@ public class ElytrixScreen extends Screen {
             return;
         }
         openFolderPage = -1;
+        openBotView = null;
         current = index;
         UiSound.play(UiSound.Event.CLICK);
         search = "";
@@ -295,6 +301,24 @@ public class ElytrixScreen extends Screen {
             if (of >= folders.size()) {
                 openFolderPage = of = -1;
             }
+            ru.rooyzee.elytrixclient.client.bots.own.OwnBot vb = openBotView;
+            if (vb != null) {
+                if (!vb.isAlive()) {
+                    openBotView = vb = null;
+                }
+            }
+            if (vb != null) {
+                if (vb != botPageBot || content.structChanged(botPageStruct)) {
+                    botPageBot = vb;
+                    botPageStruct = content.structVersion();
+                    botPageCache = content.botPage(vb);
+                    for (MenuCard c : botPageCache) {
+                        c.replay(UiWidget.ANIMATIONS ? 0.05f : 0f);
+                    }
+                }
+                return botPageCache;
+            }
+            botPageBot = null;
             if (of >= 0) {
                 if (of != pageFolder || content.structChanged(pageStruct)) {
                     pageFolder = of;

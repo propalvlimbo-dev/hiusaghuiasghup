@@ -23,6 +23,7 @@ public final class MenuContent {
     private final IntConsumer open;
     private final Runnable resetUi;
     private String draftNick = "";
+    private String draftChat = "";
     /** Версия структуры карточек: меняется при создании/удалении/выборе папок — экран пересобирает вкладки. */
     private int structVersion;
 
@@ -104,8 +105,6 @@ public final class MenuContent {
 
     public List<MenuCard> bots() {
         List<MenuCard> list = new ArrayList<>();
-        var ob = ElytrixclientClient.OWN_BOTS;
-        var rd = ElytrixclientClient.RUST_BOTS;
         list.add(foldersCard());
         return list;
     }
@@ -283,14 +282,22 @@ public final class MenuContent {
         for (int ai = 0; ai < f.accounts.size(); ai++) {
             final String nick = f.accounts.get(ai);
             acc.add(new MenuRow.Button(
-                    () -> "✕ " + nick + "  ·  " + (f.banned.contains(nick) ? "забанен" : "готов"),
-                    f.banned.contains(nick) ? MenuRow.Button.Kind.DANGER : MenuRow.Button.Kind.SECONDARY, () -> {
+                    () -> nick + "  ·  " + botState(f, nick),
+                    MenuRow.Button.Kind.SECONDARY, () -> {
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBot bot = findBot(f, nick);
+                if (bot != null) {
+                    ru.rooyzee.elytrixclient.client.ui.ElytrixScreen.openBotView = bot;
+                    struct();
+                    dirty.run();
+                }
+            }).describe("Клик — открыть экран бота: чат, карта, писать за него. Если бот не в игре — сначала подключи папку"));
+            acc.add(new MenuRow.Button(() -> "✕ удалить " + nick, MenuRow.Button.Kind.DANGER, () -> {
                 f.accounts.remove(nick);
                 f.banned.remove(nick);
                 ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
                 struct();
                 dirty.run();
-            }).describe("Клик — удалить ник из пула папки"));
+            }).describe("Убрать ник из пула папки"));
         }
         list.add(acc);
 
@@ -345,6 +352,74 @@ public final class MenuContent {
                     }
                     ru.rooyzee.elytrixclient.client.bots.own.BotManager.save();
                 })));
+        return list;
+    }
+
+    private static String botState(ru.rooyzee.elytrixclient.client.bots.own.BotFolder f, String nick) {
+        ru.rooyzee.elytrixclient.client.bots.own.OwnBot b = findBot(f, nick);
+        if (b == null) {
+            return f.banned.contains(nick) ? "забанен" : "не в игре";
+        }
+        return b.status();
+    }
+
+    private static ru.rooyzee.elytrixclient.client.bots.own.OwnBot findBot(
+            ru.rooyzee.elytrixclient.client.bots.own.BotFolder f, String nick) {
+        ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine e =
+                ru.rooyzee.elytrixclient.client.bots.own.BotManager.engine(f);
+        if (e == null) {
+            return null;
+        }
+        for (ru.rooyzee.elytrixclient.client.bots.own.OwnBot b : e.botList()) {
+            if (b.name.equals(nick)) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    /** Экран конкретного бота: карта окрестностей, живой чат, писать за бота, /register, /login. */
+    public java.util.List<MenuCard> botPage(ru.rooyzee.elytrixclient.client.bots.own.OwnBot bot) {
+        var list = new java.util.ArrayList<MenuCard>();
+        String pwd = bot.folder != null ? bot.folder.password : "elytrix123";
+        final String fp = pwd;
+        list.add(new MenuCard(bot.name).badge(bot::status, 0)
+                .add(new MenuRow.Button(() -> "← Назад", MenuRow.Button.Kind.SECONDARY, () -> {
+                    ru.rooyzee.elytrixclient.client.ui.ElytrixScreen.openBotView = null;
+                    struct();
+                    dirty.run();
+                }))
+                .add(new MenuRow.Button(() -> "Отправить /register", MenuRow.Button.Kind.PRIMARY,
+                        () -> bot.say("/register " + fp + " " + fp))
+                        .describe("Регистрация ника паролем папки"))
+                .add(new MenuRow.Button(() -> "Отправить /login", MenuRow.Button.Kind.PRIMARY,
+                        () -> bot.say("/login " + fp))
+                        .describe("Вход паролем папки"))
+                .add(new MenuRow.Button(() -> "Отключить бота", MenuRow.Button.Kind.DANGER, () -> {
+                    bot.close();
+                    ru.rooyzee.elytrixclient.client.ui.ElytrixScreen.openBotView = null;
+                    struct();
+                    dirty.run();
+                })));
+        list.add(new MenuCard("Экран бота")
+                .add(new MenuRow.BotMap(bot))
+                .add(new MenuRow.Info("Прокси", bot::proxyLabel, 0)));
+        MenuCard chat = new MenuCard("Чат бота").badge(() -> String.valueOf(bot.chatSnapshot().size()), 0);
+        for (int k = 0; k < 12; k++) {
+            final int idx = k;
+            chat.add(new MenuRow.Line(() -> {
+                java.util.List<String> snap = bot.chatSnapshot();
+                int from = Math.max(0, snap.size() - 12);
+                int at = from + idx;
+                return at < snap.size() ? snap.get(at) : "";
+            }));
+        }
+        chat.add(new MenuRow.Text("Сообщение / команда", 120, () -> draftChat, v -> draftChat = v));
+        chat.add(new MenuRow.Button(() -> "Отправить в чат", MenuRow.Button.Kind.PRIMARY, () -> {
+            bot.say(draftChat);
+            draftChat = "";
+        }).describe("Пишет в чат сервера от имени этого бота — капча, /msg, что угодно"));
+        list.add(chat);
         return list;
     }
 

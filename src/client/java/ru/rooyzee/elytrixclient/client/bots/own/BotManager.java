@@ -102,10 +102,6 @@ public final class BotManager {
         st.autoReg = f.autoReg;
         st.autoLogin = f.autoLogin;
         st.password = f.password;
-        st.spam = cfg.bmSpam;
-        st.spamMessage = cfg.bmSpamMessage;
-        st.spamDelayMin = cfg.botSpamMin;
-        st.spamDelayMax = cfg.botSpamMax;
         st.rotation = f.rotation;
         st.swing = f.swing;
         st.mode = 0; // ходьба убрана: боты стоят/анти-афк у спавна

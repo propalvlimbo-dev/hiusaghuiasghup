@@ -33,6 +33,7 @@ public class OwnBot implements Runnable {
     static final int P_PLAYER_CMD = 42;
 
     public final String name;
+    public final BotFolder folder;
     private final OwnBotEngine engine;
     private final String host;
     private final int port;
@@ -79,6 +80,7 @@ public class OwnBot implements Runnable {
 
     public OwnBot(OwnBotEngine engine, String name, String host, int port, int protocol, OwnBotSettings settings, LogBuffer log) {
         this.engine = engine;
+        this.folder = settings.folder;
         this.name = name;
         this.host = host;
         this.port = port;
@@ -94,6 +96,49 @@ public class OwnBot implements Runnable {
 
     public BotProxy proxy() {
         return proxy;
+    }
+
+    public OwnBotEngine engine() {
+        return engine;
+    }
+
+    public double posX() {
+        return x;
+    }
+
+    public double posY() {
+        return y;
+    }
+
+    public double posZ() {
+        return z;
+    }
+
+    // ── чат бота: лента для страницы аккаунта ────────────────────────────
+    private final java.util.ArrayDeque<String> chatLines = new java.util.ArrayDeque<>();
+
+    private synchronized void chatAdd(String line) {
+        chatLines.addLast(line);
+        while (chatLines.size() > 60) {
+            chatLines.removeFirst();
+        }
+    }
+
+    public synchronized java.util.List<String> chatSnapshot() {
+        return new java.util.ArrayList<>(chatLines);
+    }
+
+    /** Написать в чат от имени бота (с экрана аккаунта). */
+    public void say(String msg) {
+        if (msg == null || msg.isBlank()) {
+            return;
+        }
+        try {
+            sendChat(msg.trim(), System.currentTimeMillis());
+            chatAdd("я: " + msg.trim());
+        } catch (Exception e) {
+            chatAdd("(не отправилось: " + e.getMessage() + ")");
+        }
     }
 
     public String status() {
@@ -399,6 +444,8 @@ public class OwnBot implements Runnable {
                         // кривой чанк — игнорируем, бот живёт дальше
                     }
                 } else if (f.id == SP_SYSTEM_CHAT) {
+                    String line = f.component();
+                    chatAdd(line);
                     if (settings.captcha) {
                         String code = captchaCode(f.component());
                         if (code != null) {
@@ -419,6 +466,7 @@ public class OwnBot implements Runnable {
     }
 
     private void sendChat(String msg, long now) throws IOException {
+        chatAdd("я: " + msg);
         send(P_CHAT, w -> {
             w.str(msg);
             w.i64(now);
@@ -496,11 +544,7 @@ public class OwnBot implements Runnable {
             nextSwingAt = now + 1500 + rnd.nextInt(2500);
             send(P_SWING, w -> w.varInt(0));
         }
-        if (OwnBotEngine.liveSpam && now >= nextChatAt) {
-            nextChatAt = now + OwnBotEngine.liveSpamMin
-                    + rnd.nextInt(Math.max(1, OwnBotEngine.liveSpamMax - OwnBotEngine.liveSpamMin));
-            sendChat(OwnBotEngine.liveSpamMessage, now);
-        }
+
     }
 
     /** NeoProxy-стиль: авто-решение текстовых капч антибота. Ищет код 4-8 символов рядом со словом captcha/капча/код/code. */

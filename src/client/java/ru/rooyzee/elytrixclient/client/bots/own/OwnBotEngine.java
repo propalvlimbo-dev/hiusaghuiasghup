@@ -79,11 +79,7 @@ public class OwnBotEngine {
     public static volatile boolean liveSwing = true;
     public static volatile boolean liveAutoJump = true;
     public static volatile boolean liveAntiAfk = true;
-    public static volatile boolean liveSpam;
     public static volatile boolean liveFfServer;
-    public static volatile String liveSpamMessage = "Elytrix on top!";
-    public static volatile int liveSpamMin = 3000;
-    public static volatile int liveSpamMax = 6000;
 
     public static void apply(ru.rooyzee.elytrixclient.client.config.ElytrixConfig c) {
         liveMode = c.botMode;
@@ -91,10 +87,7 @@ public class OwnBotEngine {
         liveSwing = c.bmSwing;
         liveAutoJump = c.botAutoJump;
         liveAntiAfk = c.botAntiAfk;
-        liveSpam = c.bmSpam;
-        liveSpamMessage = c.bmSpamMessage;
-        liveSpamMin = c.botSpamMin;
-        liveSpamMax = c.botSpamMax;
+
     }
 
     // ── Heightmap чанков (из пакетов 45): чтобы боты не парили, а стояли на земле ──
@@ -321,6 +314,10 @@ public class OwnBotEngine {
 
     public synchronized boolean isRunning() {
         return running;
+    }
+
+    public java.util.List<OwnBot> botList() {
+        return new java.util.ArrayList<>(bots);
     }
 
     public int aliveCount() {

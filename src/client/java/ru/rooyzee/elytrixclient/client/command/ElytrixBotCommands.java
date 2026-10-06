@@ -32,7 +32,6 @@ public final class ElytrixBotCommands {
     }
 
     static void start() {
-        var rd = ElytrixclientClient.RUST_BOTS;
         var ob = ElytrixclientClient.OWN_BOTS;
         if (rd.isRunning() || ob.isRunning()) {
             ChatUtil.error("Боты уже запущены — .bots stop");
@@ -78,16 +77,11 @@ public final class ElytrixBotCommands {
         st.rejoinDelayMs = c.botRejoinDelay;
         int proto = ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.probeProtocol(host, port, 3000);
         proto = proto < 0 ? -proto : proto;
-        if (ru.rooyzee.elytrixclient.client.bots.rust.RustBotDaemon.available(c)) {
-            rd.start(c);
-        } else {
-            ob.start(host, port, proto, st);
-        }
+        ob.start(host, port, proto, st);
         ChatUtil.success("Запускаем " + c.botmarkCount + " ботов на " + host + ":" + port);
     }
 
     static void stop() {
-        ElytrixclientClient.RUST_BOTS.stop();
         ElytrixclientClient.OWN_BOTS.stop();
         ChatUtil.success("Боты остановлены");
     }
