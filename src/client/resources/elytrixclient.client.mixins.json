@@ -14,7 +14,8 @@
     "HudMixin",
     "AttackHookMixin",
     "WorldRenderHookMixin",
-    "ElytrixMoveMixin"
+    "ElytrixMoveMixin",
+    "BotCullMixin"
   ],
   "injectors": {
     "defaultRequire": 1

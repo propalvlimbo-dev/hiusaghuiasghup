@@ -146,7 +146,6 @@ public final class MenuContent {
                         st.mode = cfg.botMode;
                         st.autoJump = cfg.botAutoJump;
                         st.captcha = cfg.botCaptcha;
-                        st.antiKick = cfg.botAntiKick;
                         st.antiAfk = cfg.botAntiAfk;
                         st.useProxy = cfg.botUseProxy;
                         st.rejoin = cfg.botRejoin;
@@ -171,6 +170,7 @@ public final class MenuContent {
                 .badge(() -> new String[]{"стоит", "за мной", "гулять"}[cfg.botMode], 0)
                 .add(new MenuRow.Mode("Режим", new String[]{"стоит", "за мной", "гулять"}, () -> cfg.botMode, v -> {
                     cfg.botMode = v;
+                    ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg);
                     dirty.run();
                 }).describe("стоит — на месте; за мной — следуют за тобой; гулять — случайные прогулки. То же командами .stay/.follow/.randommove"))
                 .add(new MenuRow.Text("Цель follow (ник)", 160, () -> cfg.botFollowTarget, v -> {
@@ -178,14 +178,12 @@ public final class MenuContent {
                     dirty.run();
                 }).when(() -> cfg.botMode == 1)
                         .describe("Пусто — боты идут за тобой; укажи ник — пойдут за этим игроком (как .follow ник)"))
-                .add(toggle("Анти-АФК", () -> cfg.botAntiAfk, v -> cfg.botAntiAfk = v)
+                .add(toggle("Анти-АФК", () -> cfg.botAntiAfk, v -> { cfg.botAntiAfk = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
                         .describe("Плавно поворачивается раз в 5 секунд и делает микро-шаги — не кикает за AFK"))
-                .add(toggle("Антикик (античит)", () -> cfg.botAntiKick, v -> cfg.botAntiKick = v)
-                        .describe("Честный флаг onGround и спокойные скорости — меньше киков от античита"))
-                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> cfg.bmRotation = v)
+                .add(toggle("Повороты головы", () -> cfg.bmRotation, v -> { cfg.bmRotation = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
                         .when(() -> cfg.botMode != 1))
-                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> cfg.bmSwing = v))
-                .add(toggle("Автопрыжки", () -> cfg.botAutoJump, v -> cfg.botAutoJump = v)
+                .add(toggle("Взмахи рукой", () -> cfg.bmSwing, v -> { cfg.bmSwing = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); }))
+                .add(toggle("Автопрыжки", () -> cfg.botAutoJump, v -> { cfg.botAutoJump = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); })
                         .describe("Живое поведение + перепрыгивание ступенек на ходу (команда .jump)"))
                 .add(toggle("Реждойн после кика", () -> cfg.botRejoin, v -> cfg.botRejoin = v)
                         .describe("После кика бот сам перезайдёт (команда .rejoin)"))
@@ -203,7 +201,7 @@ public final class MenuContent {
                     cfg.botPassword = v;
                     dirty.run();
                 }).when(() -> cfg.botAutoReg || cfg.botAutoLogin))
-                .add(toggle("Сообщения в чат", () -> cfg.bmSpam, v -> cfg.bmSpam = v))
+                .add(toggle("Сообщения в чат", () -> cfg.bmSpam, v -> { cfg.bmSpam = v; ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(cfg); }))
                 .add(new MenuRow.Text("Текст сообщения", 140, () -> cfg.bmSpamMessage, v -> {
                     cfg.bmSpamMessage = v;
                     dirty.run();
@@ -329,13 +327,18 @@ public final class MenuContent {
     /** Вкладка «Визуалы»: компактный плеер MusicIsland и папка визуальных модулей delta-26.2. */
     /** Кураторский список визуалов: только то, что выбрал пользователь. */
     public static final java.util.Set<String> VISUAL_DELTA = java.util.Set.of(
-            "ShaderSky", "Hands Shader", "Aspect Ratio", "Interface", "Item Physic", "Jump Circles", "See Invisibles");
+            "ShaderSky", "Hands Shader", "Aspect Ratio", "Item Physic", "Jump Circles", "See Invisibles");
     public static final java.util.Set<String> VISUAL_XROSE = java.util.Set.of(
             "BlockOutline", "Removals", "Chams", "AtmoDawnFog");
     public static final java.util.Set<String> MISC_DELTA = java.util.Set.of("RP Spoofs", "Streamer Mode");
 
     public List<MenuCard> visuals() {
         List<MenuCard> list = new ArrayList<>();
+        list.add(new MenuCard("Оптимизация ботов")
+                .badge(() -> cfg.botCull ? "вкл" : "выкл", 0)
+                .add(toggle("Не рендерить своих ботов", () -> cfg.botCull, v -> cfg.botCull = v)
+                        .describe("Свои боты (префикс ников) не отрисовываются у тебя: FPS не проседает даже с сотнями ботов"))
+                .add(new MenuRow.Info("Эффект", () -> cfg.botCull ? "боты не грузят рендер" : "рендер как обычно", 0)));
         list.add(new MenuCard("MusicIsland")
                 .badge(() -> cfg.musicIsland ? "вкл" : "выкл", 0)
                 .add(toggle("Показывать плеер", () -> cfg.musicIsland, v -> cfg.musicIsland = v))

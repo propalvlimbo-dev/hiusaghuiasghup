@@ -29,7 +29,8 @@ public class OwnBot implements Runnable {
     static final int SC_DISCONNECT = 2, SC_FINISH = 3, SC_KEEPALIVE = 4, SC_PING = 5;
     static final int SP_KEEPALIVE = 44, SP_LOGIN = 49, SP_PLAYER_POS = 72, SP_SET_HEALTH = 104,
             SP_DISCONNECT = 32, SP_CHUNK_START = 12, SP_COMBAT_KILL = 68, SP_PING = 61,
-            SP_SYSTEM_CHAT = 121;
+            SP_SYSTEM_CHAT = 121, SP_CHUNK_DATA = 45;
+    static final int P_PLAYER_CMD = 42;
 
     public final String name;
     private final String host;
@@ -55,7 +56,8 @@ public class OwnBot implements Runnable {
     private double velY;
     private long nextJumpAt;
     private final BotProxy proxy;
-    private long nextAfkAt, afkStepUntil;
+    private long nextAfkAt, afkStepUntil, nextSneakAt;
+    private boolean sneakOn;
     private float afkTargetYaw;
     private double afkDirX, afkDirZ;
     private boolean havePos;
@@ -289,6 +291,21 @@ public class OwnBot implements Runnable {
                     send(P_CLIENT_CMD, w -> w.varInt(0));
                 } else if (f.id == SP_CHUNK_START) {
                     send(P_CHUNK_BATCH, w -> w.f32(10f));
+                } else if (f.id == SP_CHUNK_DATA) {
+                    int cx = f.i32();
+                    int cz = f.i32();
+                    long[] hm = OwnBotEngine.extractHeightmap(f.data, off2(f));
+                    if (hm != null && hm.length >= 36) {
+                        OwnBotEngine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
+                        int h = OwnBotEngine.heightAt(x, z);
+                        if (h != Integer.MIN_VALUE && h > 0) {
+                            groundY = h;
+                            haveGround = true;
+                            if (y < h - 0.01) {
+                                y = h;
+                            }
+                        }
+                    }
                 } else if (f.id == SP_SYSTEM_CHAT) {
                     if (settings.captcha) {
                         String code = captchaCode(f.component());
@@ -332,7 +349,8 @@ public class OwnBot implements Runnable {
             sendChat("/login " + settings.password, now);
             log.add("[Бот " + name + "] автовход");
         }
-        if (settings.mode == 2) {
+        int mode = OwnBotEngine.liveMode;
+        if (mode == 2) {
             // «гулять»: случайные прогулки как раньше
             if (now >= nextWalkChangeAt) {
                 nextWalkChangeAt = now + 2000 + rnd.nextInt(4000);
@@ -342,29 +360,43 @@ public class OwnBot implements Runnable {
                 walkDirZ = -Math.cos(a);
             }
             if (walking) {
-                x += walkDirX * 0.09;
-                z += walkDirZ * 0.09;
+                moveWithCollision(walkDirX * 0.09, walkDirZ * 0.09);
                 yaw = (float) Math.toDegrees(Math.atan2(-walkDirX, -walkDirZ));
             }
-        } else if (settings.mode == 1 && OwnBotEngine.followActive) {
-            // «за мной»: идёт к игроку клиента, как follow в SoulFire
+        } else if (mode == 1 && OwnBotEngine.followActive) {
+            // «за мной» / «за ником»: идёт к цели, как follow в SoulFire
             double dx = OwnBotEngine.followX - x;
             double dz = OwnBotEngine.followZ - z;
             double dist = Math.sqrt(dx * dx + dz * dz);
             if (dist > 1.5) {
                 double sp = Math.min(0.13, 0.06 + dist * 0.004);
-                x += dx / dist * sp;
-                z += dz / dist * sp;
+                moveWithCollision(dx / dist * sp, dz / dist * sp);
                 yaw = (float) Math.toDegrees(Math.atan2(-dx, -dz));
                 pitch = 10f;
             }
-        } else if (settings.rotation && !settings.antiAfk && now >= nextTurnAt) {
+        } else if (OwnBotEngine.liveRotation && !OwnBotEngine.liveAntiAfk && now >= nextTurnAt) {
             nextTurnAt = now + 1500 + rnd.nextInt(3000);
             yaw = rnd.nextFloat() * 360f;
             pitch = -20f + rnd.nextFloat() * 60f;
         }
+        // .ffserver: быстрые прыжки + приседания + кручение камерой
+        if (OwnBotEngine.liveFfServer) {
+            if (velY == 0 && y <= groundY + 0.001) {
+                velY = 0.42;
+            }
+            if (now >= nextSneakAt) {
+                nextSneakAt = now + 250 + rnd.nextInt(250);
+                sneakOn = !sneakOn;
+                send(P_PLAYER_CMD, w -> {
+                    w.varInt(entityId);
+                    w.varInt(sneakOn ? 0 : 1);
+                    w.varInt(0);
+                });
+            }
+            yaw += 25f;
+        }
         // Анти-АФК: раз в 5 секунд плавно поворачивается, иногда микро-шаг — не кикает за афк
-        if (settings.antiAfk) {
+        if (OwnBotEngine.liveAntiAfk) {
             if (now >= nextAfkAt) {
                 nextAfkAt = now + 5000;
                 afkTargetYaw = yaw + (rnd.nextFloat() * 140f - 70f);
@@ -376,8 +408,8 @@ public class OwnBot implements Runnable {
                     afkDirZ = -Math.cos(a);
                 }
             }
-            boolean idle = !(settings.mode == 2 && walking)
-                    && !(settings.mode == 1 && OwnBotEngine.followActive);
+            boolean idle = !(OwnBotEngine.liveMode == 2 && walking)
+                    && !(OwnBotEngine.liveMode == 1 && OwnBotEngine.followActive);
             if (idle) {
                 yaw += (afkTargetYaw - yaw) * 0.15f;
                 if (now < afkStepUntil) {
@@ -386,11 +418,17 @@ public class OwnBot implements Runnable {
                 }
             }
         }
+        // Земля под ногами берётся из heightmap чанка, если она есть
+        int hh = OwnBotEngine.heightAt(x, z);
+        if (hh != Integer.MIN_VALUE && hh > 0) {
+            groundY = hh;
+            haveGround = true;
+        }
         // Физика как у живого игрока (SoulFire auto-jump): падение на землю + периодические прыжки
         if (haveGround) {
-            if (settings.autoJump && velY == 0 && y <= groundY + 0.001 && now >= nextJumpAt) {
-                boolean moving = (settings.mode == 2 && walking)
-                        || (settings.mode == 1 && OwnBotEngine.followActive);
+            if (OwnBotEngine.liveAutoJump && velY == 0 && y <= groundY + 0.001 && now >= nextJumpAt) {
+                boolean moving = (OwnBotEngine.liveMode == 2 && walking)
+                        || (OwnBotEngine.liveMode == 1 && OwnBotEngine.followActive);
                 nextJumpAt = now + (moving ? 700 + rnd.nextInt(1800) : 4000 + rnd.nextInt(9000));
                 velY = 0.42;
             }
@@ -406,13 +444,14 @@ public class OwnBot implements Runnable {
         if (havePos) {
             sendPosRot();
         }
-        if (settings.swing && now >= nextSwingAt) {
+        if (OwnBotEngine.liveSwing && now >= nextSwingAt) {
             nextSwingAt = now + 1500 + rnd.nextInt(2500);
             send(P_SWING, w -> w.varInt(0));
         }
-        if (settings.spam && now >= nextChatAt) {
-            nextChatAt = now + settings.spamDelayMin + rnd.nextInt(Math.max(1, settings.spamDelayMax - settings.spamDelayMin));
-            sendChat(settings.spamMessage, now);
+        if (OwnBotEngine.liveSpam && now >= nextChatAt) {
+            nextChatAt = now + OwnBotEngine.liveSpamMin
+                    + rnd.nextInt(Math.max(1, OwnBotEngine.liveSpamMax - OwnBotEngine.liveSpamMin));
+            sendChat(OwnBotEngine.liveSpamMessage, now);
         }
     }
 
@@ -489,9 +528,27 @@ public class OwnBot implements Runnable {
         return false;
     }
 
+    /** Не даёт идти в стену: если в целевой колонке блок выше нас больше чем на 1 — стоим/прыгаем. */
+    private void moveWithCollision(double mx, double mz) {
+        double nx = x + mx, nz = z + mz;
+        int th = OwnBotEngine.heightAt(nx, nz);
+        if (th == Integer.MIN_VALUE || th <= y + 1.001) {
+            x = nx;
+            z = nz;
+        } else if (OwnBotEngine.liveAutoJump && velY == 0 && th <= y + 2.001) {
+            velY = 0.42; // стенка в один блок — перепрыгиваем
+            x = nx;
+            z = nz;
+        }
+    }
+
+    private static int off2(Frame f) {
+        return 8; // после i32 x и i32 z начинается NBT heightmap
+    }
+
     private void sendPosRot() throws IOException {
-        // антикик: честный onGround (иначе античит видит «полёт» во время прыжка)
-        boolean ground = !settings.antiKick || (velY == 0 && y <= groundY + 0.001);
+        // антикик всегда: честный onGround (иначе античит видит «полёт» во время прыжка)
+        boolean ground = velY == 0 && y <= groundY + 0.001;
         send(P_POS_ROT, w -> {
             w.f64(x);
             w.f64(y);

@@ -32,6 +32,7 @@ public final class ElytrixBotCommands {
         ChatUtil.entry(E, ".stay", "физика: боты стоят на месте");
         ChatUtil.entry(E, ".jump", "автопрыжки ботов (вкл/выкл)");
         ChatUtil.entry(E, ".follow ник", "следовать за конкретным игроком");
+        ChatUtil.entry(E, ".ffserver", "FF-режим: боты прыгают, приседают, крутят камерой");
     }
 
     static void start() {
@@ -75,7 +76,6 @@ public final class ElytrixBotCommands {
         st.mode = c.botMode;
         st.autoJump = c.botAutoJump;
         st.captcha = c.botCaptcha;
-        st.antiKick = c.botAntiKick;
         st.antiAfk = c.botAntiAfk;
         st.useProxy = c.botUseProxy;
         st.rejoin = c.botRejoin;
@@ -173,6 +173,23 @@ public final class ElytrixBotCommands {
             b.executes(ctx -> {
                 cfg().botMode = 0;
                 ChatUtil.success("stay: боты стоят");
+                return 1;
+            });
+        }
+    }
+
+    public static final class FfServer extends ClientCommand {
+        public FfServer() {
+            super("ffserver", "FF-режим ботов: быстрые прыжки + приседания + камера во все стороны", E);
+        }
+
+        @Override
+        public void build(LiteralArgumentBuilder<Object> b) {
+            b.executes(ctx -> {
+                ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.liveFfServer =
+                        !ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.liveFfServer;
+                ChatUtil.success(ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.liveFfServer
+                        ? "ffserver: ВКЛ — боты беснуются" : "ffserver: выкл");
                 return 1;
             });
         }

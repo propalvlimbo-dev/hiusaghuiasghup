@@ -67,6 +67,157 @@ public class OwnBotEngine {
         return proxies.size();
     }
 
+    // ── Живые настройки: меняются из GUI/команд и действуют на уже бегущих ботов сразу ──
+    public static volatile int liveMode;
+    public static volatile boolean liveRotation = true;
+    public static volatile boolean liveSwing = true;
+    public static volatile boolean liveAutoJump = true;
+    public static volatile boolean liveAntiAfk = true;
+    public static volatile boolean liveSpam;
+    public static volatile boolean liveFfServer;
+    public static volatile String liveSpamMessage = "Elytrix on top!";
+    public static volatile int liveSpamMin = 3000;
+    public static volatile int liveSpamMax = 6000;
+
+    public static void apply(ru.rooyzee.elytrixclient.client.config.ElytrixConfig c) {
+        liveMode = c.botMode;
+        liveRotation = c.bmRotation;
+        liveSwing = c.bmSwing;
+        liveAutoJump = c.botAutoJump;
+        liveAntiAfk = c.botAntiAfk;
+        liveSpam = c.bmSpam;
+        liveSpamMessage = c.bmSpamMessage;
+        liveSpamMin = c.botSpamMin;
+        liveSpamMax = c.botSpamMax;
+    }
+
+    // ── Heightmap чанков (из пакетов 45): чтобы боты не парили, а стояли на земле ──
+    private static final java.util.concurrent.ConcurrentHashMap<Long, int[]> CHUNK_H =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void putHeights(int cx, int cz, int[] hs) {
+        CHUNK_H.put(((long) cx << 32) | (cz & 0xFFFFFFFFL), hs);
+        if (CHUNK_H.size() > 4096) {
+            CHUNK_H.clear();
+        }
+    }
+
+    /** Высота верха блока под точкой; MIN_VALUE, если чанк ещё не получен. */
+    public static int heightAt(double x, double z) {
+        int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
+        int[] hs = CHUNK_H.get(((long) Math.floorDiv(bx, 16) << 32)
+                | (Math.floorDiv(bz, 16) & 0xFFFFFFFFL));
+        if (hs == null) {
+            return Integer.MIN_VALUE;
+        }
+        return hs[Math.floorMod(bz, 16) * 16 + Math.floorMod(bx, 16)];
+    }
+
+    /** Распаковка heightmap: 256 значений по 9 бит, MSB-first, с переходом через long. */
+    public static int[] unpackHeights(long[] l) {
+        int[] out = new int[256];
+        for (int i = 0; i < 256; i++) {
+            int bit = i * 9;
+            int li = bit / 64;
+            int off = bit % 64;
+            if (li >= l.length) {
+                break;
+            }
+            long v;
+            if (off + 9 <= 64) {
+                v = (l[li] >>> (64 - off - 9)) & 0x1FF;
+            } else {
+                int first = 64 - off;
+                int second = 9 - first;
+                v = (l[li] & ((1L << first) - 1)) << second;
+                if (li + 1 < l.length) {
+                    v |= (l[li + 1] >>> (64 - second)) & ((1L << second) - 1);
+                }
+            }
+            out[i] = (int) v;
+        }
+        return out;
+    }
+
+    /** Ищет в NBT heightmap-ов long-массив MOTION_BLOCKING (или первый long[] >= 36). */
+    public static long[] extractHeightmap(byte[] d, int from) {
+        int[] h = {from};
+        if (h[0] >= d.length) {
+            return null;
+        }
+        int t = d[h[0]] & 0xFF;
+        if (t == 10) {
+            h[0]++;
+            int nl = u16(d, h);
+            h[0] += nl;
+        }
+        return nbtLongs(d, h, 10, false);
+    }
+
+    private static long[] nbtLongs(byte[] d, int[] h, int type, boolean named) {
+        if (h[0] >= d.length) {
+            return null;
+        }
+        switch (type) {
+            case 1: h[0]++; return null;
+            case 2: h[0] += 2; return null;
+            case 3: h[0] += 4; return null;
+            case 4: h[0] += 8; return null;
+            case 5: h[0] += 4; return null;
+            case 6: h[0] += 8; return null;
+            case 7: { int n = i32(d, h); h[0] += n; return null; }
+            case 8: { int n = u16(d, h); h[0] += n; return null; }
+            case 9: {
+                int et = d[h[0]++] & 0xFF;
+                int n = i32(d, h);
+                for (int i = 0; i < n; i++) {
+                    long[] r = nbtLongs(d, h, et, false);
+                    if (r != null) return r;
+                }
+                return null;
+            }
+            case 10: {
+                long[] fallback = null;
+                while (h[0] < d.length) {
+                    int et = d[h[0]++] & 0xFF;
+                    if (et == 0) return fallback;
+                    int nl = u16(d, h);
+                    String name = new String(d, h[0], nl, java.nio.charset.StandardCharsets.UTF_8);
+                    h[0] += nl;
+                    if (et == 12) {
+                        int n = i32(d, h);
+                        long[] arr = new long[n];
+                        for (int i = 0; i < n; i++) {
+                            arr[i] = ((long) i32(d, h) << 32) | (i32(d, h) & 0xFFFFFFFFL);
+                        }
+                        if ("MOTION_BLOCKING".equals(name)) return arr;
+                        if (fallback == null && n >= 36) fallback = arr;
+                    } else {
+                        long[] r = nbtLongs(d, h, et, false);
+                        if (r != null) return r;
+                    }
+                }
+                return fallback;
+            }
+            case 11: { int n = i32(d, h); h[0] += 4L * n; return null; }
+            case 12: { int n = i32(d, h); h[0] += 8L * n; return null; }
+            default: return null;
+        }
+    }
+
+    private static int i32(byte[] d, int[] h) {
+        int v = ((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
+                | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF);
+        h[0] += 4;
+        return v;
+    }
+
+    private static int u16(byte[] d, int[] h) {
+        int v = ((d[h[0]] & 0xFF) << 8) | (d[h[0] + 1] & 0xFF);
+        h[0] += 2;
+        return v;
+    }
+
     /** Следующий прокси по кругу (round-robin на бота). */
     public static BotProxy nextProxy() {
         java.util.List<BotProxy> list = proxies;

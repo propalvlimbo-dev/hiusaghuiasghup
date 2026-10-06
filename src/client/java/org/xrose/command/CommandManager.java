@@ -53,7 +53,8 @@ public final class CommandManager {
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.RandomMove(),
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Follow(),
                new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Stay(),
-               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Jump())
+               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.Jump(),
+               new ru.rooyzee.elytrixclient.client.command.ElytrixBotCommands.FfServer())
             .forEach(this::register);
          this.store.load(this);
          this.initialized = true;
@@ -78,16 +79,23 @@ public final class CommandManager {
    }
 
    public boolean handleChat(String message) {
-      // Командная система xrose отключена: всё уходит в нашу (.cfg/.config).
-      if (true) {
-         return false;
-      }
+      // Перехватываем только наши команды (.help/.bots/...); .config/.cfg уходят в delta-систему.
       if (this.initialized && message != null && message.startsWith(this.prefix)) {
          String input = message.substring(this.prefix.length()).trim();
          if (input.isEmpty()) {
             return false;
          }
-
+         String first = input.split("\\s+", 2)[0].toLowerCase(java.util.Locale.ROOT);
+         boolean ours = false;
+         for (ClientCommand c : this.commands) {
+            if (c.name().equalsIgnoreCase(first) || c.aliases().contains(first)) {
+               ours = true;
+               break;
+            }
+         }
+         if (!ours) {
+            return false;
+         }
          try {
             this.dispatcher.execute(input, new Object());
          } catch (CommandSyntaxException exception) {

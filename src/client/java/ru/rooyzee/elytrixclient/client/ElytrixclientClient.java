@@ -79,6 +79,8 @@ public class ElytrixclientClient implements ClientModInitializer {
         Fonts.setFamily(CONFIG.fontFamily);
         // Серверный MSPT: /mspt-проба + парсинг ответа (см. ServerMspt).
         ru.rooyzee.elytrixclient.client.features.ServerMspt.init();
+        // Живые настройки ботов = текущий конфиг с самого старта.
+        ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.apply(CONFIG);
 
         // Создаём папку .minecraft/elytrix/ для музыки, прокси и т.д.
         try {
