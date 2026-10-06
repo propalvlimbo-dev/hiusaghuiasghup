@@ -33,6 +33,7 @@ public class OwnBot implements Runnable {
     static final int P_PLAYER_CMD = 42;
 
     public final String name;
+    private final OwnBotEngine engine;
     private final String host;
     private final int port;
     private final int protocol;
@@ -75,7 +76,8 @@ public class OwnBot implements Runnable {
     private long nextWalkChangeAt;
     private boolean walking;
 
-    public OwnBot(String name, String host, int port, int protocol, OwnBotSettings settings, LogBuffer log) {
+    public OwnBot(OwnBotEngine engine, String name, String host, int port, int protocol, OwnBotSettings settings, LogBuffer log) {
+        this.engine = engine;
         this.name = name;
         this.host = host;
         this.port = port;
@@ -374,8 +376,8 @@ public class OwnBot implements Runnable {
                             log.add("[Бот " + name + "] чанк не распознан, байты heightmap: " + sb);
                         }
                         if (hm != null && hm.length >= 36) {
-                            OwnBotEngine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
-                            int h = OwnBotEngine.heightAt(x, z);
+                            engine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
+                            int h = engine.heightAt(x, z);
                             if (h != Integer.MIN_VALUE && h > 0) {
                                 if (!groundDiag) {
                                     groundDiag = true;
@@ -504,7 +506,7 @@ public class OwnBot implements Runnable {
             }
         }
         // Земля под ногами берётся из heightmap чанка, если она есть
-        int hh = OwnBotEngine.heightAt(x, z);
+        int hh = engine.heightAt(x, z);
         if (hh != Integer.MIN_VALUE && hh > 0) {
             groundY = hh;
             haveGround = true;
@@ -616,7 +618,7 @@ public class OwnBot implements Runnable {
     /** Не даёт идти в стену: если в целевой колонке блок выше нас больше чем на 1 — стоим/прыгаем. */
     private void moveWithCollision(double mx, double mz) {
         double nx = x + mx, nz = z + mz;
-        int th = OwnBotEngine.heightAt(nx, nz);
+        int th = engine.heightAt(nx, nz);
         if (th == Integer.MIN_VALUE || th <= y + 1.001) {
             x = nx;
             z = nz;

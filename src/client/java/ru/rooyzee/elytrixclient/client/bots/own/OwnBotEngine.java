@@ -92,20 +92,21 @@ public class OwnBotEngine {
     }
 
     // ── Heightmap чанков (из пакетов 45): чтобы боты не парили, а стояли на земле ──
-    private static final java.util.concurrent.ConcurrentHashMap<Long, int[]> CHUNK_H =
+    /** Карта высот — своя на движок (на сервер): боты разных папок не путают чанки. */
+    private final java.util.concurrent.ConcurrentHashMap<Long, int[]> chunkH =
             new java.util.concurrent.ConcurrentHashMap<>();
 
-    public static void putHeights(int cx, int cz, int[] hs) {
-        CHUNK_H.put(((long) cx << 32) | (cz & 0xFFFFFFFFL), hs);
-        if (CHUNK_H.size() > 4096) {
-            CHUNK_H.clear();
+    public void putHeights(int cx, int cz, int[] hs) {
+        chunkH.put(((long) cx << 32) | (cz & 0xFFFFFFFFL), hs);
+        if (chunkH.size() > 4096) {
+            chunkH.clear();
         }
     }
 
     /** Высота верха блока под точкой; MIN_VALUE, если чанк ещё не получен. */
-    public static int heightAt(double x, double z) {
+    public int heightAt(double x, double z) {
         int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
-        int[] hs = CHUNK_H.get(((long) Math.floorDiv(bx, 16) << 32)
+        int[] hs = chunkH.get(((long) Math.floorDiv(bx, 16) << 32)
                 | (Math.floorDiv(bz, 16) & 0xFFFFFFFFL));
         if (hs == null) {
             return Integer.MIN_VALUE;
@@ -409,6 +410,12 @@ public class OwnBotEngine {
         return null;
     }
 
+    /** В причине кика бан — бот меняет аккаунт из пула папки. */
+    static boolean isBanReason(String status) {
+        String t = status.toLowerCase(java.util.Locale.ROOT);
+        return t.contains("бан") || t.contains("ban") || t.contains("блокиров");
+    }
+
     public synchronized void start(String host, int port, int protocol, OwnBotSettings s) {
         if (running) {
             log.add("[Боты] уже запущены");
@@ -444,18 +451,34 @@ public class OwnBotEngine {
                 log.add("[Боты] status не ответил, используем стандартный протокол " + probed);
                 proto = probed;
             }
+            final java.util.List<String> pool = java.util.Collections.synchronizedList(
+                    new java.util.ArrayList<>(s.folder != null ? s.folder.freeAccounts() : java.util.List.of()));
             for (int i = 1; i <= s.count && running; i++) {
-                final String name = s.randomNames ? randomName() : s.prefix + i;
+                final String initial = !pool.isEmpty() ? pool.remove(0)
+                        : (s.randomNames ? randomName() : s.prefix + i);
                 Thread t = new Thread(() -> {
+                    String nick = initial;
                     while (running) {
-                        OwnBot bot = new OwnBot(name, fHost, fPort, proto, s, log);
+                        OwnBot bot = new OwnBot(OwnBotEngine.this, nick, fHost, fPort, proto, s, log);
                         bots.add(bot);
                         bot.run();
                         bots.remove(bot);
-                        if (!running || !s.rejoin || !bot.isAlive()) {
+                        if (!running || !s.rejoin) {
                             break;
                         }
-                        log.add("[Бот " + name + "] кик (" + bot.status() + ") — реждойн через "
+                        String why = bot.status();
+                        if (s.folder != null && why != null && isBanReason(why)) {
+                            s.folder.banned.add(nick);
+                            BotManager.save();
+                            log.add("[Бот " + nick + "] забанен на " + fHost + " — меняю аккаунт");
+                            String next = s.folder.nextAccount(nick);
+                            if (next == null) {
+                                log.add("[Боты] свободные аккаунты в папке кончились — добавьте ники");
+                                break;
+                            }
+                            nick = next;
+                        }
+                        log.add("[Бот " + nick + "] кик (" + why + ") — реждойн через "
                                 + s.rejoinDelayMs + " мс");
                         try {
                             Thread.sleep(s.rejoinDelayMs);

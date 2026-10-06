@@ -9,6 +9,8 @@ public class OwnBotSettings {
     /** true — ники генерируются случайно (префикс игнорируется). */
     public boolean randomNames;
     /** Вход волнами: сколько ботов в волне (0 = все сразу) и пауза между волнами, мс. */
+    /** Папка-сервер (пул ников, подмена при бане). null = старый одиночный режим. */
+    public BotFolder folder;
     public int waveSize;
     public int wavePauseMs = 60000;
     public boolean spam;
