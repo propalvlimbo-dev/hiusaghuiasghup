@@ -468,6 +468,12 @@ public class OwnBotEngine {
                 t.start();
                 try {
                     Thread.sleep(Math.max(10, s.delayMs));
+                    // Вход волнами: реалистичная нагрузка (антибот-плагины реагируют на шквал)
+                    if (s.waveSize > 0 && i % s.waveSize == 0 && i < s.count) {
+                        log.add("[Боты] волна " + (i / s.waveSize) + " (" + s.waveSize
+                                + " ботов) запущена — пауза " + (s.wavePauseMs / 1000) + " с");
+                        Thread.sleep(s.wavePauseMs);
+                    }
                 } catch (InterruptedException e) {
                     break;
                 }

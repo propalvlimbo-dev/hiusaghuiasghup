@@ -108,6 +108,14 @@ public final class MenuContent {
                     cfg.botmarkDelay = v;
                     dirty.run();
                 }))
+                .add(new MenuRow.Slider("Ботов в волне", 0, 100, 1, "", () -> cfg.botWaveSize, v -> {
+                    cfg.botWaveSize = v;
+                    dirty.run();
+                }).describe("0 = все сразу. Волнами антибот-плагины не давятся: зашло N — пауза — следующая волна"))
+                .add(new MenuRow.Slider("Пауза между волнами", 0, 300, 5, " с", () -> cfg.botWavePauseSec, v -> {
+                    cfg.botWavePauseSec = v;
+                    dirty.run();
+                }).describe("Сколько ждать перед следующей волной входа"))
                 .add(new MenuRow.Slider("Таймаут", 1000, 30000, 500, " мс", () -> cfg.botmarkTimeout, v -> {
                     cfg.botmarkTimeout = v;
                     dirty.run();
@@ -137,6 +145,8 @@ public final class MenuContent {
                         st.timeoutMs = cfg.botmarkTimeout;
                         st.prefix = cfg.ownBotPrefix;
                         st.randomNames = cfg.botRandomNames;
+                        st.waveSize = cfg.botWaveSize;
+                        st.wavePauseMs = cfg.botWavePauseSec * 1000;
                         st.autoReg = cfg.botAutoReg;
                         st.autoLogin = cfg.botAutoLogin;
                         st.password = cfg.botPassword;

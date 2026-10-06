@@ -48,6 +48,9 @@ public class ElytrixConfig {
     public String ownBotPrefix = "ElytrixBot_";
     /** Боты с рандомными никами вместо префикса. */
     public boolean botRandomNames;
+    /** Вход волнами: ботов в волне (0 = все сразу) и пауза между волнами, сек. */
+    public int botWaveSize = 0;
+    public int botWavePauseSec = 60;
     public boolean bmJumping = true;
     public boolean bmPhysics = true;
     public String botAddress = "127.0.0.1:25565";
