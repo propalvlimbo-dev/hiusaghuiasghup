@@ -250,6 +250,24 @@ public final class MenuContent {
                     ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.loadProxies(cfg.botProxyFile,
                             ru.rooyzee.elytrixclient.client.ElytrixclientClient.LOG);
                 }))
+                .add(new MenuRow.Button(() -> ru.rooyzee.elytrixclient.client.bots.own.ProxyFetcher.busy
+                        ? "Проверка: " + ru.rooyzee.elytrixclient.client.bots.own.ProxyFetcher.progress
+                        : "Скачать свежие прокси", MenuRow.Button.Kind.PRIMARY, () -> {
+                    String addr = cfg.botAddress.trim();
+                    String host = addr;
+                    int port = 25565;
+                    int colon = addr.lastIndexOf(':');
+                    if (colon > 0) {
+                        host = addr.substring(0, colon);
+                        try {
+                            port = Integer.parseInt(addr.substring(colon + 1));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    ru.rooyzee.elytrixclient.client.bots.own.ProxyFetcher.fetchValidateSave(
+                            host, port, cfg.botProxyFile,
+                            ru.rooyzee.elytrixclient.client.ElytrixclientClient.LOG);
+                }).describe("Качает свежие бесплатные списки и оставляет только те прокси, что реально достучались до твоего сервера"))
                 .add(new MenuRow.Info("В списке", () -> ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.proxyCount()
                         + " шт", 0))
                 .add(new MenuRow.Header("Использование"))
