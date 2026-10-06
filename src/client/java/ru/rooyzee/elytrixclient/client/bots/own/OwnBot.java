@@ -144,9 +144,14 @@ public class OwnBot implements Runnable {
                     }
                 }
                 long now = System.currentTimeMillis();
-                if (!any && now - lastRead > settings.timeoutMs) {
+                // login/config медленные сервера (Aternos и т.п.) могут отвечать долго —
+                // держим 20 секунд; в play действует настроенный таймаут
+                long phaseTimeout = "play".equals(state)
+                        ? settings.timeoutMs
+                        : Math.max(settings.timeoutMs, 20000);
+                if (!any && now - lastRead > phaseTimeout) {
                     status = "таймаут";
-                    log.add("[Бот " + name + "] таймаут соединения");
+                    log.add("[Бот " + name + "] таймаут соединения (фаза " + state + ")");
                     break;
                 }
                 if ("play".equals(state) && now >= tickAt) {
