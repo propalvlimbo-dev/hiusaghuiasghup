@@ -327,7 +327,7 @@ public final class MenuContent {
     /** Вкладка «Визуалы»: компактный плеер MusicIsland и папка визуальных модулей delta-26.2. */
     /** Кураторский список визуалов: только то, что выбрал пользователь. */
     public static final java.util.Set<String> VISUAL_DELTA = java.util.Set.of(
-            "ShaderSky", "Hands Shader", "Aspect Ratio", "Item Physic", "Jump Circles", "See Invisibles");
+            "ShaderSky", "Hands Shader", "Aspect Ratio", "Interface", "Item Physic", "Jump Circles", "See Invisibles");
     public static final java.util.Set<String> VISUAL_XROSE = java.util.Set.of(
             "BlockOutline", "Removals", "Chams", "AtmoDawnFog");
     public static final java.util.Set<String> MISC_DELTA = java.util.Set.of("RP Spoofs", "Streamer Mode");
@@ -363,7 +363,8 @@ public final class MenuContent {
         if (delta != null && delta.d() != null && delta.d().t() != null) {
             for (platform.api.module.Module mod : delta.d().t().d()) {
                 if (mod == null || mod.l() != platform.api.module.Category.Render
-                        || !VISUAL_DELTA.contains(mod.j())) {
+                        || !VISUAL_DELTA.contains(mod.j()) || "Interface".equals(mod.j())) {
+                    // Interface живёт в Misc («Инфо-панель»), карточку тут не дублируем
                     continue;
                 }
                 list.add(new MenuCard(mod.j())

@@ -292,19 +292,23 @@ public class OwnBot implements Runnable {
                 } else if (f.id == SP_CHUNK_START) {
                     send(P_CHUNK_BATCH, w -> w.f32(10f));
                 } else if (f.id == SP_CHUNK_DATA) {
-                    int cx = f.i32();
-                    int cz = f.i32();
-                    long[] hm = OwnBotEngine.extractHeightmap(f.data, off2(f));
-                    if (hm != null && hm.length >= 36) {
-                        OwnBotEngine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
-                        int h = OwnBotEngine.heightAt(x, z);
-                        if (h != Integer.MIN_VALUE && h > 0) {
-                            groundY = h;
-                            haveGround = true;
-                            if (y < h - 0.01) {
-                                y = h;
+                    try {
+                        int cx = f.i32();
+                        int cz = f.i32();
+                        long[] hm = OwnBotEngine.extractHeightmap(f.data, off2(f));
+                        if (hm != null && hm.length >= 36) {
+                            OwnBotEngine.putHeights(cx, cz, OwnBotEngine.unpackHeights(hm));
+                            int h = OwnBotEngine.heightAt(x, z);
+                            if (h != Integer.MIN_VALUE && h > 0) {
+                                groundY = h;
+                                haveGround = true;
+                                if (y < h - 0.01) {
+                                    y = h;
+                                }
                             }
                         }
+                    } catch (Exception chunkErr) {
+                        // кривой чанк — игнорируем, бот живёт дальше
                     }
                 } else if (f.id == SP_SYSTEM_CHAT) {
                     if (settings.captcha) {

@@ -139,23 +139,34 @@ public class OwnBotEngine {
         return out;
     }
 
-    /** Ищет в NBT heightmap-ов long-массив MOTION_BLOCKING (или первый long[] >= 36). */
+    /** Ищет в NBT heightmap-ов long-массив MOTION_BLOCKING (или первый long[] >= 36). Безопасно к кривым данным. */
     public static long[] extractHeightmap(byte[] d, int from) {
-        int[] h = {from};
-        if (h[0] >= d.length) {
+        try {
+            int[] h = {from};
+            if (h[0] >= d.length) {
+                return null;
+            }
+            int t = d[h[0]] & 0xFF;
+            long[] r;
+            if (t == 10) {
+                h[0]++;
+                int nl = u16(d, h);
+                h[0] += nl;
+                r = nbtLongs(d, h, 10);
+            } else {
+                r = null;
+            }
+            if (r == null) {
+                r = nbtLongs(d, new int[]{from}, 10);
+            }
+            return r;
+        } catch (Exception e) {
             return null;
         }
-        int t = d[h[0]] & 0xFF;
-        if (t == 10) {
-            h[0]++;
-            int nl = u16(d, h);
-            h[0] += nl;
-        }
-        return nbtLongs(d, h, 10, false);
     }
 
-    private static long[] nbtLongs(byte[] d, int[] h, int type, boolean named) {
-        if (h[0] >= d.length) {
+    private static long[] nbtLongs(byte[] d, int[] h, int type) {
+        if (h[0] < 0 || h[0] >= d.length) {
             return null;
         }
         switch (type) {
@@ -170,8 +181,11 @@ public class OwnBotEngine {
             case 9: {
                 int et = d[h[0]++] & 0xFF;
                 int n = i32(d, h);
+                if (n < 0 || n > 100000) {
+                    throw new IllegalArgumentException("bad list");
+                }
                 for (int i = 0; i < n; i++) {
-                    long[] r = nbtLongs(d, h, et, false);
+                    long[] r = nbtLongs(d, h, et);
                     if (r != null) return r;
                 }
                 return null;
@@ -186,6 +200,9 @@ public class OwnBotEngine {
                     h[0] += nl;
                     if (et == 12) {
                         int n = i32(d, h);
+                        if (n < 0 || n > 100000) {
+                            throw new IllegalArgumentException("bad longs");
+                        }
                         long[] arr = new long[n];
                         for (int i = 0; i < n; i++) {
                             arr[i] = ((long) i32(d, h) << 32) | (i32(d, h) & 0xFFFFFFFFL);
@@ -193,7 +210,7 @@ public class OwnBotEngine {
                         if ("MOTION_BLOCKING".equals(name)) return arr;
                         if (fallback == null && n >= 36) fallback = arr;
                     } else {
-                        long[] r = nbtLongs(d, h, et, false);
+                        long[] r = nbtLongs(d, h, et);
                         if (r != null) return r;
                     }
                 }
@@ -206,6 +223,9 @@ public class OwnBotEngine {
     }
 
     private static int i32(byte[] d, int[] h) {
+        if (h[0] + 4 > d.length) {
+            throw new IllegalArgumentException("oob i32");
+        }
         int v = ((d[h[0]] & 0xFF) << 24) | ((d[h[0] + 1] & 0xFF) << 16)
                 | ((d[h[0] + 2] & 0xFF) << 8) | (d[h[0] + 3] & 0xFF);
         h[0] += 4;
@@ -213,6 +233,9 @@ public class OwnBotEngine {
     }
 
     private static int u16(byte[] d, int[] h) {
+        if (h[0] + 2 > d.length) {
+            throw new IllegalArgumentException("oob u16");
+        }
         int v = ((d[h[0]] & 0xFF) << 8) | (d[h[0] + 1] & 0xFF);
         h[0] += 2;
         return v;
