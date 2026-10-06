@@ -132,7 +132,7 @@ public class OwnBot implements Runnable {
             if (proxy != null) {
                 log.add("[Бот " + name + "] подключаюсь через прокси " + proxy
                         + (attempt > 1 ? " (попытка " + attempt + ")" : ""));
-                socket = proxy.connect(host, port, 30000);
+                socket = proxy.connect(host, port, 8000);
             } else {
                 socket = new Socket(host, port);
                 socket.setSoTimeout(30000);

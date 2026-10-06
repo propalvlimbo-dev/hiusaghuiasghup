@@ -388,16 +388,54 @@ public class OwnBotEngine {
         return b.toString();
     }
 
+    /** SRV-запись _minecraft._tcp.<host> — как резолвит обычный клиент Minecraft.
+     *  Возвращает {хост, порт} или null, если записи нет. */
+    public static String[] resolveSrv(String host) {
+        try {
+            java.util.Hashtable<String, String> env = new java.util.Hashtable<>();
+            env.put("java.naming.factory.initial", "com.sun.jndi.dns.DnsContextFactory");
+            javax.naming.directory.DirContext ctx = new javax.naming.directory.InitialDirContext(env);
+            javax.naming.directory.Attributes attrs =
+                    ctx.getAttributes("dns:/_minecraft._tcp." + host, new String[]{"SRV"});
+            javax.naming.directory.Attribute a = attrs.get("SRV");
+            if (a != null && a.size() > 0) {
+                String[] parts = a.get(0).toString().trim().split("\\s+");
+                if (parts.length >= 4) {
+                    return new String[]{parts[3].replaceAll("\\.$", ""), parts[2]};
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     public synchronized void start(String host, int port, int protocol, OwnBotSettings s) {
         if (running) {
             log.add("[Боты] уже запущены");
             return;
         }
         running = true;
-        log.add("[Боты] запускаем " + s.count + " встроенных ботов на " + host + ":" + port
+        // Как ванильный клиент и SoulFire: при порте по умолчанию сначала SRV-запись
+        // _minecraft._tcp.<домен> — хостинги (mclan и т.п.) отдают реальный адрес через неё
+        String rh = host;
+        int rp = port;
+        if (port == 25565) {
+            String[] srv = resolveSrv(host);
+            if (srv != null) {
+                try {
+                    rp = Integer.parseInt(srv[1]);
+                    rh = srv[0];
+                    log.add("[Боты] SRV: " + host + " -> " + rh + ":" + rp);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        final String fHost = rh;
+        final int fPort = rp;
+        log.add("[Боты] запускаем " + s.count + " встроенных ботов на " + fHost + ":" + fPort
                 + " (protocol " + protocol + ")");
         Thread spawner = new Thread(() -> {
-            int probed = probeProtocol(host, port, 3000);
+            int probed = probeProtocol(fHost, fPort, 3000);
             final int proto;
             if (probed < 0) {
                 log.add("[Боты] протокол сервера: " + (-probed) + " (из status-ping)");
@@ -410,7 +448,7 @@ public class OwnBotEngine {
                 final String name = s.randomNames ? randomName() : s.prefix + i;
                 Thread t = new Thread(() -> {
                     while (running) {
-                        OwnBot bot = new OwnBot(name, host, port, proto, s, log);
+                        OwnBot bot = new OwnBot(name, fHost, fPort, proto, s, log);
                         bots.add(bot);
                         bot.run();
                         bots.remove(bot);
