@@ -215,6 +215,14 @@ public final class MenuContent {
                 .add(new MenuRow.Info("Режим", () -> cfg.botUseProxy
                         ? "прокси (" + ru.rooyzee.elytrixclient.client.bots.own.OwnBotEngine.proxyCount() + ")"
                         : "твой IP", 0)));
+
+        list.add(new MenuCard("Формат строк")
+                .add(new MenuRow.Info("Без логина", () -> "ip:port", 0))
+                .add(new MenuRow.Info("С логином", () -> "ip:port:login:pass", 0))
+                .add(new MenuRow.Info("Протоколы", () -> "SOCKS5 и HTTP", 0))
+                .add(new MenuRow.Info("Раздача", () -> "по кругу на бота", 0)));
+        return list;
+    }
     private MenuCard hudCard() {
         var w = platform.client.ui.widget.WatermarkWidget.INSTANCE;
         MenuCard c = new MenuCard("Инфо-панель")
@@ -238,13 +246,6 @@ public final class MenuContent {
         return c;
     }
 
-        list.add(new MenuCard("Формат строк")
-                .add(new MenuRow.Info("Без логина", () -> "ip:port", 0))
-                .add(new MenuRow.Info("С логином", () -> "ip:port:login:pass", 0))
-                .add(new MenuRow.Info("Протоколы", () -> "SOCKS5 и HTTP", 0))
-                .add(new MenuRow.Info("Раздача", () -> "по кругу на бота", 0)));
-        return list;
-    }
 
     public List<MenuCard> settings() {
         List<MenuCard> list = new ArrayList<>();
